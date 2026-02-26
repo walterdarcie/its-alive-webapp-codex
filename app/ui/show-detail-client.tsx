@@ -20,6 +20,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   const [saved, setSaved] = useState(false);
   const [setlistExpanded, setSetlistExpanded] = useState(false);
   const [ctaBurst, setCtaBurst] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef<number | null>(null);
@@ -29,6 +30,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   useEffect(() => {
     setSaved(isSavedInWallet(id));
     setSetlistExpanded(false);
+    setIsClosing(false);
 
     const walletShow = getWalletShow(id);
     if (walletShow) {
@@ -108,10 +110,14 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   }
 
   function requestClose() {
-    if (onClose) {
-      onClose();
+    if (isOverlay && onClose) {
+      setIsClosing(true);
+      window.setTimeout(() => {
+        onClose();
+      }, 220);
       return;
     }
+    if (onClose) onClose();
   }
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -156,7 +162,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
 
   const content = show ? (
     <section
-      className={`detailSheet ${isOverlay ? "detailSheetOverlay" : ""} ${isDragging ? "isDragging" : ""}`}
+      className={`detailSheet ${isOverlay ? "detailSheetOverlay" : ""} ${isDragging ? "isDragging" : ""} ${isClosing ? "isClosing" : ""}`}
       aria-label="Detalhes do show"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
