@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { ShowRecord } from "@/lib/show-types";
+import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import {
   getWalletEntries,
   isSavedInWallet,
@@ -55,7 +55,7 @@ function EventCard({ show }: { show: ShowRecord }) {
           {daysAway > 0 ? `Faltam ${daysAway} dias!` : daysAway === 0 ? "É hoje!" : dateLabel}
         </div>
         <h3 className="cardTitle">{show.artist}</h3>
-        <div className="cardVenue">{formatVenueLine(show)}</div>
+        <div className="cardVenue venueWithPin">{formatVenueLine(show)}</div>
       </div>
     </article>
   );
@@ -63,54 +63,66 @@ function EventCard({ show }: { show: ShowRecord }) {
 
 function TicketRow({
   show,
-  onToggle
+  onToggle,
+  onOpenDetail
 }: {
   show: ShowRecord;
   onToggle: (show: ShowRecord) => void;
+  onOpenDetail: (showId: string) => void;
 }) {
   const status = deriveWalletStatus(show.eventDateIso);
   return (
     <div className="ticketWrap">
-      <Link className="ticket ticketClickable" href={`/show/${show.id}`}>
+      <button type="button" className="ticket ticketClickable ticketButtonReset" onClick={() => onOpenDetail(show.id)}>
         <div className="ticketThumb">Foto</div>
         <div className="ticketBody">
           <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
-          <p className="ticketVenue">{formatVenueLine(show)}</p>
+          <p className="ticketVenue venueWithPin">{formatVenueLine(show)}</p>
         </div>
-      </Link>
-      <button type="button" className="ticketTextAction" onClick={() => onToggle(show)}>
-        {status === "going" ? "Desmarcar eu vou" : "Desmarcar eu fui"}
       </button>
+      <div className="ticketActionRow">
+        <EmotionCTA
+          active={isSavedInWallet(show.id)}
+          label={status === "going" ? "EU VOU" : "EU FUI"}
+          onClick={() => onToggle(show)}
+          small
+        />
+      </div>
     </div>
   );
 }
 
 function SearchResultRow({
   show,
-  onToggleWallet
+  onToggleWallet,
+  onOpenDetail
 }: {
   show: ShowRecord;
   onToggleWallet: (show: ShowRecord) => void;
+  onOpenDetail: (showId: string) => void;
 }) {
   const saved = isSavedInWallet(show.id);
   const status = deriveWalletStatus(show.eventDateIso);
 
   return (
-    <div className="resultRow">
-      <Link className="resultBodyLink" href={`/show/${show.id}`}>
-        <div className="resultBody">
+    <div className="ticketWrap">
+      <button type="button" className="ticket ticketClickable ticketButtonReset searchTicketNoThumb" onClick={() => onOpenDetail(show.id)}>
+        <div className="ticketBody ticketBodyNoThumb">
           <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
-          <h3 className="resultTitle">{show.artist}</h3>
-          <p className="ticketVenue">{formatVenueLine(show)}</p>
+          <h3 className="ticketName">{show.artist}</h3>
+          <p className="ticketVenue venueWithPin">{formatVenueLine(show)}</p>
           {show.tourName ? <p className="resultMeta">Turnê: {show.tourName}</p> : null}
         </div>
-      </Link>
+      </button>
 
-      <div className="resultActions">
-        <button type="button" className="chip" onClick={() => onToggleWallet(show)}>
-          {saved ? "DESMARCAR" : status === "going" ? "EU VOU!" : "EU FUI!"}
-        </button>
+      <div className="ticketActionRow">
+        <EmotionCTA
+          active={saved}
+          label={status === "going" ? "EU VOU" : "EU FUI"}
+          onClick={() => onToggleWallet(show)}
+          small
+        />
       </div>
     </div>
   );
@@ -138,6 +150,7 @@ export function HomeClient() {
   });
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
   const activeQueryRef = useRef("");
   const noResultLoggedRef = useRef<string>("");
@@ -241,6 +254,21 @@ export function HomeClient() {
     return () => observer.disconnect();
   }, [searchMeta, searchLoading, searchLoadingMore, searchOpen, normalizedQuery.length]);
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        if (selectedShowId) {
+          setSelectedShowId(null);
+          return;
+        }
+        if (searchOpen) setSearchOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [searchOpen, selectedShowId]);
+
   const { futureShows, pastShows } = useMemo(() => splitWallet(walletEntries), [walletEntries]);
 
   function refreshWallet() {
@@ -254,6 +282,10 @@ export function HomeClient() {
       saveToWallet(show);
     }
     refreshWallet();
+  }
+
+  function openDetail(showId: string) {
+    setSelectedShowId(showId);
   }
 
   async function fetchSearchPage(queryValue: string, page: number) {
@@ -335,9 +367,9 @@ export function HomeClient() {
         {futureShows.length ? (
           <div className="slider">
             {futureShows.map((show) => (
-              <Link key={show.id} href={`/show/${show.id}`} className="cardLink">
+              <button key={show.id} type="button" className="cardLink cardButtonReset" onClick={() => openDetail(show.id)}>
                 <EventCard show={show} />
-              </Link>
+              </button>
             ))}
           </div>
         ) : (
@@ -352,7 +384,7 @@ export function HomeClient() {
         {pastShows.length ? (
           <div className="ticketList">
             {pastShows.map((show) => (
-              <TicketRow key={show.id} show={show} onToggle={toggleWallet} />
+              <TicketRow key={show.id} show={show} onToggle={toggleWallet} onOpenDetail={openDetail} />
             ))}
           </div>
         ) : (
@@ -402,7 +434,7 @@ export function HomeClient() {
           ) : searchResults.length ? (
             <div className="resultList">
               {searchResults.map((show) => (
-                <SearchResultRow key={show.id} show={show} onToggleWallet={toggleWallet} />
+                <SearchResultRow key={show.id} show={show} onToggleWallet={toggleWallet} onOpenDetail={openDetail} />
               ))}
               {searchLoadingMore ? <p className="emptyBox">Carregando mais resultados...</p> : null}
               {!searchLoadingMore && searchMeta.hasMore ? (
@@ -421,7 +453,41 @@ export function HomeClient() {
           )}
         </section>
       ) : null}
+
+      {selectedShowId ? (
+        <ShowDetailClient id={selectedShowId} mode="overlay" onClose={() => setSelectedShowId(null)} />
+      ) : null}
     </main>
+  );
+}
+
+function EmotionCTA({
+  active,
+  label,
+  onClick,
+  small = false
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  small?: boolean;
+}) {
+  const [burstKey, setBurstKey] = useState(0);
+
+  return (
+    <button
+      type="button"
+      className={`ctaMain ${active ? "isActive" : ""} ${small ? "isSmall" : ""} ${burstKey ? "ctaBurst" : ""}`}
+      onClick={() => {
+        setBurstKey(Date.now());
+        onClick();
+      }}
+      key={burstKey ? `cta-local-${burstKey}` : `cta-${label}-${active ? "1" : "0"}`}
+      aria-pressed={active}
+    >
+      <span className="ctaMainLabel">{label}!</span>
+      <span className="ctaMainPulse" aria-hidden />
+    </button>
   );
 }
 
