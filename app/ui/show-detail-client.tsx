@@ -117,6 +117,8 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!isOverlay) return;
     const target = event.target as HTMLElement | null;
+    const isInteractive = Boolean(target?.closest("button, a, input, textarea, select"));
+    if (isInteractive) return;
     const inDragHandle = Boolean(target?.closest(".detailSheetTop")) || Boolean(target?.closest(".detailTopNotch"));
     if (!inDragHandle) return;
     dragStartY.current = event.clientY;
