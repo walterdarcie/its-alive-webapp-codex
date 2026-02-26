@@ -16,6 +16,10 @@ export type ShowRecord = {
 export type ShowDetailRecord = ShowRecord & {
   attendees?: number;
   songNames: string[];
+  setlistSections: Array<{
+    label: string;
+    songs: string[];
+  }>;
 };
 
 type SetlistFmArtist = {
@@ -48,9 +52,13 @@ export type SetlistFmSetlist = {
   sets?: {
     set?:
       | {
+          name?: string;
+          encore?: number | string;
           song?: Array<{ name?: string }> | { name?: string };
         }
       | Array<{
+          name?: string;
+          encore?: number | string;
           song?: Array<{ name?: string }> | { name?: string };
         }>;
   };
@@ -115,14 +123,31 @@ export function mapSetlistToShowDetailRecord(raw: SetlistFmSetlist): ShowDetailR
   const base = mapSetlistToShowRecord(raw);
   if (!base) return null;
 
-  const songNames = normalizeSetArray(raw.sets?.set)
-    .flatMap((set) => normalizeSongArray(set.song))
-    .map((song) => song.name?.trim() ?? "")
-    .filter(Boolean);
+  const setlistSections = normalizeSetArray(raw.sets?.set)
+    .map((set, index) => {
+      const songs = normalizeSongArray(set.song)
+        .map((song) => song.name?.trim() ?? "")
+        .filter(Boolean);
+
+      if (!songs.length) return null;
+
+      const rawLabel = typeof set.name === "string" && set.name.trim() ? set.name.trim() : "";
+      const encoreValue = set.encore;
+      const encoreLabel =
+        encoreValue !== undefined && encoreValue !== null && String(encoreValue).trim() !== ""
+          ? `Encore ${String(encoreValue).trim()}`
+          : "";
+
+      const label = rawLabel || encoreLabel || (index === 0 ? "Main Set" : `Set ${index + 1}`);
+      return { label, songs };
+    })
+    .filter((section): section is { label: string; songs: string[] } => Boolean(section));
+
+  const songNames = setlistSections.flatMap((section) => section.songs);
 
   return {
     ...base,
-    songNames
+    songNames,
+    setlistSections
   };
 }
-

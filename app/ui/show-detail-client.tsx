@@ -35,7 +35,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     const walletShow = getWalletShow(id);
     if (walletShow) {
       setShow((prev) => ({
-        ...(prev ?? { ...walletShow, songNames: [] }),
+        ...(prev ?? { ...walletShow, songNames: [], setlistSections: [] }),
         ...walletShow
       }));
     }
@@ -235,7 +235,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
                     {setlistExpanded ? "RECOLHER SETLIST" : "SETLIST COMPLETA"}
                   </button>
                   <div className="setlistAccordionBody" aria-hidden={!setlistExpanded}>
-                    <ol className="songList songListExtra" start={6}>
+                    <ol className="songList songListExtra" start={visibleSongs.length + 1}>
                       {hiddenSongs.map((song, index) => (
                         <li key={`${song}-extra-${index}`}>{song}</li>
                       ))}

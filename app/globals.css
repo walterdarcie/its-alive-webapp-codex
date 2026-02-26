@@ -433,8 +433,10 @@ input {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 0;
+  padding: 20px 16px 40px;
   background: transparent;
+  overflow-y: auto;
+  animation: searchPageEnter 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .searchScreenPage::before {
@@ -449,6 +451,11 @@ input {
 
 .searchScreenPage > * {
   position: relative;
+}
+
+.searchScreenPage .footerHint,
+.searchScreenPage .sectionTitle {
+  display: none;
 }
 
 .searchScreenHeader {
@@ -642,6 +649,7 @@ input {
 
 .setlistPanel {
   padding-top: 12px;
+  padding-bottom: 8px;
   border-top: 2px dashed rgba(4, 14, 36, 0.55);
 }
 
@@ -654,7 +662,7 @@ input {
 
 .songList {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 30px;
   display: grid;
   gap: 6px;
 }
@@ -666,16 +674,18 @@ input {
 
 .songListExtra {
   padding-top: 8px;
+  padding-left: 34px;
 }
 
 .setlistAccordionBody {
   display: grid;
   grid-template-rows: 0fr;
+  overflow: hidden;
   transition: grid-template-rows 260ms ease;
 }
 
 .setlistAccordionBody > * {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .setlistAccordion.isOpen .setlistAccordionBody {
@@ -822,7 +832,7 @@ input {
   width: 100%;
   max-width: 430px;
   min-height: auto;
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 144px);
   overflow-y: auto;
   pointer-events: auto;
   border-radius: 20px;
@@ -853,6 +863,7 @@ input {
 
 .detailBodyTicket {
   box-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
+  padding-bottom: 24px;
 }
 
 .iconBtnCentered {
@@ -950,6 +961,10 @@ input {
   .detailOverlayContainer {
     padding-top: 72px;
   }
+
+  .detailSheetOverlay {
+    max-height: calc(100vh - 92px);
+  }
 }
 
 @keyframes fadeIn {
@@ -969,6 +984,17 @@ input {
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes searchPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

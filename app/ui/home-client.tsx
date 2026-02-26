@@ -127,6 +127,7 @@ export function HomeClient() {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const searchScrollRootRef = useRef<HTMLElement | null>(null);
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
   const activeQueryRef = useRef("");
   const noResultLoggedRef = useRef<string>("");
@@ -205,6 +206,7 @@ export function HomeClient() {
     if (normalizedQuery.length < 2) return;
     if (!searchMeta.hasMore) return;
     if (!searchSentinelRef.current) return;
+    if (!searchScrollRootRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -220,7 +222,7 @@ export function HomeClient() {
         void loadMoreSearch(q, nextPage);
       },
       {
-        root: null,
+        root: searchScrollRootRef.current,
         rootMargin: "160px 0px",
         threshold: 0.01
       }
@@ -373,7 +375,8 @@ export function HomeClient() {
       </p>
 
       {searchOpen ? (
-        <section className="searchScreen searchScreenPage" aria-label="Tela de busca">
+        <section className="searchScreen searchScreenPage" aria-label="Tela de busca" ref={searchScrollRootRef}>
+          <BrandHeader />
           <div className="searchScreenHeader">
             <div className="searchFieldWrap">
               <SearchIcon />
@@ -530,9 +533,9 @@ function rankSearchResults(query: string, shows: ShowRecord[]) {
 
 function computeSearchMeta(payload: SearchResponse): SearchStateMeta {
   const pageOneBased = payload.page ?? 1;
-  const itemsPerPage = payload.itemsPerPage ?? payload.shows.length ?? 0;
+  const itemsPerPage = payload.itemsPerPage && payload.itemsPerPage > 0 ? payload.itemsPerPage : payload.shows.length ?? 0;
   const total = payload.total ?? payload.shows.length ?? 0;
-  const loadedCount = pageOneBased * itemsPerPage;
+  const loadedCount = itemsPerPage > 0 ? pageOneBased * itemsPerPage : payload.shows.length;
 
   return {
     pageLoaded: Math.max(0, pageOneBased - 1),
