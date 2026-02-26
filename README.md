@@ -17,13 +17,21 @@ MVP do webapp "it's alive" para buscar shows e montar carteira (`eu vou` / `eu f
   - lista de shows passados (`eu fui`)
 
 ## Como rodar localmente
-1. `npm install`
-2. `npm run dev`
-3. Abrir `http://localhost:3000`
+1. `cp .env.example .env.local`
+2. Preencha `SETLISTFM_API_KEY` em `.env.local`
+3. `npm install`
+4. `npm run dev`
+5. Abrir `http://localhost:3000`
+
+## Fluxo MVP atual (sem login)
+- Busca de shows via proxy interno (`/api/setlists/*`)
+- Cache em memória para busca e detalhe
+- Carteira local em `localStorage`
+- Status derivado automaticamente da data:
+  - futuro/hoje = `Eu vou`
+  - passado = `Eu fui`
 
 ## Próximos passos
-- Integrar proxy Setlist.fm
-- Persistência local (sem login)
+- Melhorar paginação e UX da busca
 - Integração Supabase
 - PWA
-
