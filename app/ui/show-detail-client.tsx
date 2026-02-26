@@ -126,7 +126,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     setDragOffset(delta);
   }
 
-  function endDrag(pointerId?: number, currentTarget?: HTMLDivElement) {
+  function endDrag(pointerId?: number, currentTarget?: HTMLElement | null) {
     if (pointerId != null && currentTarget?.hasPointerCapture(pointerId)) {
       currentTarget.releasePointerCapture(pointerId);
     }
