@@ -94,7 +94,6 @@ function countryNameToCode(countryName: string) {
     portugal: "PT",
     france: "FR",
     franca: "FR",
-    "france": "FR",
     germany: "DE",
     alemanha: "DE",
     deutschland: "DE",
