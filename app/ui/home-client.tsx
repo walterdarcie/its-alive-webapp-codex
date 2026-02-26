@@ -377,7 +377,11 @@ export function HomeClient() {
               ) : null}
             </div>
           ) : (
-            <p className="emptyBox">Nenhum resultado encontrado.</p>
+            <p className="emptyBox">
+              Nenhum resultado encontrado para essa busca.
+              <br />
+              Tente: <strong>artista, cidade, país, ano</strong> (ex.: <strong>guns n&apos; roses, são paulo, brasil, 2022</strong>).
+            </p>
           )}
         </section>
       ) : null}

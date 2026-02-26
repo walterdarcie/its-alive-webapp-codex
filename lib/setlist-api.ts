@@ -3,6 +3,16 @@ import type { ShowRecord } from "@/lib/show-types";
 
 const BASE_URL = "https://api.setlist.fm/rest/1.0";
 
+export class SetlistApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "SetlistApiError";
+    this.status = status;
+  }
+}
+
 function getHeaders() {
   const apiKey = process.env.SETLISTFM_API_KEY;
   if (!apiKey) {
@@ -82,6 +92,28 @@ function countryNameToCode(countryName: string) {
   return mapping[normalized] ?? "";
 }
 
+function extractTrailingCountry(remaining: string) {
+  const normalized = remaining.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+
+  const words = normalized.split(" ");
+  for (let size = Math.min(3, words.length); size >= 1; size -= 1) {
+    const tail = words.slice(-size).join(" ");
+    const code = countryNameToCode(tail);
+    if (!code) continue;
+
+    const head = words.slice(0, -size).join(" ").trim();
+    if (!head) continue;
+
+    return {
+      head,
+      countryCode: code
+    };
+  }
+
+  return null;
+}
+
 function parseSearchTerm(searchTerm: string) {
   const normalized = normalizeSearchText(searchTerm);
   const { year, remaining } = parseYear(normalized);
@@ -125,6 +157,13 @@ function parseSearchTerm(searchTerm: string) {
   }
 
   // Fallback: preserve full text as artist query so compound names still work.
+  const withCountryTail = extractTrailingCountry(remaining);
+  if (withCountryTail) {
+    artistName = withCountryTail.head;
+    countryCode = withCountryTail.countryCode;
+    return { artistName, cityName, year, countryCode };
+  }
+
   artistName = remaining;
   return { artistName, cityName, year, countryCode };
 }
@@ -138,16 +177,25 @@ export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
   if (artistName) params.set("artistName", artistName);
   if (cityName) params.set("cityName", cityName);
   if (year) params.set("year", year);
-  if (countryCode) params.set("country", countryCode);
+  if (countryCode) params.set("countryCode", countryCode);
 
   const response = await fetch(`${BASE_URL}/search/setlists?${params.toString()}`, {
     headers: getHeaders(),
     next: { revalidate: 60 * 60 * 6 }
   });
 
+  if (response.status === 404) {
+    return {
+      shows: [] as ShowRecord[],
+      page: pageOneBased,
+      total: 0,
+      itemsPerPage: 0
+    };
+  }
+
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`Setlist.fm search failed (${response.status}): ${details}`);
+    throw new SetlistApiError(response.status, `Setlist.fm search failed (${response.status}): ${details}`);
   }
 
   const data = (await response.json()) as {
@@ -178,7 +226,7 @@ export async function getSetlistById(id: string) {
 
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`Setlist.fm detail failed (${response.status}): ${details}`);
+    throw new SetlistApiError(response.status, `Setlist.fm detail failed (${response.status}): ${details}`);
   }
 
   const data = (await response.json()) as SetlistFmSetlist;

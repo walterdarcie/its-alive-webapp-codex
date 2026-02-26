@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
-import { searchSetlists } from "@/lib/setlist-api";
+import { searchSetlists, SetlistApiError } from "@/lib/setlist-api";
 
 const SEARCH_TTL_MS = 1000 * 60 * 60 * 6;
 
@@ -34,8 +34,34 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
+    if (error instanceof SetlistApiError) {
+      if (error.status === 429) {
+        return NextResponse.json(
+          {
+            error: "Busca temporariamente limitada",
+            message: "Muitas buscas em sequência. Aguarde alguns segundos e tente novamente."
+          },
+          { status: 429 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error: "Falha ao buscar shows",
+          message: "Não foi possível buscar agora. Tente outra combinação (artista, cidade, país, ano)."
+        },
+        { status: 502 }
+      );
+    }
+
     const message = error instanceof Error ? error.message : "Unknown server error";
-    return NextResponse.json({ error: "Failed to search setlists", message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Falha ao buscar shows",
+        message: "Erro interno temporário ao consultar a busca.",
+        details: message
+      },
+      { status: 500 }
+    );
   }
 }
-
