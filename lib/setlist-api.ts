@@ -3,6 +3,13 @@ import type { ShowRecord } from "@/lib/show-types";
 
 const BASE_URL = "https://api.setlist.fm/rest/1.0";
 
+type SearchPlan = {
+  artistName?: string;
+  cityName?: string;
+  year?: string;
+  countryCode?: string;
+};
+
 export class SetlistApiError extends Error {
   status: number;
 
@@ -133,7 +140,7 @@ function parseSearchTerm(searchTerm: string) {
     if (segments[2]) {
       countryCode = countryNameToCode(segments[2]);
     }
-    return { artistName, cityName, year, countryCode };
+    return { artistName, cityName, year, countryCode, remaining };
   }
 
   // Secondary path: "artista em cidade" / "artist in city" / "artist @ city"
@@ -144,7 +151,7 @@ function parseSearchTerm(searchTerm: string) {
     if (left && right) {
       artistName = left;
       cityName = right;
-      return { artistName, cityName, year, countryCode };
+      return { artistName, cityName, year, countryCode, remaining };
     }
   }
 
@@ -153,7 +160,7 @@ function parseSearchTerm(searchTerm: string) {
   if (quotedArtist) {
     artistName = quotedArtist[1].trim();
     cityName = quotedArtist[2].trim();
-    return { artistName, cityName, year, countryCode };
+    return { artistName, cityName, year, countryCode, remaining };
   }
 
   // Fallback: preserve full text as artist query so compound names still work.
@@ -161,23 +168,79 @@ function parseSearchTerm(searchTerm: string) {
   if (withCountryTail) {
     artistName = withCountryTail.head;
     countryCode = withCountryTail.countryCode;
-    return { artistName, cityName, year, countryCode };
+    return { artistName, cityName, year, countryCode, remaining };
   }
 
   artistName = remaining;
-  return { artistName, cityName, year, countryCode };
+  return { artistName, cityName, year, countryCode, remaining };
 }
 
-export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
-  const incomingPage = Number.isFinite(pageZeroBased) && pageZeroBased >= 0 ? pageZeroBased : 0;
-  const pageOneBased = incomingPage + 1;
+function addPlan(plans: SearchPlan[], seen: Set<string>, plan: SearchPlan) {
+  const normalizedPlan: SearchPlan = {
+    artistName: plan.artistName?.trim() || undefined,
+    cityName: plan.cityName?.trim() || undefined,
+    year: plan.year?.trim() || undefined,
+    countryCode: plan.countryCode?.trim() || undefined
+  };
 
-  const { artistName, cityName, year, countryCode } = parseSearchTerm(searchTerm);
+  if (!normalizedPlan.artistName && !normalizedPlan.cityName) return;
+
+  const key = JSON.stringify(normalizedPlan);
+  if (seen.has(key)) return;
+  seen.add(key);
+  plans.push(normalizedPlan);
+}
+
+function buildSearchPlans(searchTerm: string) {
+  const parsed = parseSearchTerm(searchTerm);
+  const plans: SearchPlan[] = [];
+  const seen = new Set<string>();
+
+  addPlan(plans, seen, {
+    artistName: parsed.artistName,
+    cityName: parsed.cityName,
+    year: parsed.year,
+    countryCode: parsed.countryCode
+  });
+
+  if (parsed.remaining && parsed.remaining !== parsed.artistName) {
+    addPlan(plans, seen, {
+      artistName: parsed.remaining,
+      year: parsed.year
+    });
+  }
+
+  const trailingCountry = extractTrailingCountry(parsed.remaining);
+  const partitionCountry = parsed.countryCode || trailingCountry?.countryCode || "";
+  const partitionBase = parsed.cityName ? "" : trailingCountry?.head ?? parsed.remaining;
+
+  if (partitionBase) {
+    const words = partitionBase.split(" ").filter(Boolean);
+    for (let citySize = Math.min(3, words.length - 1); citySize >= 1; citySize -= 1) {
+      const artistWords = words.slice(0, -citySize);
+      const cityWords = words.slice(-citySize);
+      if (!artistWords.length || !cityWords.length) continue;
+
+      addPlan(plans, seen, {
+        artistName: artistWords.join(" "),
+        cityName: cityWords.join(" "),
+        year: parsed.year,
+        countryCode: partitionCountry || undefined
+      });
+    }
+  }
+
+  addPlan(plans, seen, { artistName: normalizeSearchText(searchTerm) });
+
+  return plans.slice(0, 5);
+}
+
+async function fetchSetlistsSearchByPlan(plan: SearchPlan, pageOneBased: number) {
   const params = new URLSearchParams({ p: String(pageOneBased) });
-  if (artistName) params.set("artistName", artistName);
-  if (cityName) params.set("cityName", cityName);
-  if (year) params.set("year", year);
-  if (countryCode) params.set("countryCode", countryCode);
+  if (plan.artistName) params.set("artistName", plan.artistName);
+  if (plan.cityName) params.set("cityName", plan.cityName);
+  if (plan.year) params.set("year", plan.year);
+  if (plan.countryCode) params.set("countryCode", plan.countryCode);
 
   const response = await fetch(`${BASE_URL}/search/setlists?${params.toString()}`, {
     headers: getHeaders(),
@@ -206,9 +269,7 @@ export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
   };
 
   const normalized = Array.isArray(data.setlist) ? data.setlist : data.setlist ? [data.setlist] : [];
-  const shows = normalized
-    .map(mapSetlistToShowRecord)
-    .filter((show): show is ShowRecord => Boolean(show));
+  const shows = normalized.map(mapSetlistToShowRecord).filter((show): show is ShowRecord => Boolean(show));
 
   return {
     shows,
@@ -216,6 +277,35 @@ export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
     total: data.total ?? shows.length,
     itemsPerPage: data.itemsPerPage ?? shows.length
   };
+}
+
+export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
+  const incomingPage = Number.isFinite(pageZeroBased) && pageZeroBased >= 0 ? pageZeroBased : 0;
+  const pageOneBased = incomingPage + 1;
+  const plans = buildSearchPlans(searchTerm);
+  let emptyResult = {
+    shows: [] as ShowRecord[],
+    page: pageOneBased,
+    total: 0,
+    itemsPerPage: 0
+  };
+
+  for (const [index, plan] of plans.entries()) {
+    const result = await fetchSetlistsSearchByPlan(plan, pageOneBased);
+
+    if (result.shows.length > 0 || result.total > 0) {
+      return result;
+    }
+
+    emptyResult = result;
+
+    // Stop early on paginated requests to avoid multiplying provider calls during infinite scroll.
+    if (pageOneBased > 1 && index === 0) {
+      return emptyResult;
+    }
+  }
+
+  return emptyResult;
 }
 
 export async function getSetlistById(id: string) {
