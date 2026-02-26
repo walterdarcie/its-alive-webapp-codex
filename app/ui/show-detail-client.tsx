@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ShowDetailRecord, ShowRecord } from "@/lib/show-types";
@@ -18,10 +19,7 @@ export function ShowDetailClient({ id }: { id: string }) {
     const walletShow = getWalletShow(id);
     if (walletShow) {
       setShow((prev) => ({
-        ...(prev ?? {
-          ...walletShow,
-          songNames: []
-        }),
+        ...(prev ?? { ...walletShow, songNames: [] }),
         ...walletShow
       }));
     }
@@ -42,9 +40,7 @@ export function ShowDetailClient({ id }: { id: string }) {
         setShow(payload as ShowDetailRecord);
       } catch (err) {
         if (controller.signal.aborted) return;
-        if (!walletShow) {
-          setError(err instanceof Error ? err.message : "Falha ao carregar show");
-        }
+        if (!walletShow) setError(err instanceof Error ? err.message : "Falha ao carregar show");
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -79,28 +75,34 @@ export function ShowDetailClient({ id }: { id: string }) {
   }
 
   return (
-    <main className="page">
-      <header className="topbar">
-        <Link href="/" className="muted">
-          ← Voltar
-        </Link>
-        <div className="avatarStub" aria-hidden />
-      </header>
-
+    <main className="page detailPage">
       {show ? (
-        <article className="card">
-          <div className="cardImage">Imagem do show (placeholder)</div>
-          <div className="detailBody">
-            <p className="ticketDate" style={{ marginTop: 0 }}>
-              {formatDatePtBrLong(show.eventDateIso)}
-            </p>
+        <section className="detailSheet" aria-label="Detalhes do show">
+          <div className="detailSheetTop">
+            <div className="detailTopNotch" aria-hidden />
+            <div className="detailHeaderBar">
+              <Image src="/brand/logo-icon.svg" alt="" width={28} height={28} className="detailMiniBrand" aria-hidden />
+              <Link href="/" className="iconBtn" aria-label="Fechar detalhes">
+                <CloseIcon />
+              </Link>
+            </div>
+
+            <p className="ticketDate detailDateTop">{formatDatePtBrLong(show.eventDateIso)}</p>
             <h1 className="detailTitle">{show.artist}</h1>
             <p className="ticketVenue detailVenue">{formatVenueLine(show)}</p>
+          </div>
+
+          <div className="detailHero cardImage">Imagem do show (placeholder)</div>
+
+          <div className="detailBody detailBodyTicket">
+            <div className="ticketSideCut ticketSideCutLeft" aria-hidden />
+            <div className="ticketSideCut ticketSideCutRight" aria-hidden />
+
             {show.tourName ? <p className="resultMeta detailTour">Turnê: {show.tourName}</p> : null}
 
             <div className="detailActions">
               <button type="button" className="chip" onClick={toggleWallet}>
-                {saved ? "DESMARCAR DA CARTEIRA" : "MARCAR NA CARTEIRA"}
+                {saved ? "DESMARCAR" : "EU FUI / EU VOU"}
               </button>
               {show.setlistUrl ? (
                 <a className="chip chipGhost" href={show.setlistUrl} target="_blank" rel="noreferrer">
@@ -124,7 +126,7 @@ export function ShowDetailClient({ id }: { id: string }) {
               )}
             </div>
           </div>
-        </article>
+        </section>
       ) : loading ? (
         <p className="emptyBox">Carregando show...</p>
       ) : (
@@ -134,3 +136,13 @@ export function ShowDetailClient({ id }: { id: string }) {
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="iconSvg">
+      <path
+        d="m18.3 5.71-1.41-1.42L12 9.17 7.11 4.29 5.7 5.71 10.59 10.6 5.7 15.49l1.41 1.41L12 12l4.89 4.9 1.41-1.41-4.89-4.89 4.89-4.89Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
