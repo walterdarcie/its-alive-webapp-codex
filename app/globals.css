@@ -400,6 +400,11 @@ input {
   line-height: 1.4;
 }
 
+.emptyBox strong {
+  color: #dfe6f6;
+  font-weight: 700;
+}
+
 .errorBox {
   color: #ffd4e8;
   border-color: rgba(243, 47, 157, 0.25);
@@ -458,6 +463,10 @@ input {
 .resultList {
   display: grid;
   gap: 12px;
+}
+
+.searchSentinel {
+  height: 1px;
 }
 
 .resultRow {

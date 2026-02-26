@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { ShowRecord } from "@/lib/show-types";
 import {
   getWalletEntries,
@@ -24,6 +24,12 @@ type SearchResponse = {
   page: number;
   total: number;
   itemsPerPage: number;
+};
+
+type SearchStateMeta = {
+  pageLoaded: number;
+  hasMore: boolean;
+  total: number;
 };
 
 function BrandHeader() {
@@ -121,9 +127,17 @@ export function HomeClient() {
   const deferredQuery = useDeferredValue(query);
   const [searchResults, setSearchResults] = useState<ShowRecord[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchLoadingMore, setSearchLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchMeta, setSearchMeta] = useState<SearchStateMeta>({
+    pageLoaded: -1,
+    hasMore: false,
+    total: 0
+  });
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchSentinelRef = useRef<HTMLDivElement | null>(null);
+  const activeQueryRef = useRef("");
 
   const normalizedQuery = deferredQuery.trim();
 
@@ -145,46 +159,77 @@ export function HomeClient() {
   }, []);
 
   useEffect(() => {
-    const q = normalizedQuery;
+    const q = normalizedQuery.normalize("NFC");
+    activeQueryRef.current = q;
+
     if (q.length < 2) {
       setSearchResults([]);
       setSearchError(null);
       setSearchLoading(false);
+      setSearchLoadingMore(false);
+      setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
       return;
     }
 
-    const controller = new AbortController();
-    setSearchLoading(true);
-    setSearchError(null);
-
+    let isCancelled = false;
     const timer = window.setTimeout(async () => {
-      try {
-        const response = await fetch(`/api/setlists/search?searchTerm=${encodeURIComponent(q)}&p=0`, {
-          signal: controller.signal
-        });
-        const payload = (await response.json()) as SearchResponse | { error?: string; message?: string };
+      setSearchLoading(true);
+      setSearchError(null);
+      setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
 
-        if (!response.ok) {
-          throw new Error(payload && "message" in payload ? payload.message ?? payload.error ?? "Erro na busca" : "Erro na busca");
-        }
+      try {
+        const payload = await fetchSearchPage(q, 0);
+        if (isCancelled || activeQueryRef.current !== q) return;
 
         startTransition(() => {
-          setSearchResults((payload as SearchResponse).shows ?? []);
+          setSearchResults(payload.shows ?? []);
         });
+        setSearchMeta(computeSearchMeta(payload));
       } catch (error) {
-        if (controller.signal.aborted) return;
+        if (isCancelled) return;
         setSearchResults([]);
+        setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
         setSearchError(error instanceof Error ? error.message : "Falha ao buscar shows");
       } finally {
-        if (!controller.signal.aborted) setSearchLoading(false);
+        if (!isCancelled) setSearchLoading(false);
       }
-    }, 500);
+    }, 450);
 
     return () => {
-      controller.abort();
+      isCancelled = true;
       window.clearTimeout(timer);
     };
   }, [normalizedQuery]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    if (normalizedQuery.length < 2) return;
+    if (!searchMeta.hasMore) return;
+    if (!searchSentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        if (searchLoading || searchLoadingMore) return;
+
+        const nextPage = searchMeta.pageLoaded + 1;
+        if (nextPage < 0) return;
+        const q = activeQueryRef.current;
+        if (q.length < 2) return;
+
+        void loadMoreSearch(q, nextPage);
+      },
+      {
+        root: null,
+        rootMargin: "160px 0px",
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(searchSentinelRef.current);
+    return () => observer.disconnect();
+  }, [searchMeta, searchLoading, searchLoadingMore, searchOpen, normalizedQuery.length]);
 
   const { futureShows, pastShows } = useMemo(() => splitWallet(walletEntries), [walletEntries]);
 
@@ -199,6 +244,43 @@ export function HomeClient() {
       saveToWallet(show);
     }
     refreshWallet();
+  }
+
+  async function fetchSearchPage(queryValue: string, page: number) {
+    const response = await fetch(
+      `/api/setlists/search?searchTerm=${encodeURIComponent(queryValue)}&p=${page}`
+    );
+    const payload = (await response.json()) as SearchResponse | { error?: string; message?: string };
+    if (!response.ok) {
+      throw new Error(
+        payload && "message" in payload
+          ? payload.message ?? payload.error ?? "Erro na busca"
+          : "Erro na busca"
+      );
+    }
+    return payload as SearchResponse;
+  }
+
+  async function loadMoreSearch(queryValue: string, page: number) {
+    setSearchLoadingMore(true);
+    setSearchError(null);
+    try {
+      const payload = await fetchSearchPage(queryValue, page);
+      if (activeQueryRef.current !== queryValue) return;
+
+      setSearchResults((current) => {
+        const merged = [...current, ...(payload.shows ?? [])];
+        const deduped = new Map<string, ShowRecord>();
+        for (const show of merged) deduped.set(show.id, show);
+        return Array.from(deduped.values());
+      });
+      setSearchMeta(computeSearchMeta(payload));
+    } catch (error) {
+      if (activeQueryRef.current !== queryValue) return;
+      setSearchError(error instanceof Error ? error.message : "Falha ao carregar mais resultados");
+    } finally {
+      setSearchLoadingMore(false);
+    }
   }
 
   return (
@@ -266,12 +348,17 @@ export function HomeClient() {
           </div>
 
           <div className="searchMetaBar">
-            <span className="muted">Digite artista, cidade e opcionalmente ano</span>
-            <span className="muted">Cache + debounce</span>
+            <span className="muted">Use: artista, cidade, país, ano (vírgulas) para busca precisa</span>
+            <span className="muted">Scroll infinito • cache • debounce</span>
           </div>
 
           {normalizedQuery.length < 2 ? (
-            <p className="emptyBox">Ex.: metallica são paulo 2022</p>
+            <p className="emptyBox">
+              Exemplos: <br />
+              <strong>guns n&apos; roses</strong> <br />
+              <strong>guns n&apos; roses, são paulo, brasil, 2022</strong> <br />
+              <strong>&quot;guns n&apos; roses&quot; em são paulo 2022</strong>
+            </p>
           ) : searchLoading ? (
             <p className="emptyBox">Buscando shows...</p>
           ) : searchError ? (
@@ -281,6 +368,13 @@ export function HomeClient() {
               {searchResults.map((show) => (
                 <SearchResultRow key={show.id} show={show} onToggleWallet={toggleWallet} />
               ))}
+              {searchLoadingMore ? <p className="emptyBox">Carregando mais resultados...</p> : null}
+              {!searchLoadingMore && searchMeta.hasMore ? (
+                <div ref={searchSentinelRef} className="searchSentinel" aria-hidden />
+              ) : null}
+              {!searchMeta.hasMore && searchResults.length > 0 ? (
+                <p className="muted">Fim dos resultados ({searchMeta.total}).</p>
+              ) : null}
             </div>
           ) : (
             <p className="emptyBox">Nenhum resultado encontrado.</p>
@@ -289,6 +383,19 @@ export function HomeClient() {
       ) : null}
     </main>
   );
+}
+
+function computeSearchMeta(payload: SearchResponse): SearchStateMeta {
+  const pageOneBased = payload.page ?? 1;
+  const itemsPerPage = payload.itemsPerPage ?? payload.shows.length ?? 0;
+  const total = payload.total ?? payload.shows.length ?? 0;
+  const loadedCount = pageOneBased * itemsPerPage;
+
+  return {
+    pageLoaded: Math.max(0, pageOneBased - 1),
+    hasMore: loadedCount < total,
+    total
+  };
 }
 
 function SearchIcon() {
