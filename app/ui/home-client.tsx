@@ -32,6 +32,8 @@ type SearchStateMeta = {
   total: number;
 };
 
+const NO_RESULT_ANALYTICS_KEY = "its-alive.search.no-results.v1";
+
 function BrandHeader() {
   return (
     <header className="topbar">
@@ -138,6 +140,7 @@ export function HomeClient() {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
   const activeQueryRef = useRef("");
+  const noResultLoggedRef = useRef<string>("");
 
   const normalizedQuery = deferredQuery.trim();
 
@@ -168,6 +171,7 @@ export function HomeClient() {
       setSearchLoading(false);
       setSearchLoadingMore(false);
       setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
+      noResultLoggedRef.current = "";
       return;
     }
 
@@ -181,10 +185,16 @@ export function HomeClient() {
         const payload = await fetchSearchPage(q, 0);
         if (isCancelled || activeQueryRef.current !== q) return;
 
+        const ranked = rankSearchResults(q, payload.shows ?? []);
         startTransition(() => {
-          setSearchResults(payload.shows ?? []);
+          setSearchResults(ranked);
         });
         setSearchMeta(computeSearchMeta(payload));
+        if (!ranked.length) {
+          logNoResultSearch(q);
+        } else {
+          noResultLoggedRef.current = "";
+        }
       } catch (error) {
         if (isCancelled) return;
         setSearchResults([]);
@@ -272,7 +282,7 @@ export function HomeClient() {
         const merged = [...current, ...(payload.shows ?? [])];
         const deduped = new Map<string, ShowRecord>();
         for (const show of merged) deduped.set(show.id, show);
-        return Array.from(deduped.values());
+        return rankSearchResults(queryValue, Array.from(deduped.values()));
       });
       setSearchMeta(computeSearchMeta(payload));
     } catch (error) {
@@ -280,6 +290,32 @@ export function HomeClient() {
       setSearchError(error instanceof Error ? error.message : "Falha ao carregar mais resultados");
     } finally {
       setSearchLoadingMore(false);
+    }
+  }
+
+  function logNoResultSearch(queryValue: string) {
+    const normalized = normalizeForMatch(queryValue);
+    if (!normalized) return;
+    if (noResultLoggedRef.current === normalized) return;
+
+    try {
+      const raw = window.localStorage.getItem(NO_RESULT_ANALYTICS_KEY);
+      const current = raw ? (JSON.parse(raw) as Array<{ q: string; count: number; lastAt: string }>) : [];
+      const next = [...current];
+      const idx = next.findIndex((item) => item.q === normalized);
+      if (idx >= 0) {
+        next[idx] = {
+          q: normalized,
+          count: (next[idx].count ?? 0) + 1,
+          lastAt: new Date().toISOString()
+        };
+      } else {
+        next.unshift({ q: normalized, count: 1, lastAt: new Date().toISOString() });
+      }
+      window.localStorage.setItem(NO_RESULT_ANALYTICS_KEY, JSON.stringify(next.slice(0, 50)));
+      noResultLoggedRef.current = normalized;
+    } catch {
+      // Ignore local analytics failures.
     }
   }
 
@@ -388,6 +424,97 @@ export function HomeClient() {
     </main>
   );
 }
+
+function normalizeForMatch(input: string) {
+  return input
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[’‘`]/g, "'")
+    .replace(/[^a-z0-9'\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractYearToken(query: string) {
+  const match = /(?:^|\s)(19\d{2}|20\d{2})(?:\s|$)/.exec(query);
+  return match?.[1] ?? "";
+}
+
+function detectCountryHints(query: string) {
+  const q = normalizeForMatch(query);
+  const hints = new Set<string>();
+  const map: Array<[string, string]> = [
+    ["brasil", "br"],
+    ["brazil", "br"],
+    ["usa", "us"],
+    ["eua", "us"],
+    ["united states", "us"],
+    ["canada", "ca"],
+    ["mexico", "mx"],
+    ["argentina", "ar"],
+    ["chile", "cl"],
+    ["uk", "gb"],
+    ["united kingdom", "gb"],
+    ["inglaterra", "gb"],
+    ["england", "gb"]
+  ];
+  for (const [phrase, code] of map) {
+    if (q.includes(phrase)) hints.add(code);
+  }
+  return hints;
+}
+
+function scoreShowForQuery(query: string, show: ShowRecord) {
+  const qNorm = normalizeForMatch(query);
+  const artistNorm = normalizeForMatch(show.artist);
+  const cityNorm = normalizeForMatch(show.city);
+  const countryNorm = normalizeForMatch(show.country);
+  const venueNorm = normalizeForMatch(show.venue);
+  const fullNorm = `${artistNorm} ${cityNorm} ${countryNorm} ${venueNorm}`;
+  const tokens = qNorm.split(" ").filter((t) => t.length >= 2);
+  const yearHint = extractYearToken(qNorm);
+  const countryHints = detectCountryHints(qNorm);
+
+  let score = 0;
+
+  if (artistNorm === qNorm) score += 120;
+  if (artistNorm.startsWith(qNorm)) score += 80;
+  if (artistNorm.includes(qNorm)) score += 55;
+
+  for (const token of tokens) {
+    if (artistNorm.includes(token)) score += 16;
+    if (cityNorm.includes(token)) score += 11;
+    if (countryNorm.includes(token)) score += 8;
+    if (venueNorm.includes(token)) score += 5;
+  }
+
+  const allTokensMatch = tokens.length > 0 && tokens.every((token) => fullNorm.includes(token));
+  if (allTokensMatch) score += 22;
+
+  if (yearHint && show.eventDateIso.startsWith(yearHint)) score += 25;
+
+  if (countryHints.size > 0) {
+    const showCountryCode = countryNorm.slice(0, 2);
+    if ([...countryHints].some((hint) => showCountryCode === hint || countryNorm.includes(hint))) {
+      score += 18;
+    }
+  }
+
+  return score;
+}
+
+function rankSearchResults(query: string, shows: ShowRecord[]) {
+  return [...shows].sort((a, b) => {
+    const scoreDiff = scoreShowForQuery(query, b) - scoreShowForQuery(query, a);
+    if (scoreDiff !== 0) return scoreDiff;
+
+    // Tie-breaker: newer shows first.
+    if (a.eventDateIso === b.eventDateIso) return a.artist.localeCompare(b.artist);
+    return a.eventDateIso < b.eventDateIso ? 1 : -1;
+  });
+}
+
 
 function computeSearchMeta(payload: SearchResponse): SearchStateMeta {
   const pageOneBased = payload.page ?? 1;

@@ -66,30 +66,68 @@ function countryNameToCode(countryName: string) {
   const mapping: Record<string, string> = {
     brasil: "BR",
     brazil: "BR",
+    "brazilian": "BR",
     "estados unidos": "US",
     "eua": "US",
     usa: "US",
+    "u.s.a": "US",
+    "u.s.": "US",
     "united states": "US",
+    america: "US",
+    "north america": "US",
     canada: "CA",
     mexico: "MX",
+    "méxico": "MX",
     argentina: "AR",
     chile: "CL",
     uruguay: "UY",
     paraguay: "PY",
     peru: "PE",
     colombia: "CO",
+    "colômbia": "CO",
+    bolivia: "BO",
+    equador: "EC",
+    ecuador: "EC",
+    venezuela: "VE",
     espanha: "ES",
     spain: "ES",
     portugal: "PT",
     france: "FR",
     franca: "FR",
+    "france": "FR",
     germany: "DE",
     alemanha: "DE",
+    deutschland: "DE",
     italy: "IT",
     italia: "IT",
+    "países baixos": "NL",
+    "paises baixos": "NL",
+    netherlands: "NL",
+    holland: "NL",
+    belgica: "BE",
+    belgium: "BE",
+    suica: "CH",
+    suiça: "CH",
+    switzerland: "CH",
+    austria: "AT",
+    austrália: "AU",
+    australia: "AU",
+    japao: "JP",
+    japão: "JP",
+    japan: "JP",
+    coreia: "KR",
+    "south korea": "KR",
+    "korea do sul": "KR",
     uk: "GB",
+    "u.k.": "GB",
+    gb: "GB",
+    britain: "GB",
+    "great britain": "GB",
     "united kingdom": "GB",
-    inglaterra: "GB"
+    inglaterra: "GB",
+    england: "GB",
+    ireland: "IE",
+    irlanda: "IE"
   };
 
   if (/^[A-Za-z]{2}$/.test(countryName.trim())) {
@@ -97,6 +135,64 @@ function countryNameToCode(countryName: string) {
   }
 
   return mapping[normalized] ?? "";
+}
+
+const FREQUENT_CITY_PHRASES = [
+  "sao paulo",
+  "são paulo",
+  "rio de janeiro",
+  "belo horizonte",
+  "porto alegre",
+  "curitiba",
+  "brasilia",
+  "brasília",
+  "buenos aires",
+  "santiago",
+  "mexico city",
+  "ciudad de mexico",
+  "cidade do mexico",
+  "new york",
+  "los angeles",
+  "san francisco",
+  "las vegas",
+  "london",
+  "paris",
+  "madrid",
+  "barcelona",
+  "lisbon",
+  "lisboa",
+  "berlin",
+  "rome",
+  "milan",
+  "tokyo"
+] as const;
+
+function normalizeLoose(input: string) {
+  return input
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractKnownCityPhrase(remaining: string) {
+  const normalizedLoose = normalizeLoose(remaining);
+  for (const city of FREQUENT_CITY_PHRASES) {
+    const cityNorm = normalizeLoose(city);
+    if (!normalizedLoose.endsWith(cityNorm)) continue;
+
+    const rawWords = remaining.trim().split(/\s+/);
+    const cityWordCount = city.split(/\s+/).length;
+    if (rawWords.length <= cityWordCount) continue;
+
+    const cityName = rawWords.slice(-cityWordCount).join(" ");
+    const artistHead = rawWords.slice(0, -cityWordCount).join(" ").trim();
+    if (!artistHead) continue;
+
+    return { artistHead, cityName };
+  }
+  return null;
 }
 
 function extractTrailingCountry(remaining: string) {
@@ -168,6 +264,13 @@ function parseSearchTerm(searchTerm: string) {
   if (withCountryTail) {
     artistName = withCountryTail.head;
     countryCode = withCountryTail.countryCode;
+    return { artistName, cityName, year, countryCode, remaining };
+  }
+
+  const knownCity = extractKnownCityPhrase(remaining);
+  if (knownCity) {
+    artistName = knownCity.artistHead;
+    cityName = knownCity.cityName;
     return { artistName, cityName, year, countryCode, remaining };
   }
 
