@@ -66,6 +66,12 @@ export type SetlistFmSetlist = {
   user?: { userid?: string };
 };
 
+type SetlistFmSetEntry = {
+  name?: string;
+  encore?: number | string;
+  song?: Array<{ name?: string }> | { name?: string };
+};
+
 function toIsoDate(input?: string) {
   if (!input) return "";
   const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(input);
@@ -105,10 +111,7 @@ export function mapSetlistToShowRecord(raw: SetlistFmSetlist): ShowRecord | null
 }
 
 function normalizeSetArray(
-  input:
-    | { song?: Array<{ name?: string }> | { name?: string } }
-    | Array<{ song?: Array<{ name?: string }> | { name?: string } }>
-    | undefined
+  input: SetlistFmSetEntry | SetlistFmSetEntry[] | undefined
 ) {
   if (!input) return [];
   return Array.isArray(input) ? input : [input];
