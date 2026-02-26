@@ -19,7 +19,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [setlistExpanded, setSetlistExpanded] = useState(false);
-  const [ctaBurst, setCtaBurst] = useState(0);
+  const [ctaBurst, setCtaBurst] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef<number | null>(null);
@@ -102,7 +102,9 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
       saveToWallet(walletRecord);
       setSaved(true);
     }
-    setCtaBurst(Date.now());
+    setCtaBurst(false);
+    window.setTimeout(() => setCtaBurst(true), 0);
+    window.setTimeout(() => setCtaBurst(false), 550);
   }
 
   function requestClose() {
@@ -114,9 +116,12 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!isOverlay) return;
+    const target = event.target as HTMLElement | null;
+    const inDragHandle = Boolean(target?.closest(".detailSheetTop")) || Boolean(target?.closest(".detailTopNotch"));
+    if (!inDragHandle) return;
     dragStartY.current = event.clientY;
     setIsDragging(true);
-    (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
+    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
@@ -187,7 +192,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
             type="button"
             className={`ctaMain ${saved ? "isActive" : ""} ${ctaBurst ? "ctaBurst" : ""}`}
             onClick={toggleWallet}
-            key={ctaBurst ? `cta-${ctaBurst}` : "cta"}
+            aria-pressed={saved}
           >
             <span className="ctaMainLabel">{ctaLabel}!</span>
             <span className="ctaMainPulse" aria-hidden />
