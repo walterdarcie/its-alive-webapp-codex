@@ -1066,7 +1066,11 @@ input {
   }
 
   .slider {
-    grid-auto-columns: minmax(278px, 1fr);
+    grid-auto-columns: 100%;
+  }
+
+  .slider .card {
+    aspect-ratio: 4 / 3;
   }
 
   .resultRow {
