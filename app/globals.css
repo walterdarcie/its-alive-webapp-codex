@@ -232,6 +232,8 @@ input {
   left: 8px;
   right: 8px;
   bottom: 8px;
+  min-width: 0;
+  overflow: hidden;
   padding: 12px 14px;
   border-radius: 14px;
   background: rgba(243, 47, 157, 0.6);
@@ -257,6 +259,7 @@ input {
 .cardVenue {
   display: block;
   width: 100%;
+  min-width: 0;
   max-width: 100%;
   margin-top: 6px;
   font-size: 14px;
@@ -757,6 +760,7 @@ input {
 }
 
 .venueWithPin .venueText {
+  display: block;
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
@@ -1080,8 +1084,8 @@ input {
 
   .slider.sliderPeek,
   .slider:has(.cardLink + .cardLink) {
-    grid-auto-columns: minmax(0, calc(100% - 64px));
-    padding-right: 8px;
+    grid-auto-columns: minmax(0, calc(100% - 36px));
+    padding-right: 4px;
   }
 
   .slider .card {
