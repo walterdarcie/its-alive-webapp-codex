@@ -302,7 +302,7 @@ input {
   top: 50%;
   width: 26px;
   height: 26px;
-  background: var(--surface);
+  background: var(--neutral-ultra-dark);
   border-radius: 50%;
   transform: translateY(-50%);
   z-index: 3;
