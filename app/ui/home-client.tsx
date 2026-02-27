@@ -12,7 +12,9 @@ import { daysUntilShow, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow
 function BrandHeader() {
   return (
     <header className="topbar">
-      <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
+      <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
+        <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
+      </Link>
       <div className="avatarStub" aria-hidden />
     </header>
   );
