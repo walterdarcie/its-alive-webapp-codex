@@ -62,7 +62,9 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
         <div className="ticketBody ticketBodyNoThumb">
           <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
-          <p className="ticketVenue venueWithPin">{formatVenueLine(show)}</p>
+          <p className="ticketVenue venueWithPin">
+            <span className="venueText">{formatVenueLine(show)}</span>
+          </p>
           {show.tourName ? <p className="resultMeta">Turnê: {show.tourName}</p> : null}
         </div>
       </button>

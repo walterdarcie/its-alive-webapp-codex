@@ -243,7 +243,9 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
 
         <p className="ticketDate detailDateTop">{formatDatePtBrLong(show.eventDateIso)}</p>
         <h1 className="detailTitle">{show.artist}</h1>
-        <p className="ticketVenue detailVenue venueWithPin">{formatVenueLine(show)}</p>
+        <p className="ticketVenue detailVenue venueWithPin">
+          <span className="venueText">{formatVenueLine(show)}</span>
+        </p>
       </div>
 
       <div className={`detailHero cardImage ${artistImageUrl ? "hasPhoto" : ""}`} style={artistImageUrl ? buildDetailPhotoStyle(artistImageUrl) : undefined}>

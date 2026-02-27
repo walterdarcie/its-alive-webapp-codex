@@ -55,7 +55,9 @@ function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) 
           {daysAway > 0 ? `Faltam ${daysAway} dias!` : daysAway === 0 ? "É hoje!" : dateLabel}
         </div>
         <h3 className="cardTitle">{show.artist}</h3>
-        <div className="cardVenue venueWithPin">{formatVenueLine(show)}</div>
+        <div className="cardVenue venueWithPin">
+          <span className="venueText">{formatVenueLine(show)}</span>
+        </div>
       </div>
     </article>
   );
@@ -79,7 +81,9 @@ function TicketRow({
         <div className="ticketBody">
           <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
-          <p className="ticketVenue venueWithPin">{formatVenueLine(show)}</p>
+          <p className="ticketVenue venueWithPin">
+            <span className="venueText">{formatVenueLine(show)}</span>
+          </p>
         </div>
       </button>
     </div>
@@ -195,7 +199,7 @@ export function HomeClient() {
           Eu vou!
         </h2>
         {futureShows.length ? (
-          <div className="slider">
+          <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
             {futureShows.map((show) => (
               <button key={show.id} type="button" className="cardLink cardButtonReset" onClick={() => setSelectedShowId(show.id)}>
                 <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />

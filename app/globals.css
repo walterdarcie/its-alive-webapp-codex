@@ -749,17 +749,25 @@ input {
 }
 
 .venueWithPin {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
   max-width: 100%;
 }
 
+.venueWithPin .venueText {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .venueWithPin::before {
   content: "";
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   flex: 0 0 auto;
   background: center/contain no-repeat
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239eaad0'%3E%3Cpath d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z'/%3E%3C/svg%3E");
@@ -1070,13 +1078,20 @@ input {
     padding-right: 0;
   }
 
+  .slider.sliderPeek,
   .slider:has(.cardLink + .cardLink) {
-    grid-auto-columns: minmax(0, calc(100% - 72px));
+    grid-auto-columns: minmax(0, calc(100% - 64px));
     padding-right: 8px;
   }
 
   .slider .card {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 3 / 2;
+  }
+
+  .slider .cardTitle {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .resultRow {
