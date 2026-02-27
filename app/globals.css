@@ -1078,14 +1078,23 @@ input {
   }
 
   .slider {
-    grid-auto-columns: 100%;
+    display: flex;
+    gap: 12px;
     padding-right: 0;
+  }
+
+  .slider .cardLink {
+    flex: 0 0 100%;
   }
 
   .slider.sliderPeek,
   .slider:has(.cardLink + .cardLink) {
-    grid-auto-columns: minmax(0, calc(100% - 36px));
-    padding-right: 4px;
+    padding-right: 8px;
+  }
+
+  .slider.sliderPeek .cardLink,
+  .slider:has(.cardLink + .cardLink) .cardLink {
+    flex-basis: 88%;
   }
 
   .slider .card {
