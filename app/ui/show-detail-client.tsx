@@ -81,23 +81,25 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   }, [id]);
 
   useEffect(() => {
-    if (!show) return;
-    if (show.artistImageUrl) {
-      setArtistImageUrl(show.artistImageUrl);
+    const currentShow = show;
+    if (!currentShow) return;
+
+    if (currentShow.artistImageUrl) {
+      setArtistImageUrl(currentShow.artistImageUrl);
       return;
     }
 
     let cancelled = false;
     async function loadImage() {
       const payload = await fetchArtistImageClient({
-        artistName: show.artist,
-        artistMbid: show.artistMbid
+        artistName: currentShow.artist,
+        artistMbid: currentShow.artistMbid
       });
       if (cancelled || !payload.imageUrl) return;
 
       setArtistImageUrl(payload.imageUrl);
       setShow((current) => {
-        if (!current || current.id !== show.id) return current;
+        if (!current || current.id !== currentShow.id) return current;
         return {
           ...current,
           artistImageUrl: payload.imageUrl ?? undefined,
