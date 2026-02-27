@@ -45,7 +45,6 @@ function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) 
   const dateLabel = formatDatePtBrLong(show.eventDateIso);
   return (
     <article className="card">
-      <div className="ticketTopNotch" aria-hidden />
       <div className={`cardImage ${imageUrl ? "hasPhoto" : ""}`} style={imageUrl ? buildPhotoStyle(imageUrl, "hero") : undefined}>
         {imageUrl ? null : show.artist}
       </div>

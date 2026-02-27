@@ -284,14 +284,16 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
 
               {hiddenSongs.length > 0 ? (
                 <div className={`setlistAccordion ${setlistExpanded ? "isOpen" : ""}`}>
-                  <button
-                    type="button"
-                    className="setlistExpandBtn"
-                    onClick={() => setSetlistExpanded((v) => !v)}
-                    aria-expanded={setlistExpanded}
-                  >
-                    {setlistExpanded ? "RECOLHER SETLIST" : "SETLIST COMPLETA"}
-                  </button>
+                  {!setlistExpanded ? (
+                    <button
+                      type="button"
+                      className="setlistExpandBtn"
+                      onClick={() => setSetlistExpanded((v) => !v)}
+                      aria-expanded={setlistExpanded}
+                    >
+                      SETLIST COMPLETA
+                    </button>
+                  ) : null}
                   <div className="setlistAccordionBody" aria-hidden={!setlistExpanded}>
                     <ol className="songList songListExtra" start={visibleSongs.length + 1}>
                       {hiddenSongs.map((song, index) => (
@@ -299,6 +301,16 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
                       ))}
                     </ol>
                   </div>
+                  {setlistExpanded ? (
+                    <button
+                      type="button"
+                      className="setlistExpandBtn"
+                      onClick={() => setSetlistExpanded((v) => !v)}
+                      aria-expanded={setlistExpanded}
+                    >
+                      RECOLHER SETLIST
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </>
