@@ -266,6 +266,9 @@ input {
 }
 
 .cardVenue {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   margin-top: 6px;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.9);
@@ -378,9 +381,15 @@ input {
 }
 
 .ticketVenue {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   font-size: 14px;
   color: #8f9bbd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ticketTextAction {
@@ -754,6 +763,8 @@ input {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .venueWithPin::before {
