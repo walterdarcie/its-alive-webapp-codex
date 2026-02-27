@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ShowRecord } from "@/lib/show-types";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
+import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletEntries, type WalletEntry } from "@/lib/wallet-storage";
 import { daysUntilShow, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 
@@ -28,13 +29,26 @@ function SearchIcon() {
   );
 }
 
-function EventCard({ show }: { show: ShowRecord }) {
+function buildPhotoStyle(imageUrl: string, overlay: "hero" | "thumb"): CSSProperties {
+  const sanitized = imageUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const heroOverlay = "linear-gradient(180deg, rgba(7, 14, 30, 0.18), rgba(7, 14, 30, 0.5))";
+  const thumbOverlay = "linear-gradient(180deg, rgba(9, 19, 43, 0.15), rgba(9, 19, 43, 0.34))";
+  return {
+    backgroundImage: `${overlay === "hero" ? heroOverlay : thumbOverlay}, url("${sanitized}")`,
+    backgroundPosition: "center",
+    backgroundSize: "cover"
+  };
+}
+
+function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) {
   const daysAway = daysUntilShow(show.eventDateIso);
   const dateLabel = formatDatePtBrLong(show.eventDateIso);
   return (
     <article className="card">
       <div className="ticketTopNotch" aria-hidden />
-      <div className="cardImage">{show.artist}</div>
+      <div className={`cardImage ${imageUrl ? "hasPhoto" : ""}`} style={imageUrl ? buildPhotoStyle(imageUrl, "hero") : undefined}>
+        {imageUrl ? null : show.artist}
+      </div>
       <div className="cardBody">
         <div className="cardMeta">
           {daysAway > 0 ? `Faltam ${daysAway} dias!` : daysAway === 0 ? "É hoje!" : dateLabel}
@@ -46,11 +60,21 @@ function EventCard({ show }: { show: ShowRecord }) {
   );
 }
 
-function TicketRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (showId: string) => void }) {
+function TicketRow({
+  show,
+  imageUrl,
+  onOpenDetail
+}: {
+  show: ShowRecord;
+  imageUrl?: string;
+  onOpenDetail: (showId: string) => void;
+}) {
   return (
     <div className="ticketWrap">
       <button type="button" className="ticket ticketClickable ticketButtonReset" onClick={() => onOpenDetail(show.id)}>
-        <div className="ticketThumb">Foto</div>
+        <div className={`ticketThumb ${imageUrl ? "hasPhoto" : ""}`} style={imageUrl ? buildPhotoStyle(imageUrl, "thumb") : undefined}>
+          {imageUrl ? null : "Foto"}
+        </div>
         <div className="ticketBody">
           <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
@@ -72,6 +96,7 @@ function splitWallet(entries: WalletEntry[]) {
 export function HomeClient() {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setWalletEntries(getWalletEntries());
@@ -91,6 +116,69 @@ export function HomeClient() {
   }, []);
 
   const { futureShows, pastShows } = useMemo(() => splitWallet(walletEntries), [walletEntries]);
+  const walletShows = useMemo(() => [...futureShows, ...pastShows], [futureShows, pastShows]);
+
+  useEffect(() => {
+    if (!walletShows.length) return;
+    let cancelled = false;
+
+    async function loadArtistImages() {
+      const candidates = new Map<
+        string,
+        {
+          artistName: string;
+          artistMbid?: string;
+          preloaded?: string;
+        }
+      >();
+
+      for (const show of walletShows) {
+        const key = buildArtistImageKey(show.artist, show.artistMbid);
+        if (!key || candidates.has(key)) continue;
+
+        candidates.set(key, {
+          artistName: show.artist,
+          artistMbid: show.artistMbid,
+          preloaded: show.artistImageUrl
+        });
+      }
+
+      const entries = Array.from(candidates.entries());
+      const resolved = await Promise.all(
+        entries.map(async ([key, candidate]) => {
+          if (candidate.preloaded) return [key, candidate.preloaded] as const;
+          const imagePayload = await fetchArtistImageClient({
+            artistName: candidate.artistName,
+            artistMbid: candidate.artistMbid
+          });
+          return [key, imagePayload.imageUrl] as const;
+        })
+      );
+
+      if (cancelled) return;
+
+      setArtistImageMap((current) => {
+        const next = { ...current };
+        for (const [key, imageUrl] of resolved) {
+          if (!imageUrl) continue;
+          next[key] = imageUrl;
+        }
+        return next;
+      });
+    }
+
+    void loadArtistImages();
+    return () => {
+      cancelled = true;
+    };
+  }, [walletShows]);
+
+  function resolveShowImageUrl(show: ShowRecord) {
+    if (show.artistImageUrl) return show.artistImageUrl;
+    const key = buildArtistImageKey(show.artist, show.artistMbid);
+    if (!key) return undefined;
+    return artistImageMap[key];
+  }
 
   return (
     <main className="page">
@@ -109,7 +197,7 @@ export function HomeClient() {
           <div className="slider">
             {futureShows.map((show) => (
               <button key={show.id} type="button" className="cardLink cardButtonReset" onClick={() => setSelectedShowId(show.id)}>
-                <EventCard show={show} />
+                <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
               </button>
             ))}
           </div>
@@ -125,7 +213,7 @@ export function HomeClient() {
         {pastShows.length ? (
           <div className="ticketList">
             {pastShows.map((show) => (
-              <TicketRow key={show.id} show={show} onOpenDetail={setSelectedShowId} />
+              <TicketRow key={show.id} show={show} imageUrl={resolveShowImageUrl(show)} onOpenDetail={setSelectedShowId} />
             ))}
           </div>
         ) : (

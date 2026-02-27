@@ -1,5 +1,6 @@
 import { mapSetlistToShowDetailRecord, mapSetlistToShowRecord, type SetlistFmSetlist } from "@/lib/show-types";
 import type { ShowRecord } from "@/lib/show-types";
+import { resolveArtistImage } from "@/lib/artist-image";
 
 const BASE_URL = "https://api.setlist.fm/rest/1.0";
 
@@ -426,5 +427,17 @@ export async function getSetlistById(id: string) {
   if (!show) {
     throw new Error("Could not normalize Setlist.fm detail response");
   }
+
+  const artistImage = await resolveArtistImage({
+    artistName: show.artist,
+    artistMbid: show.artistMbid
+  });
+
+  if (artistImage.imageUrl) {
+    show.artistImageUrl = artistImage.imageUrl;
+    show.artistImagePageUrl = artistImage.pageUrl ?? undefined;
+    show.artistImageSource = artistImage.source === "none" ? undefined : artistImage.source;
+  }
+
   return show;
 }

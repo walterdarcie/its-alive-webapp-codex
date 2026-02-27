@@ -11,6 +11,9 @@ export type ShowRecord = {
   artistMbid?: string;
   venueMbid?: string;
   tourName?: string;
+  artistImageUrl?: string;
+  artistImagePageUrl?: string;
+  artistImageSource?: "wikipedia" | "wikimedia";
 };
 
 export type ShowDetailRecord = ShowRecord & {

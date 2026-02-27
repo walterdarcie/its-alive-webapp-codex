@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ShowDetailRecord, ShowRecord } from "@/lib/show-types";
 import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
+import { fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletShow, isSavedInWallet, removeFromWallet, saveToWallet } from "@/lib/wallet-storage";
 
 type ShowDetailClientProps = {
@@ -13,6 +14,15 @@ type ShowDetailClientProps = {
   onClose?: () => void;
 };
 
+function buildDetailPhotoStyle(imageUrl: string): CSSProperties {
+  const sanitized = imageUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return {
+    backgroundImage: `linear-gradient(180deg, rgba(7, 14, 30, 0.2), rgba(7, 14, 30, 0.52)), url("${sanitized}")`,
+    backgroundPosition: "center",
+    backgroundSize: "cover"
+  };
+}
+
 export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClientProps) {
   const [show, setShow] = useState<ShowDetailRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +30,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   const [saved, setSaved] = useState(false);
   const [setlistExpanded, setSetlistExpanded] = useState(false);
   const [ctaBurst, setCtaBurst] = useState(false);
+  const [artistImageUrl, setArtistImageUrl] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -33,6 +44,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     setIsClosing(false);
 
     const walletShow = getWalletShow(id);
+    setArtistImageUrl(walletShow?.artistImageUrl ?? null);
     if (walletShow) {
       setShow((prev) => ({
         ...(prev ?? { ...walletShow, songNames: [], setlistSections: [] }),
@@ -53,7 +65,9 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
         if (!response.ok) {
           throw new Error("message" in payload ? payload.message ?? payload.error ?? "Falha ao carregar show" : "Falha ao carregar show");
         }
-        setShow(payload as ShowDetailRecord);
+        const detailPayload = payload as ShowDetailRecord;
+        setShow(detailPayload);
+        setArtistImageUrl(detailPayload.artistImageUrl ?? walletShow?.artistImageUrl ?? null);
       } catch (err) {
         if (controller.signal.aborted) return;
         if (!walletShow) setError(err instanceof Error ? err.message : "Falha ao carregar show");
@@ -65,6 +79,39 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     void load();
     return () => controller.abort();
   }, [id]);
+
+  useEffect(() => {
+    if (!show) return;
+    if (show.artistImageUrl) {
+      setArtistImageUrl(show.artistImageUrl);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadImage() {
+      const payload = await fetchArtistImageClient({
+        artistName: show.artist,
+        artistMbid: show.artistMbid
+      });
+      if (cancelled || !payload.imageUrl) return;
+
+      setArtistImageUrl(payload.imageUrl);
+      setShow((current) => {
+        if (!current || current.id !== show.id) return current;
+        return {
+          ...current,
+          artistImageUrl: payload.imageUrl ?? undefined,
+          artistImagePageUrl: payload.pageUrl ?? undefined,
+          artistImageSource: payload.source === "none" ? undefined : payload.source
+        };
+      });
+    }
+
+    void loadImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [show?.id, show?.artist, show?.artistMbid, show?.artistImageUrl]);
 
   useEffect(() => {
     if (!isOverlay) return;
@@ -99,7 +146,10 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
         setlistUrl: show.setlistUrl,
         artistMbid: show.artistMbid,
         venueMbid: show.venueMbid,
-        tourName: show.tourName
+        tourName: show.tourName,
+        artistImageUrl: show.artistImageUrl ?? artistImageUrl ?? undefined,
+        artistImagePageUrl: show.artistImagePageUrl,
+        artistImageSource: show.artistImageSource
       };
       saveToWallet(walletRecord);
       setSaved(true);
@@ -190,7 +240,9 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
         <p className="ticketVenue detailVenue venueWithPin">{formatVenueLine(show)}</p>
       </div>
 
-      <div className="detailHero cardImage">Imagem do show (placeholder)</div>
+      <div className={`detailHero cardImage ${artistImageUrl ? "hasPhoto" : ""}`} style={artistImageUrl ? buildDetailPhotoStyle(artistImageUrl) : undefined}>
+        {artistImageUrl ? null : "Imagem do show (placeholder)"}
+      </div>
 
       <div className="detailBody detailBodyTicket">
         {show.tourName ? <p className="resultMeta detailTour">Turnê: {show.tourName}</p> : null}
