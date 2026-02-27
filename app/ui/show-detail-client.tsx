@@ -89,17 +89,21 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
       return;
     }
 
+    const showId = currentShow.id;
+    const artistName = currentShow.artist;
+    const artistMbid = currentShow.artistMbid;
     let cancelled = false;
+
     async function loadImage() {
       const payload = await fetchArtistImageClient({
-        artistName: currentShow.artist,
-        artistMbid: currentShow.artistMbid
+        artistName,
+        artistMbid
       });
       if (cancelled || !payload.imageUrl) return;
 
       setArtistImageUrl(payload.imageUrl);
       setShow((current) => {
-        if (!current || current.id !== currentShow.id) return current;
+        if (!current || current.id !== showId) return current;
         return {
           ...current,
           artistImageUrl: payload.imageUrl ?? undefined,
