@@ -35,6 +35,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef<number | null>(null);
+  const dragOriginScrollTop = useRef(0);
 
   const isOverlay = mode === "overlay";
 
@@ -181,9 +182,14 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     const target = event.target as HTMLElement | null;
     const isInteractive = Boolean(target?.closest("button, a, input, textarea, select"));
     if (isInteractive) return;
-    const inDragHandle = Boolean(target?.closest(".detailSheetTop")) || Boolean(target?.closest(".detailTopNotch"));
+    const inDragHandle = Boolean(target?.closest(".detailHeaderBar")) || Boolean(target?.closest(".detailTopNotch"));
     if (!inDragHandle) return;
+
+    const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;
+    if (isMobile && event.currentTarget.scrollTop > 0) return;
+
     dragStartY.current = event.clientY;
+    dragOriginScrollTop.current = event.currentTarget.scrollTop;
     setIsDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -191,7 +197,9 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
     if (!isOverlay) return;
     if (dragStartY.current == null) return;
+    if (dragOriginScrollTop.current > 0) return;
     const delta = Math.max(0, event.clientY - dragStartY.current);
+    if (delta > 0) event.preventDefault();
     setDragOffset(delta);
   }
 
@@ -227,8 +235,8 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
       style={sheetStyle}
     >
       <div className="detailSheetTop">
-        <div className="detailTopNotch" aria-hidden />
         <div className="detailHeaderBar">
+          <div className="detailTopNotch" aria-hidden />
           <Image src="/brand/logo-icon.svg" alt="" width={28} height={28} className="detailMiniBrand" aria-hidden />
           {isOverlay ? (
             <button type="button" className="iconBtn iconBtnCentered" onClick={requestClose} aria-label="Fechar detalhes">

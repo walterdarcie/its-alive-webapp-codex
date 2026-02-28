@@ -23,6 +23,15 @@ MVP do webapp "it's alive" para buscar shows e montar carteira (`eu vou` / `eu f
 4. `npm run dev`
 5. Abrir `http://localhost:3000`
 
+## QA visual (Playwright)
+- Rodar baseline e comparar screenshots: `npm run qa:visual`
+- Atualizar snapshots após mudança intencional de UI: `npm run qa:visual:update`
+- Cobertura atual:
+  - Home
+  - Search
+  - Detail overlay
+  - Viewports mobile e desktop
+
 ## Fluxo MVP atual (sem login)
 - Busca de shows via proxy interno (`/api/setlists/*`)
 - Cache em memória para busca e detalhe

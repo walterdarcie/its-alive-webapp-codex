@@ -350,6 +350,7 @@ input {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 0;
   min-height: 112px;
   padding: 14px 30px 14px 16px;
   border-left: 3px dashed rgba(2, 11, 31, 0.55);
@@ -375,6 +376,7 @@ input {
 .ticketVenue {
   display: block;
   width: 100%;
+  min-width: 0;
   max-width: 100%;
   padding-right: 6px;
   margin: 0;
@@ -620,6 +622,7 @@ input {
 }
 
 .detailHeaderBar {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -821,6 +824,7 @@ input {
 }
 
 .ticketBodyNoThumb {
+  min-width: 0;
   padding: 14px 30px 14px 16px;
 }
 
@@ -1048,19 +1052,30 @@ input {
   }
 
   .detailSheetOverlay .detailSheetTop {
-    position: sticky;
-    top: 0;
-    z-index: 7;
-    padding-top: 24px;
+    position: relative;
+    top: auto;
+    z-index: auto;
+    padding-top: 0;
     border-radius: 20px 20px 0 0;
   }
 
+  .detailSheetOverlay .detailHeaderBar {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    margin: 0 -16px 10px;
+    padding: 14px 16px 10px;
+    background: var(--surface-2);
+    box-shadow: 0 6px 12px rgba(2, 8, 24, 0.34);
+    touch-action: none;
+  }
+
   .detailSheetOverlay .detailTopNotch {
-    top: 8px;
-    width: 46px;
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(8, 18, 38, 0.92);
+    top: -14px;
+    width: 44px;
+    height: 24px;
+    border-radius: 0 0 14px 14px;
+    background: var(--neutral-ultra-dark);
   }
 
   .detailSheetOverlay .detailBodyTicket {
