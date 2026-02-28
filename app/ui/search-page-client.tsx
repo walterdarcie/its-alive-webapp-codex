@@ -6,6 +6,7 @@ import { startTransition, useDeferredValue, useEffect, useRef, useState, type Mu
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import type { ShowRecord } from "@/lib/show-types";
 import { formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
+import type { ViewerProfile } from "@/lib/auth";
 
 type SearchResponse = {
   shows: ShowRecord[];
@@ -44,7 +45,29 @@ function CloseIcon() {
   );
 }
 
-function BrandHeader() {
+function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (menuRef.current?.contains(target)) return;
+      setIsMenuOpen(false);
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsMenuOpen(false);
+    }
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMenuOpen]);
+
   async function signOut() {
     try {
       await fetch("/api/auth/signout", { method: "POST" });
@@ -58,7 +81,45 @@ function BrandHeader() {
       <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
       </Link>
-      <button type="button" className="avatarStub avatarButtonReset" aria-label="Sair" onClick={() => void signOut()} />
+      <div className="profileMenuWrap" ref={menuRef}>
+        <button
+          type="button"
+          className="avatarStub avatarButtonReset"
+          aria-label={`Abrir menu da conta de ${viewer.name}`}
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((v) => !v)}
+        >
+          {viewer.avatarUrl ? (
+            <span
+              className="avatarPhoto"
+              style={{
+                backgroundImage: `url("${viewer.avatarUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
+              }}
+              aria-hidden
+            />
+          ) : (
+            <span className="avatarFallbackIcon" aria-hidden />
+          )}
+        </button>
+
+        {isMenuOpen ? (
+          <div className="profileMenu" role="menu" aria-label="Menu da conta">
+            <p className="profileMenuName">{viewer.name}</p>
+            {viewer.email ? <p className="profileMenuEmail">{viewer.email}</p> : null}
+            <p className="profileMenuHint">Conta sincronizada com Google + Supabase</p>
+            <button
+              type="button"
+              className="chip chipGhost profileSignOutBtn"
+              role="menuitem"
+              onClick={() => {
+                void signOut();
+              }}
+            >
+              Sair
+            </button>
+          </div>
+        ) : null}
+      </div>
     </header>
   );
 }
@@ -80,7 +141,7 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
   );
 }
 
-export function SearchPageClient() {
+export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [searchResults, setSearchResults] = useState<ShowRecord[]>([]);
@@ -197,7 +258,7 @@ export function SearchPageClient() {
 
   return (
     <main className="page searchPage">
-      <BrandHeader />
+      <BrandHeader viewer={viewer} />
 
       <section className="searchPageContent" aria-label="Tela de busca">
         <div className="searchScreenHeader">

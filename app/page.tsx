@@ -1,7 +1,7 @@
-import { requireServerUser } from "@/lib/auth";
+import { extractViewerProfile, requireServerUser } from "@/lib/auth";
 import { HomeClient } from "@/app/ui/home-client";
 
 export default async function HomePage() {
-  await requireServerUser();
-  return <HomeClient />;
+  const user = await requireServerUser();
+  return <HomeClient viewer={extractViewerProfile(user)} />;
 }

@@ -44,3 +44,29 @@ export async function requireServerUser() {
   }
   return user;
 }
+
+export type ViewerProfile = {
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+};
+
+export function extractViewerProfile(user: User): ViewerProfile {
+  const metadata = user.user_metadata ?? {};
+  const rawName =
+    (typeof metadata.full_name === "string" && metadata.full_name.trim()) ||
+    (typeof metadata.name === "string" && metadata.name.trim()) ||
+    (typeof user.email === "string" && user.email.split("@")[0]) ||
+    "Fã de shows";
+
+  const avatarUrl =
+    (typeof metadata.avatar_url === "string" && metadata.avatar_url.trim()) ||
+    (typeof metadata.picture === "string" && metadata.picture.trim()) ||
+    null;
+
+  return {
+    name: rawName,
+    email: user.email ?? "",
+    avatarUrl
+  };
+}
