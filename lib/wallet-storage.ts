@@ -4,6 +4,7 @@ import type { ShowRecord, WalletStatus } from "@/lib/show-types";
 import { deriveWalletStatus } from "@/lib/show-utils";
 
 const STORAGE_KEY = "its-alive.wallet.v1";
+const PENDING_OPS_KEY = "its-alive.wallet.pending.v1";
 
 export type WalletEntry = {
   show: ShowRecord;
@@ -13,6 +14,18 @@ export type WalletEntry = {
 type WalletStoreShape = {
   items: Record<string, WalletEntry>;
 };
+
+type PendingWalletOp =
+  | {
+      type: "save";
+      show: ShowRecord;
+      createdAt: string;
+    }
+  | {
+      type: "remove";
+      showId: string;
+      createdAt: string;
+    };
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -37,6 +50,75 @@ function readStore(): WalletStoreShape {
 function writeStore(store: WalletStoreShape) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+
+function readPendingOps(): PendingWalletOp[] {
+  if (!canUseStorage()) return [];
+  try {
+    const raw = window.localStorage.getItem(PENDING_OPS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((op): op is PendingWalletOp => {
+      if (!op || typeof op !== "object") return false;
+      if ("type" in op && op.type === "save") {
+        return Boolean((op as PendingWalletOp & { show?: ShowRecord }).show?.id);
+      }
+      if ("type" in op && op.type === "remove") {
+        return typeof (op as PendingWalletOp & { showId?: string }).showId === "string";
+      }
+      return false;
+    });
+  } catch {
+    return [];
+  }
+}
+
+function writePendingOps(ops: PendingWalletOp[]) {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(PENDING_OPS_KEY, JSON.stringify(ops));
+}
+
+function opShowId(op: PendingWalletOp) {
+  return op.type === "save" ? op.show.id : op.showId;
+}
+
+function upsertPendingOp(op: PendingWalletOp) {
+  const current = readPendingOps();
+  const targetShowId = opShowId(op);
+  const next = current.filter((item) => opShowId(item) !== targetShowId);
+  next.push(op);
+  writePendingOps(next);
+}
+
+function clearPendingOpsForShow(showId: string) {
+  const current = readPendingOps();
+  const next = current.filter((item) => opShowId(item) !== showId);
+  if (next.length !== current.length) {
+    writePendingOps(next);
+  }
+}
+
+async function flushPendingOps() {
+  const queue = readPendingOps();
+  if (!queue.length) return;
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const op = queue[index];
+    try {
+      if (op.type === "save") {
+        await requestWalletServer({ method: "POST", show: op.show });
+      } else {
+        await requestWalletServer({ method: "DELETE", showId: op.showId });
+      }
+    } catch {
+      // Keep unflushed operations for the next sync attempt.
+      writePendingOps(queue.slice(index));
+      throw new Error("Pending wallet sync failed.");
+    }
+  }
+
+  writePendingOps([]);
 }
 
 function normalizeServerWalletPayload(payload: unknown): WalletStoreShape | null {
@@ -127,6 +209,7 @@ export function getWalletShow(showId: string) {
 
 export async function hydrateWalletFromServer() {
   try {
+    await flushPendingOps();
     return await requestWalletServer({ method: "GET" });
   } catch {
     return getWalletEntries();
@@ -135,9 +218,16 @@ export async function hydrateWalletFromServer() {
 
 export async function saveToWalletServer(show: ShowRecord) {
   try {
-    return await requestWalletServer({ method: "POST", show });
+    const entries = await requestWalletServer({ method: "POST", show });
+    clearPendingOpsForShow(show.id);
+    return entries;
   } catch {
     saveToWallet(show);
+    upsertPendingOp({
+      type: "save",
+      show,
+      createdAt: new Date().toISOString()
+    });
     emitWalletChangedEvent();
     return getWalletEntries();
   }
@@ -145,9 +235,16 @@ export async function saveToWalletServer(show: ShowRecord) {
 
 export async function removeFromWalletServer(showId: string) {
   try {
-    return await requestWalletServer({ method: "DELETE", showId });
+    const entries = await requestWalletServer({ method: "DELETE", showId });
+    clearPendingOpsForShow(showId);
+    return entries;
   } catch {
     removeFromWallet(showId);
+    upsertPendingOp({
+      type: "remove",
+      showId,
+      createdAt: new Date().toISOString()
+    });
     emitWalletChangedEvent();
     return getWalletEntries();
   }
