@@ -1057,6 +1057,7 @@ input {
     z-index: auto;
     padding-top: 0;
     border-radius: 20px 20px 0 0;
+    box-shadow: none;
   }
 
   .detailSheetOverlay .detailHeaderBar {
@@ -1066,20 +1067,20 @@ input {
     margin: 0 -16px 10px;
     padding: 14px 16px 10px;
     background: var(--surface-2);
-    box-shadow: 0 6px 12px rgba(2, 8, 24, 0.34);
+    box-shadow: none;
     touch-action: none;
   }
 
   .detailSheetOverlay .detailTopNotch {
-    top: -14px;
-    width: 44px;
-    height: 24px;
-    border-radius: 0 0 14px 14px;
+    top: -16px;
+    width: 52px;
+    height: 26px;
+    border-radius: 0 0 26px 26px;
     background: var(--neutral-ultra-dark);
   }
 
   .detailSheetOverlay .detailBodyTicket {
-    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
   }
 }
 

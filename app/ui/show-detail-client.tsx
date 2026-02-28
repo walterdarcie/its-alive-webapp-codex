@@ -177,6 +177,10 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     if (onClose) onClose();
   }
 
+  function isMobileViewport() {
+    return typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;
+  }
+
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!isOverlay) return;
     const target = event.target as HTMLElement | null;
@@ -185,7 +189,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     const inDragHandle = Boolean(target?.closest(".detailHeaderBar")) || Boolean(target?.closest(".detailTopNotch"));
     if (!inDragHandle) return;
 
-    const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;
+    const isMobile = isMobileViewport();
     if (isMobile && event.currentTarget.scrollTop > 0) return;
 
     dragStartY.current = event.clientY;
@@ -200,15 +204,21 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     if (dragOriginScrollTop.current > 0) return;
     const delta = Math.max(0, event.clientY - dragStartY.current);
     if (delta > 0) event.preventDefault();
+    if (isMobileViewport() && delta > 84) {
+      endDrag(event.pointerId, event.currentTarget, true);
+      return;
+    }
     setDragOffset(delta);
   }
 
-  function endDrag(pointerId?: number, currentTarget?: HTMLElement | null) {
+  function endDrag(pointerId?: number, currentTarget?: HTMLElement | null, forceClose = false) {
     if (pointerId != null && currentTarget?.hasPointerCapture(pointerId)) {
       currentTarget.releasePointerCapture(pointerId);
     }
     setIsDragging(false);
-    if (dragOffset > 140) {
+    const closeThreshold = isMobileViewport() ? 96 : 140;
+    if (forceClose || dragOffset > closeThreshold) {
+      dragStartY.current = null;
       setDragOffset(0);
       requestClose();
       return;
@@ -217,10 +227,11 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     dragStartY.current = null;
   }
 
+  const mobileDrag = isMobileViewport();
   const sheetStyle =
     isOverlay && (dragOffset > 0 || isDragging)
       ? {
-          transform: `translateY(${dragOffset}px) scale(${1 - Math.min(dragOffset / 2000, 0.03)})`
+          transform: mobileDrag ? `translateY(${dragOffset}px)` : `translateY(${dragOffset}px) scale(${1 - Math.min(dragOffset / 2000, 0.03)})`
         }
       : undefined;
 
