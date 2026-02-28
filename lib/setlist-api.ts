@@ -12,6 +12,14 @@ type SearchPlan = {
   countryCode?: string;
 };
 
+type ParsedSearchTerm = {
+  artistName: string;
+  cityName: string;
+  year: string;
+  countryCode: string;
+  remaining: string;
+};
+
 export class SetlistApiError extends Error {
   status: number;
 
@@ -353,6 +361,241 @@ function buildSearchPlans(searchTerm: string) {
   return plans.slice(0, 5);
 }
 
+type SetlistFmVenueSearchResult = {
+  venue?:
+    | {
+        id?: string;
+        name?: string;
+        url?: string;
+        city?: {
+          name?: string;
+          stateCode?: string;
+          state?: string;
+          country?: {
+            code?: string;
+            name?: string;
+          };
+        };
+      }
+    | Array<{
+        id?: string;
+        name?: string;
+        url?: string;
+        city?: {
+          name?: string;
+          stateCode?: string;
+          state?: string;
+          country?: {
+            code?: string;
+            name?: string;
+          };
+        };
+      }>;
+};
+
+function decodeHtmlEntities(input: string) {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ");
+}
+
+function stripHtmlTags(input: string) {
+  return decodeHtmlEntities(input.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+}
+
+function toIsoFromEnglishDate(monthAbbr: string, dayText: string, yearText: string) {
+  const monthMap: Record<string, number> = {
+    jan: 1,
+    feb: 2,
+    mar: 3,
+    apr: 4,
+    may: 5,
+    jun: 6,
+    jul: 7,
+    aug: 8,
+    sep: 9,
+    oct: 10,
+    nov: 11,
+    dec: 12
+  };
+
+  const month = monthMap[monthAbbr.toLowerCase()];
+  const day = Number.parseInt(dayText, 10);
+  const year = Number.parseInt(yearText, 10);
+  if (!month || !Number.isFinite(day) || !Number.isFinite(year)) return "";
+
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function artistLikelyMatches(queryArtist: string, candidateArtist: string) {
+  const q = normalizeArtistNameForMatch(queryArtist);
+  const c = normalizeArtistNameForMatch(candidateArtist);
+  if (!q || !c) return false;
+  if (q === c) return true;
+  if (q.includes(c) || c.includes(q)) return true;
+
+  const qTokens = normalizeLoose(queryArtist).split(" ").filter(Boolean);
+  const cTokens = normalizeLoose(candidateArtist).split(" ").filter(Boolean);
+  const overlap = qTokens.filter((token) => cTokens.includes(token)).length;
+  return overlap >= Math.min(2, qTokens.length);
+}
+
+async function fetchVenueCandidates(parsed: ParsedSearchTerm) {
+  if (!parsed.cityName) {
+    return [] as Array<{ id: string; name: string; url: string; city: string; countryCode: string; countryName: string }>;
+  }
+
+  const params = new URLSearchParams({
+    cityName: parsed.cityName,
+    p: "1"
+  });
+
+  if (parsed.countryCode) {
+    params.set("country", parsed.countryCode);
+  }
+
+  const response = await fetch(`${BASE_URL}/search/venues?${params.toString()}`, {
+    headers: getHeaders(),
+    next: { revalidate: 60 * 60 * 24 }
+  });
+
+  if (!response.ok) {
+    return [] as Array<{ id: string; name: string; url: string; city: string; countryCode: string; countryName: string }>;
+  }
+
+  const payload = (await response.json()) as SetlistFmVenueSearchResult;
+  const venues = Array.isArray(payload.venue) ? payload.venue : payload.venue ? [payload.venue] : [];
+  const normalizedCity = normalizeLoose(parsed.cityName);
+
+  return venues
+    .map((venue) => ({
+      id: venue.id ?? "",
+      name: venue.name ?? "",
+      url: venue.url ?? "",
+      city: venue.city?.name ?? "",
+      countryCode: (venue.city?.country?.code ?? "").toUpperCase(),
+      countryName: venue.city?.country?.name ?? ""
+    }))
+    .filter((venue) => venue.id && venue.url)
+    .filter((venue) => {
+      if (!normalizedCity) return true;
+      return normalizeLoose(venue.city).includes(normalizedCity) || normalizedCity.includes(normalizeLoose(venue.city));
+    })
+    .filter((venue) => {
+      if (!parsed.countryCode) return true;
+      return venue.countryCode === parsed.countryCode;
+    })
+    .slice(0, 6);
+}
+
+function parseUpcomingShowsFromVenueHtml(
+  html: string,
+  parsed: ParsedSearchTerm,
+  venue: { id: string; name: string; city: string; countryCode: string; countryName: string }
+) {
+  const upcomingSectionStart = html.search(/Upcoming Shows/i);
+  if (upcomingSectionStart < 0) return [] as ShowRecord[];
+
+  const section = html.slice(upcomingSectionStart, upcomingSectionStart + 70000);
+  const rowRegex = /<li[^>]*>[\s\S]{0,1600}\/upcoming\/[^"]+[\s\S]{0,1600}<\/li>/gi;
+  const rows = section.match(rowRegex) ?? [];
+  const upcomingShows: ShowRecord[] = [];
+
+  for (const row of rows) {
+    const linkMatch = /href="([^"]*\/upcoming\/[^"]+)"/i.exec(row);
+    if (!linkMatch) continue;
+
+    const fullUrl = linkMatch[1].startsWith("http") ? linkMatch[1] : `https://www.setlist.fm${linkMatch[1]}`;
+    const rowText = stripHtmlTags(row);
+    const dateMatch = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})\b/i.exec(rowText);
+    if (!dateMatch) continue;
+
+    const eventDateIso = toIsoFromEnglishDate(dateMatch[1], dateMatch[2], dateMatch[3]);
+    if (!eventDateIso) continue;
+    if (parsed.year && !eventDateIso.startsWith(parsed.year)) continue;
+
+    let artist = "";
+    const afterDate = rowText.slice(dateMatch.index + dateMatch[0].length).trim();
+    const venuePos = afterDate.toLowerCase().indexOf(venue.name.toLowerCase());
+    if (venuePos > 0) {
+      artist = afterDate.slice(0, venuePos).trim();
+    } else {
+      const slugMatch = /\/upcoming\/([^/]+)\/\d{4}\//.exec(fullUrl);
+      if (slugMatch) {
+        artist = decodeURIComponent(slugMatch[1]).replace(/-/g, " ").trim();
+      }
+    }
+
+    if (!artistLikelyMatches(parsed.artistName, artist)) continue;
+
+    const idBase = normalizeArtistNameForMatch(artist || parsed.artistName).slice(0, 32) || "artist";
+    const showId = `upcoming-${venue.id}-${eventDateIso}-${idBase}`;
+
+    upcomingShows.push({
+      id: showId,
+      artist: artist || parsed.artistName,
+      venue: venue.name,
+      city: venue.city,
+      country: venue.countryName || parsed.countryCode || venue.countryCode,
+      eventDateIso,
+      setlistUrl: fullUrl
+    });
+  }
+
+  const unique = new Map<string, ShowRecord>();
+  for (const show of upcomingShows) {
+    unique.set(show.id, show);
+  }
+
+  return Array.from(unique.values()).sort((a, b) => (a.eventDateIso < b.eventDateIso ? -1 : 1));
+}
+
+async function searchUpcomingShowsByVenueFallback(parsed: ParsedSearchTerm) {
+  const venues = await fetchVenueCandidates(parsed);
+  if (!venues.length) {
+    return {
+      shows: [] as ShowRecord[],
+      page: 1,
+      total: 0,
+      itemsPerPage: 0
+    };
+  }
+
+  for (const venue of venues) {
+    const response = await fetch(venue.url, {
+      headers: {
+        Accept: "text/html",
+        "User-Agent": "It's Alive (walter.darcie@yahoo.com.br)"
+      },
+      next: { revalidate: 60 * 60 * 6 }
+    });
+
+    if (!response.ok) continue;
+    const html = await response.text();
+    const shows = parseUpcomingShowsFromVenueHtml(html, parsed, venue);
+    if (shows.length > 0) {
+      return {
+        shows,
+        page: 1,
+        total: shows.length,
+        itemsPerPage: shows.length
+      };
+    }
+  }
+
+  return {
+    shows: [] as ShowRecord[],
+    page: 1,
+    total: 0,
+    itemsPerPage: 0
+  };
+}
+
 async function fetchSetlistsSearchByPlan(plan: SearchPlan, pageOneBased: number) {
   const params = new URLSearchParams({ p: String(pageOneBased) });
   if (plan.artistName) params.set("artistName", plan.artistName);
@@ -506,6 +749,13 @@ export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
           return broaderResult;
         }
       }
+    }
+  }
+
+  if (pageOneBased === 1 && parsed.artistName && parsed.cityName) {
+    const upcomingFallback = await searchUpcomingShowsByVenueFallback(parsed);
+    if (upcomingFallback.shows.length > 0 || upcomingFallback.total > 0) {
+      return upcomingFallback;
     }
   }
 
