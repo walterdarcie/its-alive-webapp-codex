@@ -106,6 +106,32 @@ function splitWallet(entries: WalletEntry[]) {
   };
 }
 
+function EmptyWalletOnboarding() {
+  return (
+    <section className="onboardingEntry" aria-label="Comece sua carteira">
+      <div className="onboardingGlow onboardingGlowA" aria-hidden />
+      <div className="onboardingGlow onboardingGlowB" aria-hidden />
+      <div className="onboardingBeam" aria-hidden />
+
+      <div className="onboardingCard">
+        <p className="onboardingKicker">Shows acabam. Memórias não.</p>
+        <h2 className="onboardingTitle">
+          Alguns momentos duram poucas horas.
+          <br />
+          Mas a emoção fica para sempre.
+        </h2>
+        <p className="onboardingSubtitle">
+          Use a busca para cadastrar os shows que marcaram sua vida e mantenha suas memórias vivas em qualquer dispositivo.
+        </p>
+
+        <Link href="/search" className="ctaMain onboardingCta">
+          <span className="ctaMainLabel">Buscar meus shows agora</span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 export function HomeClient() {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
@@ -136,6 +162,7 @@ export function HomeClient() {
 
   const { futureShows, pastShows } = useMemo(() => splitWallet(walletEntries), [walletEntries]);
   const walletShows = useMemo(() => [...futureShows, ...pastShows], [futureShows, pastShows]);
+  const hasWalletContent = walletShows.length > 0;
 
   useEffect(() => {
     if (!walletShows.length) return;
@@ -208,40 +235,48 @@ export function HomeClient() {
         <span>Encontre shows incríveis</span>
       </Link>
 
-      <section className="section" aria-labelledby="shows-futuros">
-        <h2 id="shows-futuros" className="sectionTitle">
-          Eu vou!
-        </h2>
-        {futureShows.length ? (
-          <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
-            {futureShows.map((show) => (
-              <button key={show.id} type="button" className="cardLink cardButtonReset" onClick={() => setSelectedShowId(show.id)}>
-                <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">Nenhum show futuro marcado na sua carteira ainda.</p>
-        )}
-      </section>
+      {hasWalletContent ? (
+        <>
+          <section className="section" aria-labelledby="shows-futuros">
+            <h2 id="shows-futuros" className="sectionTitle">
+              Eu vou!
+            </h2>
+            {futureShows.length ? (
+              <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
+                {futureShows.map((show) => (
+                  <button key={show.id} type="button" className="cardLink cardButtonReset" onClick={() => setSelectedShowId(show.id)}>
+                    <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">Nenhum show futuro marcado na sua carteira ainda.</p>
+            )}
+          </section>
 
-      <section className="section" aria-labelledby="shows-passados">
-        <h2 id="shows-passados" className="sectionTitle">
-          Eu fui!
-        </h2>
-        {pastShows.length ? (
-          <div className="ticketList">
-            {pastShows.map((show) => (
-              <TicketRow key={show.id} show={show} imageUrl={resolveShowImageUrl(show)} onOpenDetail={setSelectedShowId} />
-            ))}
-          </div>
-        ) : (
-          <p className="muted">Nenhum show passado marcado na carteira.</p>
-        )}
-      </section>
+          <section className="section" aria-labelledby="shows-passados">
+            <h2 id="shows-passados" className="sectionTitle">
+              Eu fui!
+            </h2>
+            {pastShows.length ? (
+              <div className="ticketList">
+                {pastShows.map((show) => (
+                  <TicketRow key={show.id} show={show} imageUrl={resolveShowImageUrl(show)} onOpenDetail={setSelectedShowId} />
+                ))}
+              </div>
+            ) : (
+              <p className="muted">Nenhum show passado marcado na carteira.</p>
+            )}
+          </section>
+        </>
+      ) : (
+        <EmptyWalletOnboarding />
+      )}
 
       <p className="footerHint">
-        Carteira sincronizada com sua conta. Seus shows ficam disponíveis em qualquer dispositivo.
+        {hasWalletContent
+          ? "Carteira sincronizada com sua conta. Seus shows ficam disponíveis em qualquer dispositivo."
+          : "Sua carteira começa na busca. Encontre um show e marque como Eu fui ou Eu vou."}
       </p>
 
       {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={() => setSelectedShowId(null)} /> : null}
