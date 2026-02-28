@@ -310,7 +310,7 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
         </div>
 
         <div className="searchMetaBar">
-          <span className="muted">Use: artista, cidade, país, ano (vírgulas) para busca precisa</span>
+          <span className="muted">Use: artista ou local, cidade, país, ano (vírgulas) para busca precisa</span>
         </div>
 
         {normalizedQuery.length < 2 ? (
@@ -448,10 +448,10 @@ function scoreShowForQuery(query: string, show: ShowRecord) {
 
 function rankSearchResults(query: string, shows: ShowRecord[]) {
   return [...shows].sort((a, b) => {
+    if (a.eventDateIso !== b.eventDateIso) return a.eventDateIso < b.eventDateIso ? 1 : -1;
     const scoreDiff = scoreShowForQuery(query, b) - scoreShowForQuery(query, a);
     if (scoreDiff !== 0) return scoreDiff;
-    if (a.eventDateIso === b.eventDateIso) return a.artist.localeCompare(b.artist);
-    return a.eventDateIso < b.eventDateIso ? 1 : -1;
+    return a.artist.localeCompare(b.artist);
   });
 }
 

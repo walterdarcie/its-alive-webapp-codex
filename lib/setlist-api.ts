@@ -7,6 +7,7 @@ const BASE_URL = "https://api.setlist.fm/rest/1.0";
 type SearchPlan = {
   artistName?: string;
   artistMbid?: string;
+  venueName?: string;
   cityName?: string;
   year?: string;
   countryCode?: string;
@@ -291,12 +292,13 @@ function addPlan(plans: SearchPlan[], seen: Set<string>, plan: SearchPlan) {
   const normalizedPlan: SearchPlan = {
     artistName: plan.artistName?.trim() || undefined,
     artistMbid: plan.artistMbid?.trim() || undefined,
+    venueName: plan.venueName?.trim() || undefined,
     cityName: plan.cityName?.trim() || undefined,
     year: plan.year?.trim() || undefined,
     countryCode: plan.countryCode?.trim() || undefined
   };
 
-  if (!normalizedPlan.artistName && !normalizedPlan.artistMbid && !normalizedPlan.cityName) return;
+  if (!normalizedPlan.artistName && !normalizedPlan.artistMbid && !normalizedPlan.venueName && !normalizedPlan.cityName) return;
 
   const key = JSON.stringify(normalizedPlan);
   if (seen.has(key)) return;
@@ -600,6 +602,7 @@ async function fetchSetlistsSearchByPlan(plan: SearchPlan, pageOneBased: number)
   const params = new URLSearchParams({ p: String(pageOneBased) });
   if (plan.artistName) params.set("artistName", plan.artistName);
   if (plan.artistMbid) params.set("artistMbid", plan.artistMbid);
+  if (plan.venueName) params.set("venueName", plan.venueName);
   if (plan.cityName) params.set("cityName", plan.cityName);
   if (plan.year) params.set("year", plan.year);
   if (plan.countryCode) params.set("countryCode", plan.countryCode);
@@ -747,6 +750,41 @@ export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
         );
         if (broaderResult.shows.length > 0 || broaderResult.total > 0) {
           return broaderResult;
+        }
+      }
+    }
+  }
+
+  const venueCandidates = new Set<string>();
+  if (parsed.artistName) venueCandidates.add(parsed.artistName);
+  if (parsed.remaining && parsed.remaining !== parsed.artistName) venueCandidates.add(parsed.remaining);
+
+  if (pageOneBased === 1 && venueCandidates.size > 0) {
+    for (const venueName of venueCandidates) {
+      const venueFirstResult = await fetchSetlistsSearchByPlan(
+        {
+          venueName,
+          cityName: parsed.cityName || undefined,
+          year: parsed.year || undefined,
+          countryCode: parsed.countryCode || undefined
+        },
+        pageOneBased
+      );
+
+      if (venueFirstResult.shows.length > 0 || venueFirstResult.total > 0) {
+        return venueFirstResult;
+      }
+
+      if (parsed.cityName || parsed.countryCode) {
+        const broaderVenueResult = await fetchSetlistsSearchByPlan(
+          {
+            venueName,
+            year: parsed.year || undefined
+          },
+          pageOneBased
+        );
+        if (broaderVenueResult.shows.length > 0 || broaderVenueResult.total > 0) {
+          return broaderVenueResult;
         }
       }
     }
