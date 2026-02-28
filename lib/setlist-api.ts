@@ -803,7 +803,7 @@ export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
 export async function getSetlistById(id: string) {
   const response = await fetch(`${BASE_URL}/setlist/${encodeURIComponent(id)}`, {
     headers: getHeaders(),
-    next: { revalidate: 60 * 60 * 24 }
+    cache: "no-store"
   });
 
   if (!response.ok) {
