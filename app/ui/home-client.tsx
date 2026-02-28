@@ -193,6 +193,25 @@ function EmptyWalletOnboarding() {
   );
 }
 
+function FutureShowsOnboarding() {
+  return (
+    <section className="onboardingEntry onboardingEntryInline" aria-label="Encontre próximos shows">
+      <div className="onboardingGlow onboardingGlowA" aria-hidden />
+      <div className="onboardingGlow onboardingGlowB" aria-hidden />
+      <div className="onboardingBeam" aria-hidden />
+
+      <div className="onboardingCard">
+        <p className="onboardingKicker">O próximo momento inesquecível começa na busca.</p>
+        <h2 className="onboardingTitle onboardingTitleInline">Encontre shows futuros para marcar seu Eu vou.</h2>
+        <p className="onboardingSubtitle">Descubra próximas datas dos seus artistas favoritos e mantenha sua agenda de emoções ao vivo atualizada.</p>
+        <Link href="/search" className="ctaMain onboardingCta">
+          <span className="ctaMainLabel">Buscar próximos shows</span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
@@ -298,11 +317,11 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
 
       {hasWalletContent ? (
         <>
-          <section className="section" aria-labelledby="shows-futuros">
-            <h2 id="shows-futuros" className="sectionTitle">
-              Eu vou!
-            </h2>
-            {futureShows.length ? (
+          {futureShows.length ? (
+            <section className="section" aria-labelledby="shows-futuros">
+              <h2 id="shows-futuros" className="sectionTitle">
+                Eu vou!
+              </h2>
               <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
                 {futureShows.map((show) => (
                   <button key={show.id} type="button" className="cardLink cardButtonReset" onClick={() => setSelectedShowId(show.id)}>
@@ -310,10 +329,8 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
                   </button>
                 ))}
               </div>
-            ) : (
-              <p className="muted">Nenhum show futuro marcado na sua carteira ainda.</p>
-            )}
-          </section>
+            </section>
+          ) : null}
 
           <section className="section" aria-labelledby="shows-passados">
             <h2 id="shows-passados" className="sectionTitle">
@@ -329,6 +346,8 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
               <p className="muted">Nenhum show passado marcado na carteira.</p>
             )}
           </section>
+
+          {!futureShows.length ? <FutureShowsOnboarding /> : null}
         </>
       ) : (
         <EmptyWalletOnboarding />

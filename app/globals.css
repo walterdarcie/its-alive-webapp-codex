@@ -586,12 +586,20 @@ input {
   letter-spacing: -0.03em;
 }
 
+.onboardingTitleInline {
+  font-size: clamp(24px, 4.8vw, 34px);
+}
+
 .onboardingSubtitle {
   margin: 0;
   color: #bac4dc;
   font-size: 14px;
   line-height: 1.55;
   max-width: 640px;
+}
+
+.onboardingEntryInline {
+  margin-top: 20px;
 }
 
 .onboardingCta {

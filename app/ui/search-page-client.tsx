@@ -280,7 +280,6 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
 
         <div className="searchMetaBar">
           <span className="muted">Use: artista, cidade, país, ano (vírgulas) para busca precisa</span>
-          <span className="muted">Scroll infinito • cache • debounce</span>
         </div>
 
         {normalizedQuery.length < 2 ? (
