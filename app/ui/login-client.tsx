@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 function GoogleIcon() {
@@ -29,22 +28,24 @@ function GoogleIcon() {
   );
 }
 
-export function LoginClient() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const searchParams = useSearchParams();
+type LoginClientProps = {
+  initialErrorKey?: string;
+};
 
-  useEffect(() => {
-    const errorKey = searchParams.get("error");
-    if (!errorKey) return;
-    if (errorKey === "supabase_not_configured") {
-      setError("Ambiente de autenticação não configurado no deploy. Verifique as variáveis do Supabase no Vercel.");
-      return;
-    }
-    if (errorKey === "oauth_callback_failed") {
-      setError("Falha no retorno do login com Google. Tente novamente em alguns segundos.");
-    }
-  }, [searchParams]);
+function getErrorMessageByKey(errorKey?: string) {
+  if (!errorKey) return null;
+  if (errorKey === "supabase_not_configured") {
+    return "Ambiente de autenticação não configurado no deploy. Verifique as variáveis do Supabase no Vercel.";
+  }
+  if (errorKey === "oauth_callback_failed") {
+    return "Falha no retorno do login com Google. Tente novamente em alguns segundos.";
+  }
+  return null;
+}
+
+export function LoginClient({ initialErrorKey }: LoginClientProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey));
 
   async function onGoogleLogin() {
     setLoading(true);
