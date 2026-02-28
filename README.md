@@ -24,13 +24,27 @@ MVP do webapp "it's alive" para buscar shows e montar carteira (`eu vou` / `eu f
 5. Abrir `http://localhost:3000`
 
 ## QA visual (Playwright)
-- Rodar baseline e comparar screenshots: `npm run qa:visual`
+- Rodar QA visual com capturas e checks de layout: `npm run qa:visual`
 - Atualizar snapshots após mudança intencional de UI: `npm run qa:visual:update`
 - Cobertura atual:
   - Home
   - Search
   - Detail overlay
   - Viewports mobile e desktop
+
+## Testes automatizados
+- Unitários (Vitest): `npm run test:unit`
+- E2E de fluxo MVP (Playwright): `npm run test:e2e`
+- Visual QA (Playwright): `npm run qa:visual`
+
+## CI (GitHub Actions)
+- Workflow principal: `.github/workflows/release-quality.yml`
+- Executa em push/PR:
+  - lint
+  - build
+  - testes unitários
+  - testes E2E
+  - QA visual com upload de artefatos
 
 ## Fluxo MVP atual (sem login)
 - Busca de shows via proxy interno (`/api/setlists/*`)

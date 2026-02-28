@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./tests/visual",
+  testDir: "./tests",
+  reporter: [["line"], ["html", { open: "never" }]],
+  outputDir: "test-results",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
