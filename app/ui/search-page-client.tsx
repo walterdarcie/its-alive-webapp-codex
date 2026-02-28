@@ -134,7 +134,8 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
 
 function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (showId: string) => void }) {
   const eventDate = new Date(`${show.eventDateIso}T00:00:00`);
-  const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(eventDate).toUpperCase();
+  const ptBrMonthAbbr = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+  const month = ptBrMonthAbbr[eventDate.getMonth()] ?? "";
   const day = new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(eventDate);
   const year = new Intl.DateTimeFormat("en-US", { year: "numeric" }).format(eventDate);
 
