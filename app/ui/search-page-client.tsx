@@ -7,6 +7,7 @@ import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import type { ShowRecord } from "@/lib/show-types";
 import { formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 
 type SearchResponse = {
   shows: ShowRecord[];
@@ -69,6 +70,7 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
   }, [isMenuOpen]);
 
   async function signOut() {
+    trackEvent("sign_out_click", { source: "search_header_menu" });
     try {
       await fetch("/api/auth/signout", { method: "POST" });
     } finally {
@@ -87,7 +89,13 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
           className="avatarStub avatarButtonReset"
           aria-label={`Abrir menu da conta de ${viewer.name}`}
           aria-expanded={isMenuOpen}
-          onClick={() => setIsMenuOpen((v) => !v)}
+          onClick={() =>
+            setIsMenuOpen((v) => {
+              const next = !v;
+              if (next) trackEvent("profile_menu_open", { source: "search_header" });
+              return next;
+            })
+          }
         >
           {viewer.avatarUrl ? (
             <span
@@ -158,6 +166,7 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
   const activeQueryRef = useRef("");
   const noResultLoggedRef = useRef<string>("");
+  const trackedSearchQueryRef = useRef<string>("");
 
   const normalizedQuery = deferredQuery.trim();
 
@@ -180,6 +189,10 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
       setSearchLoading(true);
       setSearchError(null);
       setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
+      if (trackedSearchQueryRef.current !== q) {
+        trackEvent("search_performed", { source: "search_page", query_length: q.length });
+        trackedSearchQueryRef.current = q;
+      }
 
       try {
         const payload = await fetchSearchPage(q, 0);
@@ -190,7 +203,13 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
           setSearchResults(ranked);
         });
         setSearchMeta(computeSearchMeta(payload));
+        trackEvent("search_results_loaded", {
+          source: "search_page",
+          query_length: q.length,
+          result_count: ranked.length
+        });
         if (!ranked.length) {
+          trackEvent("search_no_results", { source: "search_page", query_length: q.length });
           logNoResultSearch(q, noResultLoggedRef);
         } else {
           noResultLoggedRef.current = "";
@@ -248,6 +267,11 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
         return rankSearchResults(queryValue, Array.from(deduped.values()));
       });
       setSearchMeta(computeSearchMeta(payload));
+      trackEvent("search_load_more", {
+        source: "search_page",
+        query_length: queryValue.length,
+        page
+      });
     } catch (error) {
       if (activeQueryRef.current !== queryValue) return;
       setSearchError(error instanceof Error ? error.message : "Falha ao carregar mais resultados");
@@ -273,7 +297,14 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
               autoFocus
             />
           </div>
-          <Link href="/" className="iconBtn" aria-label="Fechar busca">
+          <Link
+            href="/"
+            className="iconBtn"
+            aria-label="Fechar busca"
+            onClick={() => {
+              trackEvent("search_close_click", { source: "search_page" });
+            }}
+          >
             <CloseIcon />
           </Link>
         </div>
@@ -296,7 +327,14 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
         ) : searchResults.length ? (
           <div className="resultList">
             {searchResults.map((show) => (
-              <SearchResultRow key={show.id} show={show} onOpenDetail={setSelectedShowId} />
+              <SearchResultRow
+                key={show.id}
+                show={show}
+                onOpenDetail={(showId) => {
+                  trackEvent("show_detail_open", { source: "search_results", show_id: showId });
+                  setSelectedShowId(showId);
+                }}
+              />
             ))}
             {searchLoadingMore ? <p className="emptyBox">Carregando mais resultados...</p> : null}
             {!searchLoadingMore && searchMeta.hasMore ? <div ref={searchSentinelRef} className="searchSentinel" aria-hidden /> : null}

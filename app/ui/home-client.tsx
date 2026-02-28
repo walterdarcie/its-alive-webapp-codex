@@ -9,6 +9,7 @@ import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-
 import { getWalletEntries, hydrateWalletFromServer, type WalletEntry } from "@/lib/wallet-storage";
 import { daysUntilShow, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 
 function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -34,6 +35,7 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
   }, [isMenuOpen]);
 
   async function signOut() {
+    trackEvent("sign_out_click", { source: "home_header_menu" });
     try {
       await fetch("/api/auth/signout", { method: "POST" });
     } finally {
@@ -52,7 +54,13 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
           className="avatarStub avatarButtonReset"
           aria-label={`Abrir menu da conta de ${viewer.name}`}
           aria-expanded={isMenuOpen}
-          onClick={() => setIsMenuOpen((v) => !v)}
+          onClick={() =>
+            setIsMenuOpen((v) => {
+              const next = !v;
+              if (next) trackEvent("profile_menu_open", { source: "home_header" });
+              return next;
+            })
+          }
         >
           {viewer.avatarUrl ? (
             <span
@@ -185,7 +193,13 @@ function EmptyWalletOnboarding() {
           Use a busca para cadastrar os shows que marcaram sua vida e mantenha suas memórias vivas em qualquer dispositivo.
         </p>
 
-        <Link href="/search" className="ctaMain onboardingCta">
+        <Link
+          href="/search"
+          className="ctaMain onboardingCta"
+          onClick={() => {
+            trackEvent("onboarding_empty_wallet_cta_click", { source: "home_empty_wallet" });
+          }}
+        >
           <span className="ctaMainLabel">Buscar meus shows agora</span>
         </Link>
       </div>
@@ -202,9 +216,19 @@ function FutureShowsOnboarding() {
 
       <div className="onboardingCard">
         <p className="onboardingKicker">O próximo momento inesquecível começa na busca.</p>
-        <h2 className="onboardingTitle onboardingTitleInline">Encontre shows futuros para marcar seu Eu vou.</h2>
+        <h2 className="onboardingTitle onboardingTitleInline">
+          A expectativa também faz parte da emoção.
+          <br />
+          Qual é o seu próximo show?
+        </h2>
         <p className="onboardingSubtitle">Descubra próximas datas dos seus artistas favoritos e mantenha sua agenda de emoções ao vivo atualizada.</p>
-        <Link href="/search" className="ctaMain onboardingCta">
+        <Link
+          href="/search"
+          className="ctaMain onboardingCta"
+          onClick={() => {
+            trackEvent("onboarding_future_shows_cta_click", { source: "home_future_empty" });
+          }}
+        >
           <span className="ctaMainLabel">Buscar próximos shows</span>
         </Link>
       </div>
@@ -310,7 +334,13 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
     <main className="page">
       <BrandHeader viewer={viewer} />
 
-      <Link href="/search" className="search searchButton searchNavButton">
+      <Link
+        href="/search"
+        className="search searchButton searchNavButton"
+        onClick={() => {
+          trackEvent("search_entry_click", { source: "home_top_search" });
+        }}
+      >
         <SearchIcon />
         <span>Encontre shows incríveis</span>
       </Link>
@@ -324,7 +354,15 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
               </h2>
               <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
                 {futureShows.map((show) => (
-                  <button key={show.id} type="button" className="cardLink cardButtonReset" onClick={() => setSelectedShowId(show.id)}>
+                  <button
+                    key={show.id}
+                    type="button"
+                    className="cardLink cardButtonReset"
+                    onClick={() => {
+                      trackEvent("show_detail_open", { source: "home_future_slider", show_id: show.id });
+                      setSelectedShowId(show.id);
+                    }}
+                  >
                     <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
                   </button>
                 ))}
@@ -339,7 +377,15 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
             {pastShows.length ? (
               <div className="ticketList">
                 {pastShows.map((show) => (
-                  <TicketRow key={show.id} show={show} imageUrl={resolveShowImageUrl(show)} onOpenDetail={setSelectedShowId} />
+                  <TicketRow
+                    key={show.id}
+                    show={show}
+                    imageUrl={resolveShowImageUrl(show)}
+                    onOpenDetail={(showId) => {
+                      trackEvent("show_detail_open", { source: "home_past_list", show_id: showId });
+                      setSelectedShowId(showId);
+                    }}
+                  />
                 ))}
               </div>
             ) : (

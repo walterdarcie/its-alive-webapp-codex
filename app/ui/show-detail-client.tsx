@@ -7,6 +7,7 @@ import type { ShowDetailRecord, ShowRecord } from "@/lib/show-types";
 import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletShow, isSavedInWallet, removeFromWalletServer, saveToWalletServer } from "@/lib/wallet-storage";
+import { trackEvent } from "@/lib/analytics";
 
 type ShowDetailClientProps = {
   id: string;
@@ -147,6 +148,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     try {
       if (isAlreadySaved) {
         await removeFromWalletServer(show.id);
+        trackEvent("wallet_unmark", { show_id: show.id, status_label: ctaLabel });
         setSaved(false);
       } else {
         const walletRecord: ShowRecord = {
@@ -165,6 +167,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
           artistImageSource: show.artistImageSource
         };
         await saveToWalletServer(walletRecord);
+        trackEvent("wallet_mark", { show_id: show.id, status_label: ctaLabel });
         setSaved(true);
       }
     } finally {
@@ -297,7 +300,15 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
             <span className="ctaMainPulse" aria-hidden />
           </button>
           {show.setlistUrl ? (
-            <a className="chip chipGhost" href={show.setlistUrl} target="_blank" rel="noreferrer">
+            <a
+              className="chip chipGhost"
+              href={show.setlistUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => {
+                trackEvent("setlistfm_external_click", { show_id: show.id });
+              }}
+            >
               SETLIST.FM
             </a>
           ) : null}
@@ -321,7 +332,13 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
                     <button
                       type="button"
                       className="setlistExpandBtn"
-                      onClick={() => setSetlistExpanded((v) => !v)}
+                      onClick={() =>
+                        setSetlistExpanded((v) => {
+                          const next = !v;
+                          if (next) trackEvent("setlist_expand", { show_id: show.id });
+                          return next;
+                        })
+                      }
                       aria-expanded={setlistExpanded}
                     >
                       SETLIST COMPLETA
@@ -338,7 +355,13 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
                     <button
                       type="button"
                       className="setlistExpandBtn"
-                      onClick={() => setSetlistExpanded((v) => !v)}
+                      onClick={() =>
+                        setSetlistExpanded((v) => {
+                          const next = !v;
+                          if (!next) trackEvent("setlist_collapse", { show_id: show.id });
+                          return next;
+                        })
+                      }
                       aria-expanded={setlistExpanded}
                     >
                       RECOLHER SETLIST

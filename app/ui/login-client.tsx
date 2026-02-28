@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { trackEvent } from "@/lib/analytics";
 
 function GoogleIcon() {
   return (
@@ -50,6 +51,7 @@ export function LoginClient({ initialErrorKey }: LoginClientProps) {
   async function onGoogleLogin() {
     setLoading(true);
     setError(null);
+    trackEvent("login_google_click", { source: "login_page" });
     try {
       const supabase = getSupabaseBrowserClient();
       const redirectTo = `${window.location.origin}/auth/callback?next=/`;
@@ -63,6 +65,7 @@ export function LoginClient({ initialErrorKey }: LoginClientProps) {
         throw signInError;
       }
     } catch (signInError) {
+      trackEvent("login_google_error", { source: "login_page" });
       setError(signInError instanceof Error ? signInError.message : "Não foi possível iniciar o login com Google.");
       setLoading(false);
     }
@@ -93,9 +96,23 @@ export function LoginClient({ initialErrorKey }: LoginClientProps) {
         {error ? <p className="errorBox loginError">{error}</p> : null}
 
         <div className="loginLegalLinks">
-          <Link href="/terms">Termos</Link>
+          <Link
+            href="/terms"
+            onClick={() => {
+              trackEvent("login_terms_click", { source: "login_page" });
+            }}
+          >
+            Termos
+          </Link>
           <span aria-hidden>•</span>
-          <Link href="/privacy">Privacidade</Link>
+          <Link
+            href="/privacy"
+            onClick={() => {
+              trackEvent("login_privacy_click", { source: "login_page" });
+            }}
+          >
+            Privacidade
+          </Link>
         </div>
       </section>
     </main>
