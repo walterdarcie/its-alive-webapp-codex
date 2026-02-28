@@ -6,6 +6,7 @@ const BASE_URL = "https://api.setlist.fm/rest/1.0";
 
 type SearchPlan = {
   artistName?: string;
+  artistMbid?: string;
   cityName?: string;
   year?: string;
   countryCode?: string;
@@ -281,12 +282,13 @@ function parseSearchTerm(searchTerm: string) {
 function addPlan(plans: SearchPlan[], seen: Set<string>, plan: SearchPlan) {
   const normalizedPlan: SearchPlan = {
     artistName: plan.artistName?.trim() || undefined,
+    artistMbid: plan.artistMbid?.trim() || undefined,
     cityName: plan.cityName?.trim() || undefined,
     year: plan.year?.trim() || undefined,
     countryCode: plan.countryCode?.trim() || undefined
   };
 
-  if (!normalizedPlan.artistName && !normalizedPlan.cityName) return;
+  if (!normalizedPlan.artistName && !normalizedPlan.artistMbid && !normalizedPlan.cityName) return;
 
   const key = JSON.stringify(normalizedPlan);
   if (seen.has(key)) return;
@@ -335,12 +337,26 @@ function buildSearchPlans(searchTerm: string) {
 
   addPlan(plans, seen, { artistName: normalizeSearchText(searchTerm) });
 
+  if (parsed.artistName) {
+    const artistLower = normalizeLoose(parsed.artistName);
+    if (artistLower === "acdc" || artistLower === "ac dc") {
+      addPlan(plans, seen, {
+        artistName: "AC/DC",
+        cityName: parsed.cityName,
+        year: parsed.year,
+        countryCode: parsed.countryCode
+      });
+      addPlan(plans, seen, { artistName: "AC/DC", year: parsed.year });
+    }
+  }
+
   return plans.slice(0, 5);
 }
 
 async function fetchSetlistsSearchByPlan(plan: SearchPlan, pageOneBased: number) {
   const params = new URLSearchParams({ p: String(pageOneBased) });
   if (plan.artistName) params.set("artistName", plan.artistName);
+  if (plan.artistMbid) params.set("artistMbid", plan.artistMbid);
   if (plan.cityName) params.set("cityName", plan.cityName);
   if (plan.year) params.set("year", plan.year);
   if (plan.countryCode) params.set("countryCode", plan.countryCode);
@@ -382,9 +398,62 @@ async function fetchSetlistsSearchByPlan(plan: SearchPlan, pageOneBased: number)
   };
 }
 
+function normalizeArtistNameForMatch(input: string) {
+  return normalizeLoose(input).replace(/[^a-z0-9]/g, "");
+}
+
+type SetlistFmArtistSearchResult = {
+  artist?:
+    | {
+        mbid?: string;
+        name?: string;
+        sortName?: string;
+      }
+    | Array<{
+        mbid?: string;
+        name?: string;
+        sortName?: string;
+      }>;
+};
+
+async function fetchArtistMbidsByName(artistName: string) {
+  const params = new URLSearchParams({ artistName: artistName.trim(), p: "1" });
+  const response = await fetch(`${BASE_URL}/search/artists?${params.toString()}`, {
+    headers: getHeaders(),
+    next: { revalidate: 60 * 60 * 24 }
+  });
+
+  if (!response.ok) {
+    return [] as string[];
+  }
+
+  const payload = (await response.json()) as SetlistFmArtistSearchResult;
+  const rawArtists = Array.isArray(payload.artist) ? payload.artist : payload.artist ? [payload.artist] : [];
+  if (!rawArtists.length) return [];
+
+  const queryNorm = normalizeArtistNameForMatch(artistName);
+  const scored = rawArtists
+    .map((artist) => {
+      const name = artist.name ?? artist.sortName ?? "";
+      const nameNorm = normalizeArtistNameForMatch(name);
+      let score = 0;
+      if (nameNorm === queryNorm) score += 120;
+      if (nameNorm.includes(queryNorm)) score += 50;
+      if (queryNorm.includes(nameNorm)) score += 30;
+      if (!artist.mbid) score -= 200;
+      return { mbid: artist.mbid ?? "", score };
+    })
+    .filter((item) => Boolean(item.mbid))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4);
+
+  return scored.map((item) => item.mbid);
+}
+
 export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
   const incomingPage = Number.isFinite(pageZeroBased) && pageZeroBased >= 0 ? pageZeroBased : 0;
   const pageOneBased = incomingPage + 1;
+  const parsed = parseSearchTerm(searchTerm);
   const plans = buildSearchPlans(searchTerm);
   let emptyResult = {
     shows: [] as ShowRecord[],
@@ -405,6 +474,38 @@ export async function searchSetlists(searchTerm: string, pageZeroBased = 0) {
     // Stop early on paginated requests to avoid multiplying provider calls during infinite scroll.
     if (pageOneBased > 1 && index === 0) {
       return emptyResult;
+    }
+  }
+
+  if (pageOneBased === 1 && parsed.artistName) {
+    const artistMbids = await fetchArtistMbidsByName(parsed.artistName);
+    for (const artistMbid of artistMbids) {
+      const result = await fetchSetlistsSearchByPlan(
+        {
+          artistMbid,
+          cityName: parsed.cityName || undefined,
+          year: parsed.year || undefined,
+          countryCode: parsed.countryCode || undefined
+        },
+        pageOneBased
+      );
+
+      if (result.shows.length > 0 || result.total > 0) {
+        return result;
+      }
+
+      if (parsed.cityName || parsed.countryCode) {
+        const broaderResult = await fetchSetlistsSearchByPlan(
+          {
+            artistMbid,
+            year: parsed.year || undefined
+          },
+          pageOneBased
+        );
+        if (broaderResult.shows.length > 0 || broaderResult.total > 0) {
+          return broaderResult;
+        }
+      }
     }
   }
 
