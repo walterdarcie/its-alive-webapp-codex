@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hasSupabaseEnv } from "@/lib/supabase/shared";
 
 function isAuthBypassEnabled() {
   return process.env.BYPASS_AUTH === "1" || process.env.NEXT_PUBLIC_BYPASS_AUTH === "1";
@@ -21,11 +22,19 @@ export async function getServerUser() {
     return buildBypassUser();
   }
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  return user;
+  if (!hasSupabaseEnv()) {
+    return null;
+  }
+
+  try {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
 }
 
 export async function requireServerUser() {

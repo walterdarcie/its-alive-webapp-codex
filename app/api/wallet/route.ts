@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { ShowRecord } from "@/lib/show-types";
 import { deriveWalletStatus } from "@/lib/show-utils";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hasSupabaseEnv } from "@/lib/supabase/shared";
 
 type WalletRow = {
   setlist_id: string;
@@ -19,11 +20,19 @@ type WalletPayload = {
 };
 
 async function requireUserId() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  return { supabase, userId: user?.id ?? null };
+  if (!hasSupabaseEnv()) {
+    return { supabase: null, userId: null, configError: true };
+  }
+
+  try {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    return { supabase, userId: user?.id ?? null, configError: false };
+  } catch {
+    return { supabase: null, userId: null, configError: true };
+  }
 }
 
 function normalizeWalletPayload(rows: WalletRow[]): WalletPayload {
@@ -36,7 +45,11 @@ function normalizeWalletPayload(rows: WalletRow[]): WalletPayload {
 }
 
 export async function GET() {
-  const { supabase, userId } = await requireUserId();
+  const { supabase, userId, configError } = await requireUserId();
+  if (configError || !supabase) {
+    return NextResponse.json({ error: "Supabase is not configured on the server." }, { status: 503 });
+  }
+
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -55,7 +68,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { supabase, userId } = await requireUserId();
+  const { supabase, userId, configError } = await requireUserId();
+  if (configError || !supabase) {
+    return NextResponse.json({ error: "Supabase is not configured on the server." }, { status: 503 });
+  }
+
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -100,7 +117,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { supabase, userId } = await requireUserId();
+  const { supabase, userId, configError } = await requireUserId();
+  if (configError || !supabase) {
+    return NextResponse.json({ error: "Supabase is not configured on the server." }, { status: 503 });
+  }
+
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
