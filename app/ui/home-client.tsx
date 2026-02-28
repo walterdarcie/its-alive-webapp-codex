@@ -6,16 +6,24 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ShowRecord } from "@/lib/show-types";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-client";
-import { getWalletEntries, type WalletEntry } from "@/lib/wallet-storage";
+import { getWalletEntries, hydrateWalletFromServer, type WalletEntry } from "@/lib/wallet-storage";
 import { daysUntilShow, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 
 function BrandHeader() {
+  async function signOut() {
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
+  }
+
   return (
     <header className="topbar">
       <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
       </Link>
-      <div className="avatarStub" aria-hidden />
+      <button type="button" className="avatarStub avatarButtonReset" aria-label="Sair" onClick={() => void signOut()} />
     </header>
   );
 }
@@ -104,7 +112,13 @@ export function HomeClient() {
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setWalletEntries(getWalletEntries());
+    let cancelled = false;
+    void hydrateWalletFromServer().then((entries) => {
+      if (!cancelled) setWalletEntries(entries);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -227,7 +241,7 @@ export function HomeClient() {
       </section>
 
       <p className="footerHint">
-        MVP sem login: a carteira fica salva neste dispositivo. Na próxima fase, sincronizamos com Supabase + login Google.
+        Carteira sincronizada com sua conta. Seus shows ficam disponíveis em qualquer dispositivo.
       </p>
 
       {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={() => setSelectedShowId(null)} /> : null}

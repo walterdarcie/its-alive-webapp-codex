@@ -96,6 +96,16 @@ input {
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%238D94B7' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.93 0 3.5 1.57 3.5 3.5S13.93 12 12 12 8.5 10.43 8.5 8.5 10.07 5 12 5zm0 14.2c-2.92 0-5.5-1.49-7-3.75.03-2.32 4.67-3.6 7-3.6 2.32 0 6.97 1.28 7 3.6-1.5 2.26-4.08 3.75-7 3.75z'/%3E%3C/svg%3E");
 }
 
+.avatarButtonReset {
+  padding: 0;
+  cursor: pointer;
+}
+
+.avatarButtonReset:focus-visible {
+  outline: 2px solid rgba(243, 47, 157, 0.7);
+  outline-offset: 2px;
+}
+
 .search {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -1032,6 +1042,217 @@ input {
   color: #b8c2df;
 }
 
+.loginPage {
+  min-height: 100dvh;
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 85% 14%, rgba(243, 47, 157, 0.2), transparent 40%),
+    radial-gradient(circle at 16% 82%, rgba(236, 0, 140, 0.2), transparent 45%),
+    linear-gradient(180deg, #081226 0%, #081226 100%);
+}
+
+.loginAmbientGlow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(48px);
+  opacity: 0.9;
+  z-index: 0;
+  animation: ambientPulse 7.2s ease-in-out infinite;
+}
+
+.loginAmbientGlowA {
+  width: min(68vw, 540px);
+  height: min(68vw, 540px);
+  top: -12%;
+  right: -18%;
+  background: radial-gradient(circle, rgba(243, 47, 157, 0.48) 0%, rgba(243, 47, 157, 0.14) 40%, transparent 74%);
+}
+
+.loginAmbientGlowB {
+  width: min(72vw, 560px);
+  height: min(72vw, 560px);
+  bottom: -24%;
+  left: -22%;
+  background: radial-gradient(circle, rgba(252, 103, 103, 0.24) 0%, rgba(236, 0, 140, 0.1) 44%, transparent 76%);
+  animation-delay: 0.4s;
+}
+
+.loginLightBeam {
+  position: absolute;
+  inset: -6% -30% 42% -30%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(252, 103, 103, 0.12), transparent 56%),
+    linear-gradient(160deg, transparent 0%, rgba(243, 47, 157, 0.2) 45%, transparent 100%);
+  filter: blur(24px);
+  animation: beamPulse 6.8s ease-in-out infinite;
+}
+
+.loginCard {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 440px);
+  border-radius: 28px;
+  padding: 28px 22px 24px;
+  display: grid;
+  gap: 22px;
+  background:
+    linear-gradient(180deg, rgba(26, 45, 86, 0.9), rgba(15, 31, 67, 0.92)),
+    radial-gradient(circle at 80% 0%, rgba(243, 47, 157, 0.14), transparent 42%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 24px 46px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.loginCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%);
+}
+
+.loginLogo {
+  justify-self: center;
+  width: 180px;
+  height: auto;
+}
+
+.loginCopy {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.loginTitle {
+  margin: 0;
+  font-size: clamp(26px, 6vw, 42px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.loginSubtitle {
+  margin: 0;
+  color: var(--neutral-light);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.loginGoogleButton {
+  width: 100%;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
+  box-shadow:
+    0 10px 26px rgba(236, 0, 140, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  font-size: 16px;
+}
+
+.loginGoogleButton:hover,
+.loginGoogleButton:focus-visible {
+  transform: translateY(-1px);
+  filter: saturate(1.04) brightness(1.02);
+}
+
+.loginGoogleButton:active {
+  transform: scale(0.985);
+}
+
+.loginGoogleButton.isLoading {
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.loginGoogleIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
+.loginSupportText {
+  margin: -6px 0 0;
+  color: #aab7d6;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.loginError {
+  margin: 0;
+  font-size: 13px;
+}
+
+.loginLegalLinks {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: -4px;
+  color: #9aa8c7;
+  font-size: 12px;
+}
+
+.loginLegalLinks a {
+  color: #c0cae4;
+  text-decoration: underline;
+  text-decoration-color: rgba(192, 202, 228, 0.45);
+  text-underline-offset: 2px;
+}
+
+.loginLegalLinks a:hover,
+.loginLegalLinks a:focus-visible {
+  color: var(--neutral-lighter);
+  text-decoration-color: rgba(243, 244, 246, 0.9);
+}
+
+.legalPage {
+  max-width: 680px;
+}
+
+@keyframes ambientPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.74;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes beamPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-8px);
+    opacity: 0.92;
+  }
+}
+
 @media (max-width: 720px) {
   .detailOverlayContainer {
     justify-content: stretch;
@@ -1174,5 +1395,30 @@ input {
 
   .detailTitle {
     font-size: 32px;
+  }
+
+  .loginPage {
+    padding: 16px;
+  }
+
+  .loginCard {
+    border-radius: 24px;
+    padding: 24px 18px 20px;
+    gap: 18px;
+  }
+
+  .loginLogo {
+    width: 156px;
+  }
+
+  .loginTitle {
+    font-size: clamp(24px, 8.2vw, 32px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loginAmbientGlow,
+  .loginLightBeam {
+    animation: none;
   }
 }

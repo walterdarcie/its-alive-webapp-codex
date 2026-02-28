@@ -39,6 +39,58 @@ function writeStore(store: WalletStoreShape) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
+function normalizeServerWalletPayload(payload: unknown): WalletStoreShape | null {
+  if (!payload || typeof payload !== "object") return null;
+  if (!("items" in payload) || !Array.isArray((payload as { items?: unknown }).items)) return null;
+
+  const items = (payload as { items: Array<{ show?: ShowRecord; savedAt?: string }> }).items;
+  const normalized: WalletStoreShape = { items: {} };
+
+  for (const item of items) {
+    if (!item?.show?.id || !item?.show?.eventDateIso) continue;
+    normalized.items[item.show.id] = {
+      show: item.show,
+      savedAt: item.savedAt ?? new Date().toISOString()
+    };
+  }
+
+  return normalized;
+}
+
+function emitWalletChangedEvent() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("storage"));
+}
+
+async function requestWalletServer(input: { method: "GET" | "POST" | "DELETE"; show?: ShowRecord; showId?: string }) {
+  let url = "/api/wallet";
+  if (input.method === "DELETE" && input.showId) {
+    url = `/api/wallet?showId=${encodeURIComponent(input.showId)}`;
+  }
+
+  const response = await fetch(url, {
+    method: input.method,
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: input.method === "POST" ? JSON.stringify({ show: input.show }) : undefined
+  });
+
+  if (!response.ok) {
+    throw new Error("Falha ao sincronizar carteira no servidor.");
+  }
+
+  const payload = (await response.json()) as unknown;
+  const normalized = normalizeServerWalletPayload(payload);
+  if (!normalized) {
+    throw new Error("Resposta inválida da carteira.");
+  }
+
+  writeStore(normalized);
+  emitWalletChangedEvent();
+  return Object.values(normalized.items).sort((a, b) => (a.show.eventDateIso < b.show.eventDateIso ? 1 : -1));
+}
+
 export function getWalletEntries() {
   const store = readStore();
   return Object.values(store.items).sort((a, b) => (a.show.eventDateIso < b.show.eventDateIso ? 1 : -1));
@@ -73,3 +125,30 @@ export function getWalletShow(showId: string) {
   return store.items[showId]?.show ?? null;
 }
 
+export async function hydrateWalletFromServer() {
+  try {
+    return await requestWalletServer({ method: "GET" });
+  } catch {
+    return getWalletEntries();
+  }
+}
+
+export async function saveToWalletServer(show: ShowRecord) {
+  try {
+    return await requestWalletServer({ method: "POST", show });
+  } catch {
+    saveToWallet(show);
+    emitWalletChangedEvent();
+    return getWalletEntries();
+  }
+}
+
+export async function removeFromWalletServer(showId: string) {
+  try {
+    return await requestWalletServer({ method: "DELETE", showId });
+  } catch {
+    removeFromWallet(showId);
+    emitWalletChangedEvent();
+    return getWalletEntries();
+  }
+}

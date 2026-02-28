@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import type { ShowDetailRecord, ShowRecord } from "@/lib/show-types";
 import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
-import { getWalletShow, isSavedInWallet, removeFromWallet, saveToWallet } from "@/lib/wallet-storage";
+import { getWalletShow, isSavedInWallet, removeFromWalletServer, saveToWalletServer } from "@/lib/wallet-storage";
 
 type ShowDetailClientProps = {
   id: string;
@@ -31,6 +31,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   const [setlistExpanded, setSetlistExpanded] = useState(false);
   const [ctaBurst, setCtaBurst] = useState(false);
   const [artistImageUrl, setArtistImageUrl] = useState<string | null>(null);
+  const [savingWallet, setSavingWallet] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -137,33 +138,41 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
   const visibleSongs = show?.songNames.slice(0, 5) ?? [];
   const hiddenSongs = show?.songNames.slice(5) ?? [];
 
-  function toggleWallet() {
-    if (!show) return;
-    if (isSavedInWallet(show.id)) {
-      removeFromWallet(show.id);
-      setSaved(false);
-    } else {
-      const walletRecord: ShowRecord = {
-        id: show.id,
-        artist: show.artist,
-        venue: show.venue,
-        city: show.city,
-        country: show.country,
-        eventDateIso: show.eventDateIso,
-        setlistUrl: show.setlistUrl,
-        artistMbid: show.artistMbid,
-        venueMbid: show.venueMbid,
-        tourName: show.tourName,
-        artistImageUrl: show.artistImageUrl ?? artistImageUrl ?? undefined,
-        artistImagePageUrl: show.artistImagePageUrl,
-        artistImageSource: show.artistImageSource
-      };
-      saveToWallet(walletRecord);
-      setSaved(true);
+  async function toggleWallet() {
+    if (!show || savingWallet) return;
+
+    setSavingWallet(true);
+    const isAlreadySaved = isSavedInWallet(show.id);
+
+    try {
+      if (isAlreadySaved) {
+        await removeFromWalletServer(show.id);
+        setSaved(false);
+      } else {
+        const walletRecord: ShowRecord = {
+          id: show.id,
+          artist: show.artist,
+          venue: show.venue,
+          city: show.city,
+          country: show.country,
+          eventDateIso: show.eventDateIso,
+          setlistUrl: show.setlistUrl,
+          artistMbid: show.artistMbid,
+          venueMbid: show.venueMbid,
+          tourName: show.tourName,
+          artistImageUrl: show.artistImageUrl ?? artistImageUrl ?? undefined,
+          artistImagePageUrl: show.artistImagePageUrl,
+          artistImageSource: show.artistImageSource
+        };
+        await saveToWalletServer(walletRecord);
+        setSaved(true);
+      }
+    } finally {
+      setSavingWallet(false);
+      setCtaBurst(false);
+      window.setTimeout(() => setCtaBurst(true), 0);
+      window.setTimeout(() => setCtaBurst(false), 550);
     }
-    setCtaBurst(false);
-    window.setTimeout(() => setCtaBurst(true), 0);
-    window.setTimeout(() => setCtaBurst(false), 550);
   }
 
   function requestClose() {
@@ -278,10 +287,13 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
           <button
             type="button"
             className={`ctaMain ${saved ? "isActive" : ""} ${ctaBurst ? "ctaBurst" : ""}`}
-            onClick={toggleWallet}
+            onClick={() => {
+              void toggleWallet();
+            }}
             aria-pressed={saved}
+            disabled={savingWallet}
           >
-            <span className="ctaMainLabel">{ctaLabel}!</span>
+            <span className="ctaMainLabel">{savingWallet ? "SALVANDO..." : `${ctaLabel}!`}</span>
             <span className="ctaMainPulse" aria-hidden />
           </button>
           {show.setlistUrl ? (

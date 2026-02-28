@@ -45,12 +45,20 @@ function CloseIcon() {
 }
 
 function BrandHeader() {
+  async function signOut() {
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
+  }
+
   return (
     <header className="topbar">
       <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
       </Link>
-      <div className="avatarStub" aria-hidden />
+      <button type="button" className="avatarStub avatarButtonReset" aria-label="Sair" onClick={() => void signOut()} />
     </header>
   );
 }
