@@ -351,7 +351,7 @@ input {
   flex-direction: column;
   justify-content: center;
   min-height: 112px;
-  padding: 14px 16px;
+  padding: 14px 30px 14px 16px;
   border-left: 3px dashed rgba(2, 11, 31, 0.55);
 }
 
@@ -376,6 +376,7 @@ input {
   display: block;
   width: 100%;
   max-width: 100%;
+  padding-right: 6px;
   margin: 0;
   font-size: 14px;
   color: #8f9bbd;
@@ -648,6 +649,16 @@ input {
   text-align: center;
 }
 
+.detailVenue.venueWithPin {
+  justify-content: center;
+}
+
+.detailVenue.venueWithPin .venueText {
+  flex: 0 1 auto;
+  max-width: min(100%, 360px);
+  text-align: left;
+}
+
 .detailHero {
   height: 220px;
   border-radius: 0;
@@ -736,7 +747,7 @@ input {
 }
 
 .setlistAccordion.isOpen .setlistAccordionBody {
-  max-height: 2600px;
+  max-height: 12000px;
 }
 
 .setlistExpandBtn {
@@ -810,7 +821,7 @@ input {
 }
 
 .ticketBodyNoThumb {
-  padding: 14px 16px;
+  padding: 14px 30px 14px 16px;
 }
 
 .detailBodyTicket {
@@ -1019,11 +1030,41 @@ input {
 
 @media (max-width: 720px) {
   .detailOverlayContainer {
-    padding: 72px 6px 28px;
+    justify-content: stretch;
+    align-items: flex-end;
+    padding: 0;
   }
 
   .detailSheetOverlay {
-    max-height: calc(100vh - 100px);
+    width: 100%;
+    max-width: none;
+    min-height: 64dvh;
+    max-height: min(92dvh, calc(100dvh - 8px));
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -14px 34px rgba(0, 0, 0, 0.4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .detailSheetOverlay .detailSheetTop {
+    position: sticky;
+    top: 0;
+    z-index: 7;
+    padding-top: 24px;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .detailSheetOverlay .detailTopNotch {
+    top: 8px;
+    width: 46px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(8, 18, 38, 0.92);
+  }
+
+  .detailSheetOverlay .detailBodyTicket {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
   }
 }
 
