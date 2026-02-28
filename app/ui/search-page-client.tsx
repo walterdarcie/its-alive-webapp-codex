@@ -5,7 +5,7 @@ import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import type { ShowRecord } from "@/lib/show-types";
-import { formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
+import { formatVenueLine } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 
@@ -133,11 +133,20 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
 }
 
 function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (showId: string) => void }) {
+  const eventDate = new Date(`${show.eventDateIso}T00:00:00`);
+  const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(eventDate).toUpperCase();
+  const day = new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(eventDate);
+  const year = new Intl.DateTimeFormat("en-US", { year: "numeric" }).format(eventDate);
+
   return (
     <div className="ticketWrap">
-      <button type="button" className="ticket ticketClickable ticketButtonReset searchTicketNoThumb" onClick={() => onOpenDetail(show.id)}>
-        <div className="ticketBody ticketBodyNoThumb">
-          <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
+      <button type="button" className="ticket ticketClickable ticketButtonReset searchTicketDateLayout" onClick={() => onOpenDetail(show.id)}>
+        <div className="ticketDateStub" aria-hidden>
+          <span className="ticketDateStubMonth">{month}</span>
+          <span className="ticketDateStubDay">{day}</span>
+          <span className="ticketDateStubYear">{year}</span>
+        </div>
+        <div className="ticketBody searchTicketBody">
           <h3 className="ticketName">{show.artist}</h3>
           <p className="ticketVenue venueWithPin">
             <span className="venueText">{formatVenueLine(show)}</span>
