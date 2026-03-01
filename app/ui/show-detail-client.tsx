@@ -18,7 +18,7 @@ type ShowDetailClientProps = {
 function buildDetailPhotoStyle(imageUrl: string): CSSProperties {
   const sanitized = imageUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   return {
-    backgroundImage: `linear-gradient(180deg, rgba(31, 3, 34, 0.35), rgba(20, 0, 22, 0.45)), url("${sanitized}")`,
+    backgroundImage: `linear-gradient(180deg, rgba(7, 14, 30, 0.2), rgba(7, 14, 30, 0.52)), url("${sanitized}")`,
     backgroundPosition: "center",
     backgroundSize: "cover"
   };
