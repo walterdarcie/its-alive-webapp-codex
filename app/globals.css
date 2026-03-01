@@ -1,27 +1,43 @@
 :root {
   --pink-lighter: #ffe6f5;
   --pink-ultra-light: #ffb3e0;
-  --pink-light: #f261b7;
-  --pink: #f32f9d;
-  --pink-dark: #a1005f;
+  --pink-light: #ff6fb8;
+  --pink: #ff2f92;
+  --pink-dark: #b00064;
   --pink-ultra-dark: #540032;
-  --neutral-lighter: #f3f4f6;
+  --neutral-lighter: var(--text-primary);
   --neutral-ultra-light: #dcdfe5;
   --neutral-light: #b9bfcb;
   --neutral: #47536b;
   --neutral-dark: #172642;
   --neutral-ultra-dark: #081226;
-  --gradient-a: #ec008c;
-  --gradient-b: #fc6767;
+  --gradient-a: #ff2f92;
+  --gradient-b: #ff7a5c;
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
   --space-4: 32px;
   --radius-lg: 24px;
   --radius-md: 16px;
-  --surface: #0b1731;
-  --surface-2: #15264a;
-  --surface-3: #1a2d56;
+  --bg-primary: #140016;
+  --bg-secondary: #1f0322;
+  --bg-tertiary: #2a0730;
+  --surface-card: #162a52;
+  --surface-card-hover: #1c3566;
+  --surface-soft: #101c3a;
+  --blue-accent: #2f6bff;
+  --blue-soft: #1f4ed8;
+  --blue-glow: #6ea8ff;
+  --text-primary: #f5f7ff;
+  --text-secondary: #c9cde8;
+  --text-muted: #8f96b8;
+  --ticket-bg: #0f0a1f;
+  --ticket-surface: #1c1633;
+  --ticket-text-primary: #ffffff;
+  --ticket-text-secondary: #b8b6d9;
+  --surface: var(--bg-secondary);
+  --surface-2: var(--surface-card);
+  --surface-3: var(--surface-card-hover);
   --shadow-card: 0 14px 30px rgba(0, 0, 0, 0.32);
 }
 
@@ -37,8 +53,8 @@ body {
 }
 
 body {
-  color: var(--neutral-lighter);
-  background: var(--neutral-ultra-dark);
+  color: var(--text-primary);
+  background: var(--bg-primary);
 }
 
 body::before {
@@ -130,8 +146,8 @@ input {
   display: grid;
   gap: 8px;
   background:
-    linear-gradient(180deg, rgba(24, 44, 84, 0.96), rgba(12, 27, 58, 0.98)),
-    radial-gradient(circle at 82% 0%, rgba(243, 47, 157, 0.16), transparent 44%);
+    linear-gradient(180deg, rgba(28, 53, 102, 0.96), rgba(16, 28, 58, 0.98)),
+    radial-gradient(circle at 82% 0%, rgba(255, 47, 146, 0.16), transparent 44%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
 }
@@ -140,20 +156,20 @@ input {
   margin: 0;
   font-size: 14px;
   font-weight: 700;
-  color: var(--neutral-lighter);
+  color: var(--text-primary);
 }
 
 .profileMenuEmail {
   margin: 0;
   font-size: 12px;
-  color: #9eadce;
+  color: var(--text-secondary);
   word-break: break-all;
 }
 
 .profileMenuHint {
   margin: 2px 0 4px;
   font-size: 11px;
-  color: #8fa0c6;
+  color: var(--text-muted);
 }
 
 .profileSignOutBtn {
@@ -168,22 +184,28 @@ input {
 }
 
 .avatarButtonReset:focus-visible {
-  outline: 2px solid rgba(243, 47, 157, 0.7);
+  outline: 2px solid rgba(255, 47, 146, 0.7);
   outline-offset: 2px;
 }
 
 .search {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: #1a294f;
-  color: var(--neutral-lighter);
+  border: 1px solid rgba(255, 47, 146, 0.18);
+  background: linear-gradient(180deg, rgba(42, 7, 48, 0.92), rgba(31, 3, 34, 0.94));
+  color: var(--text-primary);
   border-radius: 14px;
   padding: 14px 16px;
   outline: none;
 }
 
 .search::placeholder {
-  color: #91a0c0;
+  color: var(--text-muted);
+}
+
+.search:focus-visible,
+.searchInputScreen:focus-visible {
+  outline: 2px solid rgba(255, 47, 146, 0.35);
+  outline-offset: 1px;
 }
 
 .searchButton {
@@ -196,11 +218,11 @@ input {
 }
 
 .searchButton span {
-  color: #9aa7c6;
+  color: var(--text-secondary);
 }
 
 .searchButton .iconSvg {
-  color: #95a4c5;
+  color: var(--text-secondary);
   flex: 0 0 auto;
 }
 
@@ -216,7 +238,7 @@ input {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
-  color: #a9b5cf;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -258,7 +280,7 @@ input {
   position: relative;
   border-radius: 24px;
   overflow: hidden;
-  background: #0f1f43;
+  background: var(--surface-card);
   box-shadow: var(--shadow-card);
   border: 1px solid rgba(255, 255, 255, 0.04);
   scroll-snap-align: start;
@@ -289,7 +311,7 @@ input {
   height: 186px;
   background:
     radial-gradient(circle at 82% 28%, rgba(255, 255, 255, 0.12), transparent 32%),
-    linear-gradient(135deg, rgba(236, 0, 140, 0.35), rgba(252, 103, 103, 0.22)),
+    linear-gradient(135deg, rgba(255, 47, 146, 0.35), rgba(255, 122, 92, 0.22)),
     linear-gradient(180deg, #263b6a 0%, #132247 100%);
   display: grid;
   place-items: center;
@@ -312,7 +334,7 @@ input {
   overflow: hidden;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(243, 47, 157, 0.6);
+  background: rgba(22, 42, 82, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.16);
@@ -360,7 +382,7 @@ input {
   display: grid;
   grid-template-columns: 108px 1fr;
   gap: 0;
-  background: rgba(21, 38, 74, 0.94);
+  background: rgba(22, 42, 82, 0.94);
   border-radius: 20px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.04);
@@ -383,7 +405,7 @@ input {
   top: 50%;
   width: 26px;
   height: 26px;
-  background: var(--neutral-ultra-dark);
+  background: var(--bg-primary);
   border-radius: 50%;
   transform: translateY(-50%);
   z-index: 3;
@@ -418,7 +440,7 @@ input {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 18, 38, 0.06), rgba(8, 18, 38, 0.22));
+  background: linear-gradient(180deg, rgba(20, 0, 22, 0.08), rgba(20, 0, 22, 0.3));
 }
 
 .ticketBody {
@@ -435,7 +457,7 @@ input {
 .ticketDate {
   margin: 0 0 8px;
   font-size: 12px;
-  color: #9eaad0;
+  color: var(--text-secondary);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
@@ -457,7 +479,7 @@ input {
   padding-right: 6px;
   margin: 0;
   font-size: 14px;
-  color: #8f9bbd;
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -467,7 +489,7 @@ input {
   justify-self: end;
   background: transparent;
   border: 0;
-  color: #a7b3d1;
+  color: var(--blue-glow);
   font-size: 12px;
   padding: 0 8px;
   cursor: pointer;
@@ -487,13 +509,13 @@ input {
 }
 
 .chipGhost {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(47, 107, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #d8dfef;
+  color: var(--blue-glow);
 }
 
 .muted {
-  color: #99a8ca;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -503,7 +525,7 @@ input {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.04);
-  color: #93a3c7;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -515,9 +537,9 @@ input {
   padding: 26px 18px;
   isolation: isolate;
   background:
-    radial-gradient(circle at 84% 14%, rgba(243, 47, 157, 0.2), transparent 38%),
-    radial-gradient(circle at 12% 84%, rgba(252, 103, 103, 0.18), transparent 42%),
-    linear-gradient(180deg, rgba(18, 36, 72, 0.86), rgba(12, 27, 58, 0.96));
+    radial-gradient(circle at 84% 14%, rgba(255, 47, 146, 0.2), transparent 38%),
+    radial-gradient(circle at 12% 84%, rgba(255, 122, 92, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(31, 3, 34, 0.9), rgba(20, 0, 22, 0.96));
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 18px 38px rgba(0, 0, 0, 0.28),
@@ -539,7 +561,7 @@ input {
   height: min(52vw, 420px);
   top: -28%;
   right: -22%;
-  background: radial-gradient(circle, rgba(243, 47, 157, 0.42) 0%, rgba(243, 47, 157, 0.08) 50%, transparent 76%);
+  background: radial-gradient(circle, rgba(255, 47, 146, 0.42) 0%, rgba(255, 47, 146, 0.08) 50%, transparent 76%);
 }
 
 .onboardingGlowB {
@@ -547,7 +569,7 @@ input {
   height: min(56vw, 420px);
   left: -26%;
   bottom: -34%;
-  background: radial-gradient(circle, rgba(252, 103, 103, 0.26) 0%, rgba(236, 0, 140, 0.08) 46%, transparent 74%);
+  background: radial-gradient(circle, rgba(255, 122, 92, 0.26) 0%, rgba(255, 47, 146, 0.08) 46%, transparent 74%);
   animation-delay: 0.32s;
 }
 
@@ -558,8 +580,8 @@ input {
   z-index: 0;
   filter: blur(22px);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(252, 103, 103, 0.12), transparent 56%),
-    linear-gradient(160deg, transparent 0%, rgba(243, 47, 157, 0.22) 45%, transparent 100%);
+    radial-gradient(ellipse at 50% 0%, rgba(255, 122, 92, 0.12), transparent 56%),
+    linear-gradient(160deg, transparent 0%, rgba(255, 47, 146, 0.22) 45%, transparent 100%);
   animation: beamPulse 6.8s ease-in-out infinite;
 }
 
@@ -592,7 +614,7 @@ input {
 
 .onboardingSubtitle {
   margin: 0;
-  color: #bac4dc;
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.55;
   max-width: 640px;
@@ -609,7 +631,7 @@ input {
   padding-inline: 22px;
   background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
   box-shadow:
-    0 10px 24px rgba(236, 0, 140, 0.3),
+    0 10px 24px rgba(255, 47, 146, 0.3),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
@@ -625,20 +647,20 @@ input {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  color: #9aa8c9;
+  color: var(--text-muted);
   font-size: 14px;
   line-height: 1.4;
 }
 
 .emptyBox strong {
-  color: #dfe6f6;
+  color: var(--text-primary);
   font-weight: 700;
 }
 
 .errorBox {
   color: #ffd4e8;
-  border-color: rgba(243, 47, 157, 0.25);
-  background: rgba(243, 47, 157, 0.08);
+  border-color: rgba(255, 47, 146, 0.25);
+  background: rgba(255, 47, 146, 0.08);
 }
 
 .searchScreen {
@@ -649,8 +671,8 @@ input {
   bottom: 16px;
   z-index: 40;
   background:
-    radial-gradient(circle at 100% 0%, rgba(243, 47, 157, 0.18), transparent 35%),
-    linear-gradient(180deg, rgba(8, 18, 38, 0.98), rgba(8, 18, 38, 1));
+    radial-gradient(circle at 100% 0%, rgba(255, 47, 146, 0.18), transparent 35%),
+    linear-gradient(180deg, rgba(20, 0, 22, 0.98), rgba(20, 0, 22, 1));
   border-radius: 0;
   border: none;
   box-shadow: none;
@@ -675,8 +697,8 @@ input {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 100% 0%, rgba(243, 47, 157, 0.14), transparent 35%),
-    linear-gradient(180deg, rgba(8, 18, 38, 0.95), rgba(8, 18, 38, 0.98));
+    radial-gradient(circle at 100% 0%, rgba(255, 47, 146, 0.14), transparent 35%),
+    linear-gradient(180deg, rgba(20, 0, 22, 0.95), rgba(20, 0, 22, 0.98));
   animation: fadeIn 180ms ease;
 }
 
@@ -709,14 +731,14 @@ input {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #1a294f;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(42, 7, 48, 0.92), rgba(31, 3, 34, 0.94));
+  border: 1px solid rgba(255, 47, 146, 0.16);
   border-radius: 14px;
   padding: 0 12px;
 }
 
 .searchFieldWrap .iconSvg {
-  color: #95a4c5;
+  color: var(--text-secondary);
   flex: 0 0 auto;
 }
 
@@ -772,7 +794,7 @@ input {
 .resultMeta {
   margin: 8px 0 0;
   font-size: 12px;
-  color: #99a8ca;
+  color: var(--text-muted);
 }
 
 .resultActions {
@@ -792,10 +814,14 @@ input {
 
 .detailSheetTop {
   position: relative;
-  background: var(--surface-2);
+  background:
+    radial-gradient(circle at top, rgba(255, 47, 146, 0.12), transparent 60%),
+    linear-gradient(180deg, #1b0f2a 0%, #0f0a1f 100%);
   border-radius: 0 0 20px 20px;
   padding: 10px 16px 18px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 47, 146, 0.15);
 }
 
 .detailTopNotch {
@@ -805,7 +831,7 @@ input {
   transform: translateX(-50%);
   width: 44px;
   height: 24px;
-  background: rgba(8, 18, 38, 0.92);
+  background: rgba(15, 10, 31, 0.96);
   border-radius: 0 0 14px 14px;
 }
 
@@ -824,6 +850,7 @@ input {
 .detailDateTop {
   text-align: center;
   margin-bottom: 10px;
+  color: var(--ticket-text-secondary);
 }
 
 .detailTitle {
@@ -838,6 +865,7 @@ input {
 .detailVenue {
   margin: 0;
   text-align: center;
+  color: var(--ticket-text-secondary);
 }
 
 .detailVenue.venueWithPin {
@@ -855,19 +883,35 @@ input {
   height: auto;
   border-radius: 0;
   margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.detailHero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(15, 10, 31, 0.08), rgba(15, 10, 31, 0.22));
 }
 
 .detailBody {
   padding: 16px;
-  background: rgba(15, 31, 67, 0.95);
+  background: var(--ticket-bg);
+  color: var(--ticket-text-primary);
 }
 
 .detailBodyTicket {
   position: relative;
   margin-top: 0;
   border-radius: 0 0 18px 18px;
-  background: var(--surface-2);
-  border-top: 2px dashed rgba(4, 14, 36, 0.6);
+  background:
+    radial-gradient(circle at top, rgba(255, 47, 146, 0.08), transparent 62%),
+    linear-gradient(180deg, #1b0f2a 0%, #0f0a1f 100%);
+  border-top: 2px dashed rgba(255, 47, 146, 0.15);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 47, 146, 0.12);
 }
 
 .ticketSideCut {
@@ -876,7 +920,7 @@ input {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #081226;
+  background: var(--bg-primary);
 }
 
 .ticketSideCutLeft {
@@ -901,13 +945,13 @@ input {
 .setlistPanel {
   padding-top: 12px;
   padding-bottom: 8px;
-  border-top: 2px dashed rgba(4, 14, 36, 0.55);
+  border-top: 2px dashed rgba(255, 47, 146, 0.14);
 }
 
 .setlistTitle {
   margin: 0 0 12px;
   font-size: 12px;
-  color: var(--neutral-light);
+  color: var(--ticket-text-secondary);
   font-weight: 400;
 }
 
@@ -947,7 +991,7 @@ input {
   width: 100%;
   background: transparent;
   border: none;
-  color: var(--neutral-lighter);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -1030,9 +1074,9 @@ input {
   gap: 2px;
   background:
     radial-gradient(circle at 20% 12%, rgba(255, 255, 255, 0.08), transparent 42%),
-    linear-gradient(180deg, rgba(10, 20, 42, 0.96), rgba(6, 13, 28, 0.96));
+    linear-gradient(180deg, rgba(31, 3, 34, 0.96), rgba(20, 0, 22, 0.96));
   border-right: 3px dashed rgba(2, 11, 31, 0.58);
-  color: #dfe6f6;
+  color: var(--text-primary);
 }
 
 .ticketDateStubMonth {
@@ -1041,7 +1085,7 @@ input {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #b8c2df;
+  color: var(--text-secondary);
 }
 
 .ticketDateStubDay {
@@ -1049,7 +1093,7 @@ input {
   line-height: 0.95;
   font-weight: 700;
   letter-spacing: -0.04em;
-  color: #f3f4f6;
+  color: var(--text-primary);
 }
 
 .ticketDateStubYear {
@@ -1057,11 +1101,33 @@ input {
   line-height: 1;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: #9eaad0;
+  color: var(--ticket-text-secondary);
 }
 
 .searchTicketBody {
   border-left: none;
+}
+
+.detailBodyTicket::before,
+.detailBodyTicket::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #090513;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.55);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.detailBodyTicket::before {
+  left: -9px;
+}
+
+.detailBodyTicket::after {
+  right: -9px;
 }
 
 .detailBodyTicket {
@@ -1085,7 +1151,7 @@ input {
 }
 
 .ticket {
-  background: rgba(21, 38, 74, 0.98);
+  background: rgba(22, 42, 82, 0.98);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
 }
 
@@ -1124,7 +1190,7 @@ input {
   position: absolute;
   inset: 0;
   border: none;
-  background: rgba(2, 7, 18, 0.52);
+  background: rgba(20, 0, 22, 0.58);
   backdrop-filter: blur(6px);
   pointer-events: auto;
 }
@@ -1165,7 +1231,7 @@ input {
 
 .detailSheetOverlay .detailSheetTop {
   border-radius: 20px 20px 0 0;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 47, 146, 0.15);
 }
 
 .detailSheetOverlay .detailHero {
@@ -1173,7 +1239,9 @@ input {
 }
 
 .detailBodyTicket {
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 47, 146, 0.12);
   padding-bottom: 24px;
 }
 
@@ -1196,14 +1264,14 @@ input {
   border-radius: 999px;
   padding: 12px 18px;
   min-height: 42px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--neutral-lighter);
+  background: rgba(47, 107, 255, 0.16);
+  color: var(--text-primary);
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   overflow: hidden;
   transition: transform 150ms ease, box-shadow 180ms ease, filter 180ms ease;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.28);
 }
 
 .ctaMain.isSmall {
@@ -1214,7 +1282,7 @@ input {
 
 .ctaMain.isActive {
   background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
-  box-shadow: 0 8px 20px rgba(236, 0, 140, 0.2);
+  box-shadow: 0 0 24px rgba(255, 47, 146, 0.25);
 }
 
 .ctaMain:hover {
@@ -1265,7 +1333,7 @@ input {
 }
 
 .detailHeaderBar .iconBtn {
-  color: #b8c2df;
+  color: var(--text-secondary);
 }
 
 .loginPage {
@@ -1277,9 +1345,9 @@ input {
   padding: 24px;
   isolation: isolate;
   background:
-    radial-gradient(circle at 85% 14%, rgba(243, 47, 157, 0.2), transparent 40%),
-    radial-gradient(circle at 16% 82%, rgba(236, 0, 140, 0.2), transparent 45%),
-    linear-gradient(180deg, #081226 0%, #081226 100%);
+    radial-gradient(circle at 85% 14%, rgba(255, 47, 146, 0.2), transparent 40%),
+    radial-gradient(circle at 16% 82%, rgba(255, 47, 146, 0.2), transparent 45%),
+    linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-primary) 100%);
 }
 
 .loginAmbientGlow {
@@ -1297,7 +1365,7 @@ input {
   height: min(68vw, 540px);
   top: -12%;
   right: -18%;
-  background: radial-gradient(circle, rgba(243, 47, 157, 0.48) 0%, rgba(243, 47, 157, 0.14) 40%, transparent 74%);
+  background: radial-gradient(circle, rgba(255, 47, 146, 0.48) 0%, rgba(255, 47, 146, 0.14) 40%, transparent 74%);
 }
 
 .loginAmbientGlowB {
@@ -1305,7 +1373,7 @@ input {
   height: min(72vw, 560px);
   bottom: -24%;
   left: -22%;
-  background: radial-gradient(circle, rgba(252, 103, 103, 0.24) 0%, rgba(236, 0, 140, 0.1) 44%, transparent 76%);
+  background: radial-gradient(circle, rgba(255, 122, 92, 0.24) 0%, rgba(255, 47, 146, 0.1) 44%, transparent 76%);
   animation-delay: 0.4s;
 }
 
@@ -1315,8 +1383,8 @@ input {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(252, 103, 103, 0.12), transparent 56%),
-    linear-gradient(160deg, transparent 0%, rgba(243, 47, 157, 0.2) 45%, transparent 100%);
+    radial-gradient(ellipse at 50% 0%, rgba(255, 122, 92, 0.12), transparent 56%),
+    linear-gradient(160deg, transparent 0%, rgba(255, 47, 146, 0.2) 45%, transparent 100%);
   filter: blur(24px);
   animation: beamPulse 6.8s ease-in-out infinite;
 }
@@ -1330,8 +1398,8 @@ input {
   display: grid;
   gap: 22px;
   background:
-    linear-gradient(180deg, rgba(26, 45, 86, 0.9), rgba(15, 31, 67, 0.92)),
-    radial-gradient(circle at 80% 0%, rgba(243, 47, 157, 0.14), transparent 42%);
+    linear-gradient(180deg, rgba(28, 53, 102, 0.9), rgba(22, 42, 82, 0.92)),
+    radial-gradient(circle at 80% 0%, rgba(255, 47, 146, 0.14), transparent 42%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 24px 46px rgba(0, 0, 0, 0.4),
@@ -1385,7 +1453,7 @@ input {
   gap: 10px;
   background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
   box-shadow:
-    0 10px 26px rgba(236, 0, 140, 0.35),
+    0 10px 26px rgba(255, 47, 146, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   font-size: 16px;
 }
@@ -1417,7 +1485,7 @@ input {
 
 .loginSupportText {
   margin: -6px 0 0;
-  color: #aab7d6;
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.5;
   text-align: center;
@@ -1434,12 +1502,12 @@ input {
   justify-content: center;
   gap: 8px;
   margin-top: -4px;
-  color: #9aa8c7;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .loginLegalLinks a {
-  color: #c0cae4;
+  color: var(--text-secondary);
   text-decoration: underline;
   text-decoration-color: rgba(192, 202, 228, 0.45);
   text-underline-offset: 2px;
@@ -1447,7 +1515,7 @@ input {
 
 .loginLegalLinks a:hover,
 .loginLegalLinks a:focus-visible {
-  color: var(--neutral-lighter);
+  color: var(--text-primary);
   text-decoration-color: rgba(243, 244, 246, 0.9);
 }
 
@@ -1513,7 +1581,7 @@ input {
     z-index: 8;
     margin: 0 -16px 10px;
     padding: 14px 16px 10px;
-    background: var(--surface-2);
+    background: var(--ticket-surface);
     box-shadow: none;
     touch-action: none;
   }
@@ -1523,7 +1591,7 @@ input {
     width: 52px;
     height: 26px;
     border-radius: 0 0 26px 26px;
-    background: var(--neutral-ultra-dark);
+    background: #090513;
   }
 
   .detailSheetOverlay .detailBodyTicket {
