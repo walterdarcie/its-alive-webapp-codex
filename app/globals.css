@@ -1489,8 +1489,8 @@ input {
   .detailSheetOverlay {
     width: 100%;
     max-width: none;
-    min-height: 64dvh;
-    max-height: min(92dvh, calc(100dvh - 8px));
+    min-height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -14px 34px rgba(0, 0, 0, 0.4);
     overflow-y: auto;
