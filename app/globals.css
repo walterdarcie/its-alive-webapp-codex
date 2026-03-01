@@ -35,6 +35,13 @@
   --surface-2: var(--surface-card);
   --surface-3: var(--surface-card-hover);
   --shadow-card: 0 14px 30px rgba(0, 0, 0, 0.32);
+  --ticket-bg: #0f0a1f;
+  --ticket-surface: #1c1633;
+  --ticket-stroke: rgba(255, 255, 255, 0.08);
+  --ticket-text-primary: #ffffff;
+  --ticket-text-secondary: #b8b6d9;
+  --ticket-text-muted: #8f96b8;
+  --ticket-accent: #ff2f92;
 }
 
 * {
@@ -804,10 +811,10 @@ input {
 
 .detailSheetTop {
   position: relative;
-  background: var(--surface-2);
+  background: linear-gradient(180deg, #1b0f2a 0%, var(--ticket-bg) 100%);
   border-radius: 0 0 20px 20px;
   padding: 10px 16px 18px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 47, 146, 0.12);
 }
 
 .detailTopNotch {
@@ -817,7 +824,7 @@ input {
   transform: translateX(-50%);
   width: 44px;
   height: 24px;
-  background: rgba(20, 0, 22, 0.92);
+  background: #140016;
   border-radius: 0 0 14px 14px;
 }
 
@@ -862,6 +869,34 @@ input {
   text-align: left;
 }
 
+
+.detailSheet .detailDateTop {
+  color: var(--ticket-text-secondary);
+}
+
+.detailSheet .detailTitle {
+  color: var(--ticket-text-primary);
+}
+
+.detailSheet .detailVenue {
+  color: var(--ticket-text-secondary);
+}
+
+.detailBodyTicket .resultMeta,
+.detailBodyTicket .muted {
+  color: var(--ticket-text-muted);
+}
+
+.detailBodyTicket .songList {
+  color: var(--ticket-text-primary);
+}
+
+.detailBodyTicket .chipGhost {
+  background: rgba(47, 107, 255, 0.18);
+  border: 1px solid var(--ticket-stroke);
+  color: #9bb8ff;
+}
+
 .detailHero {
   aspect-ratio: 1 / 1;
   height: auto;
@@ -871,15 +906,16 @@ input {
 
 .detailBody {
   padding: 16px;
-  background: rgba(15, 31, 67, 0.95);
+  background: var(--ticket-bg);
 }
 
 .detailBodyTicket {
   position: relative;
   margin-top: 0;
   border-radius: 0 0 18px 18px;
-  background: var(--surface-2);
-  border-top: 2px dashed rgba(4, 14, 36, 0.6);
+  background: var(--ticket-bg);
+  border-top: 2px dashed var(--ticket-stroke);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 47, 146, 0.12);
 }
 
 .ticketSideCut {
@@ -889,6 +925,7 @@ input {
   height: 26px;
   border-radius: 50%;
   background: var(--bg-primary);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .ticketSideCutLeft {
@@ -913,13 +950,18 @@ input {
 .setlistPanel {
   padding-top: 12px;
   padding-bottom: 8px;
-  border-top: 2px dashed rgba(4, 14, 36, 0.55);
+  margin-top: 6px;
+  border-top: 1px solid var(--ticket-stroke);
+  border-radius: 14px;
+  background: var(--ticket-surface);
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .setlistTitle {
   margin: 0 0 12px;
   font-size: 12px;
-  color: var(--neutral-light);
+  color: var(--ticket-text-secondary);
   font-weight: 400;
 }
 
@@ -959,7 +1001,7 @@ input {
   width: 100%;
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: var(--ticket-text-primary);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -1177,7 +1219,7 @@ input {
 
 .detailSheetOverlay .detailSheetTop {
   border-radius: 20px 20px 0 0;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 47, 146, 0.12);
 }
 
 .detailSheetOverlay .detailHero {
@@ -1185,7 +1227,7 @@ input {
 }
 
 .detailBodyTicket {
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 47, 146, 0.12);
   padding-bottom: 24px;
 }
 
