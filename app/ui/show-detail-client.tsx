@@ -35,6 +35,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
   const [ctaBurst, setCtaBurst] = useState(false);
   const [artistImageUrl, setArtistImageUrl] = useState<string | null>(initialData?.artistImageUrl ?? null);
   const [savingWallet, setSavingWallet] = useState(false);
+  const [lastSyncFailed, setLastSyncFailed] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -47,6 +48,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
     setSaved(isSavedInWallet(id));
     setSetlistExpanded(false);
     setIsClosing(false);
+    setLastSyncFailed(false);
 
     const walletShow = getWalletShow(id);
     if (!initialData) {
@@ -163,9 +165,10 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
 
     try {
       if (isAlreadySaved) {
-        await removeFromWalletServer(show.id);
+        const result = await removeFromWalletServer(show.id);
         trackEvent("wallet_unmark", { show_id: show.id, status_label: ctaLabel });
         setSaved(false);
+        setLastSyncFailed(!result.synced);
       } else {
         const walletRecord: ShowRecord = {
           id: show.id,
@@ -182,9 +185,10 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
           artistImagePageUrl: show.artistImagePageUrl,
           artistImageSource: show.artistImageSource
         };
-        await saveToWalletServer(walletRecord);
+        const result = await saveToWalletServer(walletRecord);
         trackEvent("wallet_mark", { show_id: show.id, status_label: ctaLabel });
         setSaved(true);
+        setLastSyncFailed(!result.synced);
       }
     } finally {
       setSavingWallet(false);
@@ -328,6 +332,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
               SETLIST.FM
             </a>
           ) : null}
+          {lastSyncFailed ? <p className="muted walletSyncHint">Salvo neste dispositivo. Sincroniza ao reconectar.</p> : null}
         </div>
 
         <div className="setlistPanel">
