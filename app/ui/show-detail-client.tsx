@@ -156,7 +156,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
 
     if (!isAuthenticated) {
       const returnUrl = `/show/${encodeURIComponent(show.id)}`;
-      window.location.href = `/login?next=${encodeURIComponent(returnUrl)}`;
+      window.location.href = `/signin?next=${encodeURIComponent(returnUrl)}`;
       return;
     }
 

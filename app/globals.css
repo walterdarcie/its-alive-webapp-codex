@@ -1530,6 +1530,123 @@ input {
   text-decoration-color: rgba(243, 244, 246, 0.9);
 }
 
+/* Landing page — separated blocks layout */
+
+.landingContainer {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 440px);
+  display: grid;
+  gap: 0;
+  justify-items: center;
+}
+
+.landingLogo {
+  margin-bottom: 28px;
+}
+
+.landingBlock {
+  width: 100%;
+  border-radius: 24px;
+  padding: 24px 22px;
+  display: grid;
+  gap: 18px;
+  background:
+    linear-gradient(180deg, rgba(28, 53, 102, 0.9), rgba(22, 42, 82, 0.92)),
+    radial-gradient(circle at 80% 0%, rgba(255, 47, 146, 0.14), transparent 42%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 24px 46px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.landingBlock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%);
+}
+
+.landingBlockSearch {
+  position: relative;
+}
+
+.landingBlockLogin {
+  position: relative;
+  gap: 14px;
+}
+
+.landingSearchCta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease, transform 150ms ease;
+}
+
+.landingSearchCta:hover,
+.landingSearchCta:focus-visible {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-1px);
+}
+
+.landingSearchCta:active {
+  transform: scale(0.985);
+}
+
+.landingSearchCta .iconSvg {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.landingSearchCtaLabel {
+  font-weight: 500;
+}
+
+.landingLoginHint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.landingContainer > .landingDivider {
+  padding: 18px 0;
+  width: 100%;
+}
+
+.landingContainer > .loginLegalLinks {
+  margin-top: 16px;
+}
+
+/* Signin page (dedicated login-only page) */
+
+.signinCard {
+  text-align: center;
+  max-width: 380px;
+}
+
+.signinTitle {
+  margin: 0;
+  font-size: clamp(22px, 5.5vw, 30px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
 .legalPage {
   max-width: 680px;
 }
@@ -1723,12 +1840,26 @@ input {
     gap: 18px;
   }
 
+  .landingBlock {
+    border-radius: 20px;
+    padding: 20px 16px;
+    gap: 14px;
+  }
+
+  .landingLogo {
+    margin-bottom: 22px;
+  }
+
   .loginLogo {
     width: 156px;
   }
 
   .loginTitle {
     font-size: clamp(24px, 8.2vw, 32px);
+  }
+
+  .signinTitle {
+    font-size: clamp(20px, 7vw, 26px);
   }
 
   .onboardingEntry {
