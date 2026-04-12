@@ -31,6 +31,7 @@ function GoogleIcon() {
 
 type LoginClientProps = {
   initialErrorKey?: string;
+  nextUrl?: string;
 };
 
 function getErrorMessageByKey(errorKey?: string) {
@@ -44,7 +45,7 @@ function getErrorMessageByKey(errorKey?: string) {
   return null;
 }
 
-export function LoginClient({ initialErrorKey }: LoginClientProps) {
+export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey));
 
@@ -54,7 +55,8 @@ export function LoginClient({ initialErrorKey }: LoginClientProps) {
     trackEvent("login_google_click", { source: "login_page" });
     try {
       const supabase = getSupabaseBrowserClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=/`;
+      const afterLogin = nextUrl ?? "/";
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterLogin)}`;
       const { error: signInError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

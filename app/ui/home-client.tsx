@@ -241,6 +241,29 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
 
+  function openShowOverlay(showId: string) {
+    setSelectedShowId(showId);
+    window.history.pushState({ showOverlay: showId }, "", `/show/${encodeURIComponent(showId)}`);
+  }
+
+  function closeShowOverlay() {
+    setSelectedShowId(null);
+    window.history.pushState({}, "", "/");
+  }
+
+  useEffect(() => {
+    function handlePopState(event: PopStateEvent) {
+      const state = event.state as { showOverlay?: string } | null;
+      if (state?.showOverlay) {
+        setSelectedShowId(state.showOverlay);
+      } else {
+        setSelectedShowId(null);
+      }
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     void hydrateWalletFromServer().then((entries) => {
@@ -360,7 +383,7 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
                     className="cardLink cardButtonReset"
                     onClick={() => {
                       trackEvent("show_detail_open", { source: "home_future_slider", show_id: show.id });
-                      setSelectedShowId(show.id);
+                      openShowOverlay(show.id);
                     }}
                   >
                     <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
@@ -383,7 +406,7 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
                     imageUrl={resolveShowImageUrl(show)}
                     onOpenDetail={(showId) => {
                       trackEvent("show_detail_open", { source: "home_past_list", show_id: showId });
-                      setSelectedShowId(showId);
+                      openShowOverlay(showId);
                     }}
                   />
                 ))}
@@ -405,7 +428,7 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
           : "Sua carteira começa na busca. Encontre um show e marque como Eu fui ou Eu vou."}
       </p>
 
-      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={() => setSelectedShowId(null)} /> : null}
+      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={closeShowOverlay} isAuthenticated /> : null}
     </main>
   );
 }
