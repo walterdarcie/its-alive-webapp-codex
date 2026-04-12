@@ -13,6 +13,8 @@ type ShowDetailClientProps = {
   id: string;
   mode?: "page" | "overlay";
   onClose?: () => void;
+  initialData?: ShowDetailRecord | null;
+  isAuthenticated?: boolean;
 };
 
 function buildDetailPhotoStyle(imageUrl: string): CSSProperties {
@@ -24,14 +26,14 @@ function buildDetailPhotoStyle(imageUrl: string): CSSProperties {
   };
 }
 
-export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClientProps) {
-  const [show, setShow] = useState<ShowDetailRecord | null>(null);
-  const [loading, setLoading] = useState(true);
+export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAuthenticated = true }: ShowDetailClientProps) {
+  const [show, setShow] = useState<ShowDetailRecord | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [setlistExpanded, setSetlistExpanded] = useState(false);
   const [ctaBurst, setCtaBurst] = useState(false);
-  const [artistImageUrl, setArtistImageUrl] = useState<string | null>(null);
+  const [artistImageUrl, setArtistImageUrl] = useState<string | null>(initialData?.artistImageUrl ?? null);
   const [savingWallet, setSavingWallet] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -47,12 +49,20 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
     setIsClosing(false);
 
     const walletShow = getWalletShow(id);
-    setArtistImageUrl(walletShow?.artistImageUrl ?? null);
+    if (!initialData) {
+      setArtistImageUrl(walletShow?.artistImageUrl ?? null);
+    }
     if (walletShow) {
       setShow((prev) => ({
         ...(prev ?? { ...walletShow, songNames: [], setlistSections: [] }),
         ...walletShow
       }));
+    }
+
+    // Skip client fetch if we already have server-side data
+    if (initialData) {
+      setLoading(false);
+      return;
     }
 
     const controller = new AbortController();
@@ -81,7 +91,7 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
 
     void load();
     return () => controller.abort();
-  }, [id]);
+  }, [id, initialData]);
 
   useEffect(() => {
     const currentShow = show;
@@ -141,6 +151,12 @@ export function ShowDetailClient({ id, mode = "page", onClose }: ShowDetailClien
 
   async function toggleWallet() {
     if (!show || savingWallet) return;
+
+    if (!isAuthenticated) {
+      const returnUrl = `/show/${encodeURIComponent(show.id)}`;
+      window.location.href = `/login?next=${encodeURIComponent(returnUrl)}`;
+      return;
+    }
 
     setSavingWallet(true);
     const isAlreadySaved = isSavedInWallet(show.id);
