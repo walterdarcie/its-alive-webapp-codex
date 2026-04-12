@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
 
@@ -29,6 +30,17 @@ function GoogleIcon() {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="iconSvg">
+      <path
+        d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6Zm-6 0A4.5 4.5 0 1 1 10 5a4.5 4.5 0 0 1-.5 9Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 type LoginClientProps = {
   initialErrorKey?: string;
   nextUrl?: string;
@@ -48,6 +60,9 @@ function getErrorMessageByKey(errorKey?: string) {
 export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey));
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   async function onGoogleLogin() {
     setLoading(true);
@@ -73,6 +88,17 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
     }
   }
 
+  function handleSearchSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      searchInputRef.current?.focus();
+      return;
+    }
+    trackEvent("landing_search_submit", { source: "login_page", query_length: q.length });
+    router.push(`/search?q=${encodeURIComponent(q)}`);
+  }
+
   return (
     <main className="loginPage">
       <div className="loginAmbientGlow loginAmbientGlowA" aria-hidden />
@@ -83,18 +109,39 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
         <Image src="/brand/logo-default.svg" alt="it's alive" width={180} height={52} className="loginLogo" priority />
 
         <div className="loginCopy">
-          <h1 className="loginTitle">As memórias mais intensas dos seus shows, sempre vivas.</h1>
-          <p className="loginSubtitle">Guarde emoções ao vivo, revise sua carteira e compartilhe momentos inesquecíveis.</p>
+          <h1 className="loginTitle">Encontre qualquer show. Reviva cada setlist.</h1>
+          <p className="loginSubtitle">Busque por artista, cidade ou ano e descubra tudo sobre os shows que você viveu.</p>
         </div>
 
-        <button type="button" className={`ctaMain loginGoogleButton ${loading ? "isLoading" : ""}`} onClick={onGoogleLogin} disabled={loading}>
+        <form className="landingSearchForm" onSubmit={handleSearchSubmit}>
+          <div className="searchFieldWrap landingSearchField">
+            <SearchIcon />
+            <input
+              ref={searchInputRef}
+              className="search searchInputScreen"
+              placeholder="Buscar shows: artista, cidade, ano..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Buscar shows"
+              autoFocus
+            />
+          </div>
+        </form>
+
+        <div className="landingDivider">
+          <span className="landingDividerLine" aria-hidden />
+          <span className="landingDividerText">ou</span>
+          <span className="landingDividerLine" aria-hidden />
+        </div>
+
+        <button type="button" className={`ctaMain loginGoogleButton loginGoogleButtonSecondary ${loading ? "isLoading" : ""}`} onClick={onGoogleLogin} disabled={loading}>
           <span className="loginGoogleIcon">
             <GoogleIcon />
           </span>
-          <span className="ctaMainLabel">{loading ? "Conectando..." : "Continuar com Google"}</span>
+          <span className="ctaMainLabel">{loading ? "Conectando..." : "Entrar com Google"}</span>
         </button>
 
-        <p className="loginSupportText">Acesso rápido e seguro. Em poucos segundos sua carteira estará sincronizada.</p>
+        <p className="loginSupportText">Entre para salvar shows na sua carteira e acessar de qualquer dispositivo.</p>
         {error ? <p className="errorBox loginError">{error}</p> : null}
 
         <div className="loginLegalLinks">

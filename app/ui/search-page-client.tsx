@@ -46,7 +46,7 @@ function CloseIcon() {
   );
 }
 
-function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
+function BrandHeader({ viewer }: { viewer: ViewerProfile | null }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -83,51 +83,57 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
       <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
       </Link>
-      <div className="profileMenuWrap" ref={menuRef}>
-        <button
-          type="button"
-          className="avatarStub avatarButtonReset"
-          aria-label={`Abrir menu da conta de ${viewer.name}`}
-          aria-expanded={isMenuOpen}
-          onClick={() =>
-            setIsMenuOpen((v) => {
-              const next = !v;
-              if (next) trackEvent("profile_menu_open", { source: "search_header" });
-              return next;
-            })
-          }
-        >
-          {viewer.avatarUrl ? (
-            <span
-              className="avatarPhoto"
-              style={{
-                backgroundImage: `url("${viewer.avatarUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
-              }}
-              aria-hidden
-            />
-          ) : (
-            <span className="avatarFallbackIcon" aria-hidden />
-          )}
-        </button>
+      {viewer ? (
+        <div className="profileMenuWrap" ref={menuRef}>
+          <button
+            type="button"
+            className="avatarStub avatarButtonReset"
+            aria-label={`Abrir menu da conta de ${viewer.name}`}
+            aria-expanded={isMenuOpen}
+            onClick={() =>
+              setIsMenuOpen((v) => {
+                const next = !v;
+                if (next) trackEvent("profile_menu_open", { source: "search_header" });
+                return next;
+              })
+            }
+          >
+            {viewer.avatarUrl ? (
+              <span
+                className="avatarPhoto"
+                style={{
+                  backgroundImage: `url("${viewer.avatarUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
+                }}
+                aria-hidden
+              />
+            ) : (
+              <span className="avatarFallbackIcon" aria-hidden />
+            )}
+          </button>
 
-        {isMenuOpen ? (
-          <div className="profileMenu" role="menu" aria-label="Menu da conta">
-            <p className="profileMenuName">{viewer.name}</p>
-            {viewer.email ? <p className="profileMenuEmail">{viewer.email}</p> : null}
-            <p className="profileMenuHint">Conta sincronizada com Google + Supabase</p>
-            <button
-              type="button"
-              className="chip chipGhost profileSignOutBtn"
-              role="menuitem"
-              onClick={() => {
-                void signOut();
-              }}
-            >
-              Sair
-            </button>
-          </div>
-        ) : null}
-      </div>
+          {isMenuOpen ? (
+            <div className="profileMenu" role="menu" aria-label="Menu da conta">
+              <p className="profileMenuName">{viewer.name}</p>
+              {viewer.email ? <p className="profileMenuEmail">{viewer.email}</p> : null}
+              <p className="profileMenuHint">Conta sincronizada com Google + Supabase</p>
+              <button
+                type="button"
+                className="chip chipGhost profileSignOutBtn"
+                role="menuitem"
+                onClick={() => {
+                  void signOut();
+                }}
+              >
+                Sair
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <Link href="/login" className="chip chipGhost" onClick={() => trackEvent("login_click", { source: "search_header" })}>
+          Entrar
+        </Link>
+      )}
     </header>
   );
 }
@@ -159,8 +165,8 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
   );
 }
 
-export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
-  const [query, setQuery] = useState("");
+export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery }: { viewer: ViewerProfile | null; isAuthenticated?: boolean; initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery ?? "");
   const deferredQuery = useDeferredValue(query);
   const [searchResults, setSearchResults] = useState<ShowRecord[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -382,7 +388,7 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
         )}
       </section>
 
-      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={closeShowOverlay} isAuthenticated /> : null}
+      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={closeShowOverlay} isAuthenticated={isAuthenticated} /> : null}
     </main>
   );
 }

@@ -1445,6 +1445,55 @@ input {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
 }
 
+.landingSearchForm {
+  width: 100%;
+}
+
+.landingSearchField {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px 14px;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.landingSearchField:focus-within {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.landingDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.landingDividerLine {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.landingDividerText {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.loginGoogleButtonSecondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.loginGoogleButtonSecondary:hover,
+.loginGoogleButtonSecondary:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 .loginSupportText {
   margin: -6px 0 0;
   color: var(--text-secondary);
