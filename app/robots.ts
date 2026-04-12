@@ -5,8 +5,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/show/",
-        disallow: ["/api/", "/auth/", "/login", "/search"]
+        allow: ["/show/", "/search"],
+        disallow: ["/api/", "/auth/"]
       }
     ],
     sitemap: "https://itsalivememories.vercel.app/sitemap.xml"
