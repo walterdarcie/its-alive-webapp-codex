@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
 
@@ -30,18 +29,7 @@ function GoogleIcon() {
   );
 }
 
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="iconSvg">
-      <path
-        d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6Zm-6 0A4.5 4.5 0 1 1 10 5a4.5 4.5 0 0 1-.5 9Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-type LoginClientProps = {
+type SigninClientProps = {
   initialErrorKey?: string;
   nextUrl?: string;
 };
@@ -57,15 +45,14 @@ function getErrorMessageByKey(errorKey?: string) {
   return null;
 }
 
-export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
+export function SigninClient({ initialErrorKey, nextUrl }: SigninClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey));
-  const router = useRouter();
 
   async function onGoogleLogin() {
     setLoading(true);
     setError(null);
-    trackEvent("login_google_click", { source: "landing_page" });
+    trackEvent("login_google_click", { source: "signin_page" });
     try {
       const supabase = getSupabaseBrowserClient();
       const afterLogin = nextUrl ?? "/";
@@ -80,62 +67,40 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
         throw signInError;
       }
     } catch (signInError) {
-      trackEvent("login_google_error", { source: "landing_page" });
+      trackEvent("login_google_error", { source: "signin_page" });
       setError(signInError instanceof Error ? signInError.message : "Não foi possível iniciar o login com Google.");
       setLoading(false);
     }
   }
 
-  function handleSearchClick() {
-    trackEvent("landing_search_cta_click", { source: "landing_page" });
-    router.push("/search");
-  }
-
   return (
-    <main className="loginPage">
+    <main className="loginPage signinPage">
       <div className="loginAmbientGlow loginAmbientGlowA" aria-hidden />
       <div className="loginAmbientGlow loginAmbientGlowB" aria-hidden />
       <div className="loginLightBeam" aria-hidden />
 
-      <div className="landingContainer">
-        <Image src="/brand/logo-default.svg" alt="it's alive" width={180} height={52} className="loginLogo landingLogo" priority />
+      <section className="loginCard signinCard">
+        <Image src="/brand/logo-default.svg" alt="it's alive" width={160} height={46} className="loginLogo" priority />
 
-        <section className="landingBlock landingBlockSearch">
-          <div className="loginCopy">
-            <h1 className="loginTitle">Encontre qualquer show. Reviva cada setlist.</h1>
-            <p className="loginSubtitle">Busque por artista, cidade ou ano e descubra tudo sobre os shows que você viveu.</p>
-          </div>
-
-          <button type="button" className="landingSearchCta" onClick={handleSearchClick}>
-            <SearchIcon />
-            <span className="landingSearchCtaLabel">Buscar shows</span>
-          </button>
-        </section>
-
-        <div className="landingDivider">
-          <span className="landingDividerLine" aria-hidden />
-          <span className="landingDividerText">ou</span>
-          <span className="landingDividerLine" aria-hidden />
+        <div className="loginCopy">
+          <h1 className="signinTitle">Entre na sua conta</h1>
+          <p className="loginSubtitle">Faça login para salvar shows na sua carteira e sincronizar entre dispositivos.</p>
         </div>
 
-        <section className="landingBlock landingBlockLogin">
-          <p className="landingLoginHint">Entre para salvar shows na sua carteira e acessar de qualquer dispositivo.</p>
+        <button type="button" className={`ctaMain loginGoogleButton ${loading ? "isLoading" : ""}`} onClick={onGoogleLogin} disabled={loading}>
+          <span className="loginGoogleIcon">
+            <GoogleIcon />
+          </span>
+          <span className="ctaMainLabel">{loading ? "Conectando..." : "Entrar com Google"}</span>
+        </button>
 
-          <button type="button" className={`ctaMain loginGoogleButton loginGoogleButtonSecondary ${loading ? "isLoading" : ""}`} onClick={onGoogleLogin} disabled={loading}>
-            <span className="loginGoogleIcon">
-              <GoogleIcon />
-            </span>
-            <span className="ctaMainLabel">{loading ? "Conectando..." : "Entrar com Google"}</span>
-          </button>
-
-          {error ? <p className="errorBox loginError">{error}</p> : null}
-        </section>
+        {error ? <p className="errorBox loginError">{error}</p> : null}
 
         <div className="loginLegalLinks">
           <Link
             href="/terms"
             onClick={() => {
-              trackEvent("login_terms_click", { source: "landing_page" });
+              trackEvent("login_terms_click", { source: "signin_page" });
             }}
           >
             Termos
@@ -144,13 +109,13 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
           <Link
             href="/privacy"
             onClick={() => {
-              trackEvent("login_privacy_click", { source: "landing_page" });
+              trackEvent("login_privacy_click", { source: "signin_page" });
             }}
           >
             Privacidade
           </Link>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

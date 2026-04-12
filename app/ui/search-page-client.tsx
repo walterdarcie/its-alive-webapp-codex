@@ -130,9 +130,11 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile | null }) {
           ) : null}
         </div>
       ) : (
-        <Link href="/login" className="chip chipGhost" onClick={() => trackEvent("login_click", { source: "search_header" })}>
-          Entrar
-        </Link>
+        <div className="profileMenuWrap">
+          <Link href="/signin" className="avatarStub avatarButtonReset" aria-label="Fazer login" onClick={() => trackEvent("login_click", { source: "search_header" })}>
+            <span className="avatarFallbackIcon" aria-hidden />
+          </Link>
+        </div>
       )}
     </header>
   );

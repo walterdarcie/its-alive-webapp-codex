@@ -10,14 +10,14 @@ export async function GET(request: Request) {
 
   if (code) {
     if (!hasSupabaseEnv()) {
-      return NextResponse.redirect(new URL("/login?error=supabase_not_configured", requestUrl.origin));
+      return NextResponse.redirect(new URL("/signin?error=supabase_not_configured", requestUrl.origin));
     }
 
     try {
       const supabase = createSupabaseServerClient();
       await supabase.auth.exchangeCodeForSession(code);
     } catch {
-      return NextResponse.redirect(new URL("/login?error=oauth_callback_failed", requestUrl.origin));
+      return NextResponse.redirect(new URL("/signin?error=oauth_callback_failed", requestUrl.origin));
     }
   }
 
