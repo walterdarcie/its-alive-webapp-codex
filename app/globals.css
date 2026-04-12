@@ -519,6 +519,19 @@ input {
   font-size: 12px;
 }
 
+.footerHintOffline {
+  color: #f5c563;
+  border-color: rgba(245, 197, 99, 0.15);
+  background: rgba(245, 197, 99, 0.05);
+}
+
+.walletSyncHint {
+  font-size: 11px;
+  margin-top: 6px;
+  text-align: center;
+  opacity: 0.7;
+}
+
 .onboardingEntry {
   margin-top: 24px;
   position: relative;

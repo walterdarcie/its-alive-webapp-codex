@@ -11,6 +11,11 @@ export type WalletEntry = {
   savedAt: string;
 };
 
+export type WalletSyncResult = {
+  entries: WalletEntry[];
+  synced: boolean;
+};
+
 type WalletStoreShape = {
   items: Record<string, WalletEntry>;
 };
@@ -207,20 +212,21 @@ export function getWalletShow(showId: string) {
   return store.items[showId]?.show ?? null;
 }
 
-export async function hydrateWalletFromServer() {
+export async function hydrateWalletFromServer(): Promise<WalletSyncResult> {
   try {
     await flushPendingOps();
-    return await requestWalletServer({ method: "GET" });
+    const entries = await requestWalletServer({ method: "GET" });
+    return { entries, synced: true };
   } catch {
-    return getWalletEntries();
+    return { entries: getWalletEntries(), synced: false };
   }
 }
 
-export async function saveToWalletServer(show: ShowRecord) {
+export async function saveToWalletServer(show: ShowRecord): Promise<WalletSyncResult> {
   try {
     const entries = await requestWalletServer({ method: "POST", show });
     clearPendingOpsForShow(show.id);
-    return entries;
+    return { entries, synced: true };
   } catch {
     saveToWallet(show);
     upsertPendingOp({
@@ -229,15 +235,15 @@ export async function saveToWalletServer(show: ShowRecord) {
       createdAt: new Date().toISOString()
     });
     emitWalletChangedEvent();
-    return getWalletEntries();
+    return { entries: getWalletEntries(), synced: false };
   }
 }
 
-export async function removeFromWalletServer(showId: string) {
+export async function removeFromWalletServer(showId: string): Promise<WalletSyncResult> {
   try {
     const entries = await requestWalletServer({ method: "DELETE", showId });
     clearPendingOpsForShow(showId);
-    return entries;
+    return { entries, synced: true };
   } catch {
     removeFromWallet(showId);
     upsertPendingOp({
@@ -246,6 +252,6 @@ export async function removeFromWalletServer(showId: string) {
       createdAt: new Date().toISOString()
     });
     emitWalletChangedEvent();
-    return getWalletEntries();
+    return { entries: getWalletEntries(), synced: false };
   }
 }

@@ -240,6 +240,7 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
+  const [walletSynced, setWalletSynced] = useState<boolean | null>(null);
 
   function openShowOverlay(showId: string) {
     setSelectedShowId(showId);
@@ -266,8 +267,11 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
 
   useEffect(() => {
     let cancelled = false;
-    void hydrateWalletFromServer().then((entries) => {
-      if (!cancelled) setWalletEntries(entries);
+    void hydrateWalletFromServer().then((result) => {
+      if (!cancelled) {
+        setWalletEntries(result.entries);
+        setWalletSynced(result.synced);
+      }
     });
     return () => {
       cancelled = true;
@@ -275,15 +279,27 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   }, []);
 
   useEffect(() => {
-    function syncWallet() {
+    let lastFocusSync = 0;
+
+    function syncWalletFromServer() {
+      const now = Date.now();
+      if (now - lastFocusSync < 2000) return;
+      lastFocusSync = now;
+      void hydrateWalletFromServer().then((result) => {
+        setWalletEntries(result.entries);
+        setWalletSynced(result.synced);
+      });
+    }
+
+    function syncWalletFromLocal() {
       setWalletEntries(getWalletEntries());
     }
 
-    window.addEventListener("focus", syncWallet);
-    window.addEventListener("storage", syncWallet);
+    window.addEventListener("focus", syncWalletFromServer);
+    window.addEventListener("storage", syncWalletFromLocal);
     return () => {
-      window.removeEventListener("focus", syncWallet);
-      window.removeEventListener("storage", syncWallet);
+      window.removeEventListener("focus", syncWalletFromServer);
+      window.removeEventListener("storage", syncWalletFromLocal);
     };
   }, []);
 
@@ -422,10 +438,12 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
         <EmptyWalletOnboarding />
       )}
 
-      <p className="footerHint">
-        {hasWalletContent
-          ? "Carteira sincronizada com sua conta. Seus shows ficam disponíveis em qualquer dispositivo."
-          : "Sua carteira começa na busca. Encontre um show e marque como Eu fui ou Eu vou."}
+      <p className={`footerHint ${hasWalletContent && walletSynced === false ? "footerHintOffline" : ""}`}>
+        {!hasWalletContent
+          ? "Sua carteira começa na busca. Encontre um show e marque como Eu fui ou Eu vou."
+          : walletSynced === false
+            ? "Seus shows estão salvos neste dispositivo. A sincronização será retomada automaticamente."
+            : "Carteira sincronizada com sua conta. Seus shows ficam disponíveis em qualquer dispositivo."}
       </p>
 
       {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={closeShowOverlay} isAuthenticated /> : null}
