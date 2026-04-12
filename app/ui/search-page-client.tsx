@@ -173,6 +173,29 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
   });
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
 
+  function openShowOverlay(showId: string) {
+    setSelectedShowId(showId);
+    window.history.pushState({ showOverlay: showId }, "", `/show/${encodeURIComponent(showId)}`);
+  }
+
+  function closeShowOverlay() {
+    setSelectedShowId(null);
+    window.history.pushState({}, "", "/search");
+  }
+
+  useEffect(() => {
+    function handlePopState(event: PopStateEvent) {
+      const state = event.state as { showOverlay?: string } | null;
+      if (state?.showOverlay) {
+        setSelectedShowId(state.showOverlay);
+      } else {
+        setSelectedShowId(null);
+      }
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
   const activeQueryRef = useRef("");
   const noResultLoggedRef = useRef<string>("");
@@ -342,7 +365,7 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
                 show={show}
                 onOpenDetail={(showId) => {
                   trackEvent("show_detail_open", { source: "search_results", show_id: showId });
-                  setSelectedShowId(showId);
+                  openShowOverlay(showId);
                 }}
               />
             ))}
@@ -359,7 +382,7 @@ export function SearchPageClient({ viewer }: { viewer: ViewerProfile }) {
         )}
       </section>
 
-      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={() => setSelectedShowId(null)} /> : null}
+      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={closeShowOverlay} isAuthenticated /> : null}
     </main>
   );
 }
