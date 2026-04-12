@@ -11,11 +11,21 @@ const workSans = Work_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "it's alive",
-  description: "Carteira de shows, memórias e emoções ao vivo.",
+  title: {
+    default: "it's alive – Carteira de shows ao vivo",
+    template: "%s"
+  },
+  description: "Carteira de shows, memórias e emoções ao vivo. Guarde setlists, reviva momentos e compartilhe experiências de shows inesquecíveis.",
   metadataBase: new URL("https://itsalivememories.vercel.app"),
   applicationName: "it's alive",
   manifest: "/manifest.webmanifest",
+  alternates: {
+    canonical: "https://itsalivememories.vercel.app"
+  },
+  robots: {
+    index: true,
+    follow: true
+  },
   icons: {
     icon: [{ url: "/icon", type: "image/png" }],
     apple: [{ url: "/apple-icon", type: "image/png" }],
@@ -25,22 +35,22 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_BR",
     url: "https://itsalivememories.vercel.app",
-    title: "it's alive",
-    description: "Memórias intensas dos seus shows, sempre vivas.",
+    title: "it's alive – Carteira de shows ao vivo",
+    description: "Memórias intensas dos seus shows, sempre vivas. Setlists, detalhes e emoções de cada show que você viveu.",
     siteName: "it's alive",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "it's alive - memórias e emoções ao vivo"
+        alt: "it's alive – memórias e emoções ao vivo"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "it's alive",
-    description: "Guarde cada show como uma lembrança viva.",
+    title: "it's alive – Carteira de shows ao vivo",
+    description: "Guarde cada show como uma lembrança viva. Setlists, detalhes e emoções.",
     images: ["/twitter-image"]
   }
 };
