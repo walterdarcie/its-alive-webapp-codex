@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "Carteira de shows, memórias e emoções ao vivo. Guarde setlists, reviva momentos e compartilhe experiências de shows inesquecíveis.",
   metadataBase: new URL("https://itsalivememories.vercel.app"),
   applicationName: "it's alive",
+  verification: {
+    google: "AwtO1oFc8kE7oUQgG7-JKrwe-MF2nLB__AaNdnhkLzE",
+  },
   manifest: "/manifest.webmanifest",
   alternates: {
     canonical: "https://itsalivememories.vercel.app"
