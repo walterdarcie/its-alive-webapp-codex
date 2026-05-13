@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://itsalivememories.vercel.app"),
   applicationName: "it's alive",
   verification: {
-    google: "GLSVY1-8GghT9vTaWp3GhvT_NOHbMbh9Mj3WuK0Tpz4",
+    google: "wKIQJvYts5_hKfwhaDy5614dnR2-e21c8HLsTN-jikU",
   },
   manifest: "/manifest.webmanifest",
   alternates: {
