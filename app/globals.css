@@ -1300,55 +1300,9 @@ input {
 
 .loginPage {
   min-height: 100dvh;
-  position: relative;
   display: grid;
   place-items: center;
-  overflow: hidden;
   padding: 24px;
-  isolation: isolate;
-  background:
-    radial-gradient(circle at 85% 14%, rgba(255, 47, 146, 0.2), transparent 40%),
-    radial-gradient(circle at 16% 82%, rgba(255, 47, 146, 0.2), transparent 45%),
-    linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-primary) 100%);
-}
-
-.loginAmbientGlow {
-  position: absolute;
-  pointer-events: none;
-  border-radius: 999px;
-  filter: blur(48px);
-  opacity: 0.9;
-  z-index: 0;
-  animation: ambientPulse 7.2s ease-in-out infinite;
-}
-
-.loginAmbientGlowA {
-  width: min(68vw, 540px);
-  height: min(68vw, 540px);
-  top: -12%;
-  right: -18%;
-  background: radial-gradient(circle, rgba(255, 47, 146, 0.48) 0%, rgba(255, 47, 146, 0.14) 40%, transparent 74%);
-}
-
-.loginAmbientGlowB {
-  width: min(72vw, 560px);
-  height: min(72vw, 560px);
-  bottom: -24%;
-  left: -22%;
-  background: radial-gradient(circle, rgba(255, 122, 92, 0.24) 0%, rgba(255, 47, 146, 0.1) 44%, transparent 76%);
-  animation-delay: 0.4s;
-}
-
-.loginLightBeam {
-  position: absolute;
-  inset: -6% -30% 42% -30%;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(255, 122, 92, 0.12), transparent 56%),
-    linear-gradient(160deg, transparent 0%, rgba(255, 47, 146, 0.2) 45%, transparent 100%);
-  filter: blur(24px);
-  animation: beamPulse 6.8s ease-in-out infinite;
 }
 
 .loginCard {

@@ -93,9 +93,6 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
 
   return (
     <main className="loginPage">
-      <div className="loginAmbientGlow loginAmbientGlowA" aria-hidden />
-      <div className="loginAmbientGlow loginAmbientGlowB" aria-hidden />
-      <div className="loginLightBeam" aria-hidden />
 
       <div className="landingContainer">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={180} height={52} className="loginLogo landingLogo" priority />
