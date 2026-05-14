@@ -16,7 +16,7 @@
 | Setlists | Setlist.fm API | Cache in-memory 6h (search) / 24h (detail) |
 | Analytics | Google Analytics 4 (`G-LDQLEFB0DR`) | `trackEvent()` manual + page tracker |
 | Deploy | Vercel (auto-deploy via push no `main`) | Branch `main` = produção |
-| CI | TypeScript + Vitest | Rodam local; Vercel faz o build check |
+| CI | GitHub Actions (Release Quality) | ESLint + Next.js build + Vitest a cada push/PR |
 
 ## Diagrama de sistema
 
@@ -144,6 +144,37 @@ supabase/
   migrations/           ← SQL numerado por timestamp YYYYMMDDHHMMSS
 ```
 
+## Pipeline de CI (GitHub Actions)
+
+Arquivo: `.github/workflows/release-quality.yml`  
+Disparo: todo push em `main` e todo pull request.
+
+### Job 1 — Lint + Build + Unit
+
+| Passo | Comando | Observação |
+|---|---|---|
+| Lint | `npm run lint` | ESLint 8 + `eslint-config-next@14` |
+| Build | `npm run build` | `SETLISTFM_API_KEY=ci-placeholder` |
+| Unit tests | `npm run test:unit` | Vitest 2 — arquivos em `tests/unit/` |
+
+### Job 2 — E2E + Visual QA _(depende do Job 1)_
+
+| Passo | Comando |
+|---|---|
+| E2E | `npm run test:e2e` |
+| Visual QA | `npm run qa:visual` |
+
+Artefatos do Playwright (relatório + screenshots) são retidos por 14 dias.
+
+### Configuração do ESLint
+
+- **Arquivo:** `.eslintrc.json` (formato legado, compatível com ESLint 8)
+- **Config:** `"extends": "next/core-web-vitals"`
+- **Versões:** `eslint@^8` + `eslint-config-next@^14.2.32` — devem ser mantidas em sincronia com a versão do Next.js
+- ESLint 9 usa flat config e é **incompatível** com o `.eslintrc.json` — não atualizar sem migrar o config
+
+---
+
 ## Regras de produção
 
 - **`app/globals.css` é sagrado** — todo CSS vai aqui. Nunca criar CSS Modules, Tailwind ou inline styles de layout.
@@ -152,3 +183,4 @@ supabase/
 - **Server Components** para dados iniciais; **Client Components** para interatividade.
 - **RLS sempre ativo** — nunca criar tabela sem habilitar `row level security`.
 - **TypeScript sem erros** — `tsc --noEmit` deve passar antes de qualquer commit.
+- **CI deve passar** — `npm run lint && npm run build && npm run test:unit` devem ser executados localmente antes de abrir PR.
