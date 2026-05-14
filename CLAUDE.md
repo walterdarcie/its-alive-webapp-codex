@@ -1,5 +1,15 @@
 # it's alive webapp — Claude Code Guide
 
+## Documentação do Projeto
+
+| Documento | Conteúdo |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | Stack, diagrama de sistema, fluxos de auth/wallet/posts, variáveis de ambiente, convenções de arquivos, regras de produção |
+| [docs/database.md](docs/database.md) | Schema completo das tabelas, RLS, índices, triggers, migrações, Storage bucket |
+| [docs/api.md](docs/api.md) | Todos os endpoints com request/response shapes |
+| [docs/components.md](docs/components.md) | Árvore de componentes, props, estado, helpers de lib |
+| [docs/features.md](docs/features.md) | Inventário de features, user flows, regras de negócio |
+
 ## Project Overview
 
 Next.js 14 (App Router) + React 18 + TypeScript 5. Dark-mode only, Portuguese-language music event app. No CSS framework, no component library — vanilla CSS with CSS variables throughout.
