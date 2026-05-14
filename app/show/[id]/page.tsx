@@ -124,7 +124,7 @@ export default async function ShowDetailPage({ params }: { params: { id: string 
       {show ? (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildEventJsonLd(show, pageUrl)) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildEventJsonLd(show, pageUrl)).replace(/</g, "\\u003c") }}
         />
       ) : null}
       <ShowDetailClient id={params.id} initialData={show} isAuthenticated={isAuthenticated} viewer={viewer} />

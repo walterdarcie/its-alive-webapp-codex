@@ -9,6 +9,7 @@
 | [docs/api.md](docs/api.md) | Todos os endpoints com request/response shapes |
 | [docs/components.md](docs/components.md) | Árvore de componentes, props, estado, helpers de lib |
 | [docs/features.md](docs/features.md) | Inventário de features, user flows, regras de negócio |
+| [docs/security.md](docs/security.md) | Revisão de segurança pré-lançamento: vulnerabilidades encontradas, corrigidas e postura geral |
 
 ## Project Overview
 

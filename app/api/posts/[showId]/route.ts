@@ -49,7 +49,8 @@ export async function GET(_request: Request, { params }: { params: { showId: str
   ]);
 
   if (error) {
-    return NextResponse.json({ error: "Failed to load posts", message: error.message }, { status: 500 });
+    console.error("[posts GET] Supabase error:", error.message);
+    return NextResponse.json({ error: "Failed to load posts" }, { status: 500 });
   }
 
   const rows = (posts ?? []) as PostRow[];
@@ -92,6 +93,19 @@ export async function POST(request: Request, { params }: { params: { showId: str
     return NextResponse.json({ error: "Body too long" }, { status: 400 });
   }
 
+  if (body.photoUrl != null) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    const storagePrefix = `${supabaseUrl}/storage/v1/object/public/post-photos/`;
+    try {
+      new URL(body.photoUrl);
+    } catch {
+      return NextResponse.json({ error: "Invalid photo URL" }, { status: 400 });
+    }
+    if (!body.photoUrl.startsWith(storagePrefix)) {
+      return NextResponse.json({ error: "Invalid photo URL" }, { status: 400 });
+    }
+  }
+
   const { name, avatarUrl } = extractViewerProfile(user);
 
   const { data: post, error } = await supabase
@@ -108,7 +122,8 @@ export async function POST(request: Request, { params }: { params: { showId: str
     .single();
 
   if (error) {
-    return NextResponse.json({ error: "Failed to create post", message: error.message }, { status: 500 });
+    console.error("[posts POST] Supabase error:", error.message);
+    return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
   }
 
   return NextResponse.json({ post: mapPost(post as PostRow, new Set()) }, { status: 201 });

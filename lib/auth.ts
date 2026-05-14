@@ -4,7 +4,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/shared";
 
 function isAuthBypassEnabled() {
-  return process.env.BYPASS_AUTH === "1" || process.env.NEXT_PUBLIC_BYPASS_AUTH === "1";
+  if (process.env.NODE_ENV === "production") return false;
+  return process.env.BYPASS_AUTH === "1";
 }
 
 function buildBypassUser(): User {

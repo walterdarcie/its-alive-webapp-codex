@@ -61,7 +61,8 @@ export async function GET() {
     .order("event_date", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: "Failed to load wallet", message: error.message }, { status: 500 });
+    console.error("[wallet GET] Supabase error:", error.message);
+    return NextResponse.json({ error: "Failed to load wallet" }, { status: 500 });
   }
 
   return NextResponse.json(normalizeWalletPayload((data ?? []) as WalletRow[]));
@@ -100,7 +101,8 @@ export async function POST(request: Request) {
   );
 
   if (error) {
-    return NextResponse.json({ error: "Failed to save wallet item", message: error.message }, { status: 500 });
+    console.error("[wallet POST] Supabase error:", error.message);
+    return NextResponse.json({ error: "Failed to save wallet item" }, { status: 500 });
   }
 
   const { data, error: fetchError } = await supabase
@@ -110,7 +112,8 @@ export async function POST(request: Request) {
     .order("event_date", { ascending: false });
 
   if (fetchError) {
-    return NextResponse.json({ error: "Saved, but failed to refresh wallet", message: fetchError.message }, { status: 500 });
+    console.error("[wallet POST] Supabase refresh error:", fetchError.message);
+    return NextResponse.json({ error: "Saved, but failed to refresh wallet" }, { status: 500 });
   }
 
   return NextResponse.json(normalizeWalletPayload((data ?? []) as WalletRow[]));
@@ -134,7 +137,8 @@ export async function DELETE(request: Request) {
 
   const { error } = await supabase.from("wallet_entries").delete().eq("user_id", userId).eq("setlist_id", showId);
   if (error) {
-    return NextResponse.json({ error: "Failed to remove wallet item", message: error.message }, { status: 500 });
+    console.error("[wallet DELETE] Supabase error:", error.message);
+    return NextResponse.json({ error: "Failed to remove wallet item" }, { status: 500 });
   }
 
   const { data, error: fetchError } = await supabase
@@ -144,7 +148,8 @@ export async function DELETE(request: Request) {
     .order("event_date", { ascending: false });
 
   if (fetchError) {
-    return NextResponse.json({ error: "Removed, but failed to refresh wallet", message: fetchError.message }, { status: 500 });
+    console.error("[wallet DELETE] Supabase refresh error:", fetchError.message);
+    return NextResponse.json({ error: "Removed, but failed to refresh wallet" }, { status: 500 });
   }
 
   return NextResponse.json(normalizeWalletPayload((data ?? []) as WalletRow[]));
