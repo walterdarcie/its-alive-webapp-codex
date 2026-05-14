@@ -31,6 +31,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -138,6 +139,16 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
     textareaRef.current?.focus();
   }
 
+  async function deletePost(postId: string) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    setConfirmDeleteId(null);
+    try {
+      await fetch(`/api/posts/${encodeURIComponent(showId)}/${postId}`, { method: "DELETE" });
+    } catch {
+      /* deletion already happened optimistically; silently ignore network errors */
+    }
+  }
+
   async function sharePost(post: Post) {
     const url = `${window.location.origin}/show/${encodeURIComponent(showId)}`;
     try {
@@ -235,6 +246,38 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
                   <p className="feedPostAuthorName">{post.userDisplayName}</p>
                   <span className="feedPostDate">{formatPostDate(post.createdAt)}</span>
                 </div>
+                {viewer?.id === post.userId ? (
+                  confirmDeleteId === post.id ? (
+                    <div className="feedPostDeleteConfirm">
+                      <span className="feedPostDeleteLabel">Excluir?</span>
+                      <button
+                        type="button"
+                        className="feedPostDeleteYes"
+                        onClick={() => void deletePost(post.id)}
+                        aria-label="Confirmar exclusão"
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        className="feedPostDeleteNo"
+                        onClick={() => setConfirmDeleteId(null)}
+                        aria-label="Cancelar exclusão"
+                      >
+                        Não
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="feedPostDeleteBtn"
+                      onClick={() => setConfirmDeleteId(post.id)}
+                      aria-label="Excluir relato"
+                    >
+                      <TrashIcon />
+                    </button>
+                  )
+                ) : null}
               </div>
 
               {post.photoUrl ? (
@@ -330,6 +373,17 @@ function CloseSmIcon() {
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className="iconSvg">
       <path
         d="m18.3 5.71-1.41-1.42L12 9.17 7.11 4.29 5.7 5.71 10.59 10.6 5.7 15.49l1.41 1.41L12 12l4.89 4.9 1.41-1.41-4.89-4.89 4.89-4.89Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className="iconSvg">
+      <path
+        d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12ZM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"
         fill="currentColor"
       />
     </svg>
