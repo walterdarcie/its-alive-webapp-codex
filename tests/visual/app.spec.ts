@@ -48,7 +48,7 @@ test("detail visual QA", async ({ page }, testInfo) => {
 
   const detailSheet = page.locator(".detailSheetOverlay");
   await expect(detailSheet).toBeVisible();
-  await expect(page.getByRole("button", { name: /fechar detalhes/i })).toBeVisible();
+  await expect(page.locator(".detailOverlayContainer").getByLabel("Fechar detalhes")).toBeVisible();
 
   await attachScreenshot(page, testInfo, "detail.png");
 });
