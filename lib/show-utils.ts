@@ -36,3 +36,10 @@ export function daysUntilShow(eventDateIso: string) {
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+const MONTHS_PT_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+export function formatPostDate(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp);
+  return `${date.getDate()} ${MONTHS_PT_SHORT[date.getMonth()]} ${date.getFullYear()}`;
+}
+

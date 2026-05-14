@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
-import type { ShowRecord } from "@/lib/show-types";
+import type { ShowRecord, Viewer } from "@/lib/show-types";
 import { formatVenueLine } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
@@ -390,7 +390,15 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
         )}
       </section>
 
-      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={closeShowOverlay} isAuthenticated={isAuthenticated} /> : null}
+      {selectedShowId ? (
+        <ShowDetailClient
+          id={selectedShowId}
+          mode="overlay"
+          onClose={closeShowOverlay}
+          isAuthenticated={isAuthenticated}
+          viewer={viewer ? ({ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer) : null}
+        />
+      ) : null}
     </main>
   );
 }

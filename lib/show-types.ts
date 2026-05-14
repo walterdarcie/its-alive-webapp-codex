@@ -1,5 +1,11 @@
 export type WalletStatus = "going" | "went";
 
+export type Viewer = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+};
+
 export type ShowRecord = {
   id: string;
   artist: string;

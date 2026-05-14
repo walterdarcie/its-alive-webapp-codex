@@ -46,6 +46,7 @@ export async function requireServerUser() {
 }
 
 export type ViewerProfile = {
+  id: string;
   name: string;
   email: string;
   avatarUrl: string | null;
@@ -65,6 +66,7 @@ export function extractViewerProfile(user: User): ViewerProfile {
     null;
 
   return {
+    id: user.id,
     name: rawName,
     email: user.email ?? "",
     avatarUrl

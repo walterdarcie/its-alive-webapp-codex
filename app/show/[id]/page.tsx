@@ -3,8 +3,8 @@ import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import { getSetlistById } from "@/lib/setlist-api";
 import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
 import { formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
-import type { ShowDetailRecord } from "@/lib/show-types";
-import { getServerUser } from "@/lib/auth";
+import type { ShowDetailRecord, Viewer } from "@/lib/show-types";
+import { extractViewerProfile, getServerUser } from "@/lib/auth";
 
 const DETAIL_TTL_WITH_SETLIST_MS = 1000 * 60 * 60 * 24;
 const DETAIL_TTL_EMPTY_SETLIST_MS = 1000 * 60 * 5;
@@ -113,6 +113,12 @@ export default async function ShowDetailPage({ params }: { params: { id: string 
   const isAuthenticated = !!user;
   const pageUrl = `${SITE_URL}/show/${params.id}`;
 
+  let viewer: Viewer | null = null;
+  if (user) {
+    const { name, avatarUrl } = extractViewerProfile(user);
+    viewer = { id: user.id, name, avatarUrl };
+  }
+
   return (
     <>
       {show ? (
@@ -121,7 +127,7 @@ export default async function ShowDetailPage({ params }: { params: { id: string 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(buildEventJsonLd(show, pageUrl)) }}
         />
       ) : null}
-      <ShowDetailClient id={params.id} initialData={show} isAuthenticated={isAuthenticated} />
+      <ShowDetailClient id={params.id} initialData={show} isAuthenticated={isAuthenticated} viewer={viewer} />
     </>
   );
 }

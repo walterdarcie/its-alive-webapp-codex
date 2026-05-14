@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import type { ShowDetailRecord, ShowRecord } from "@/lib/show-types";
+import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
 import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletShow, isSavedInWallet, removeFromWalletServer, saveToWalletServer } from "@/lib/wallet-storage";
 import { trackEvent } from "@/lib/analytics";
+import { ShowFeedClient } from "@/app/ui/show-feed-client";
 
 type ShowDetailClientProps = {
   id: string;
@@ -15,6 +16,7 @@ type ShowDetailClientProps = {
   onClose?: () => void;
   initialData?: ShowDetailRecord | null;
   isAuthenticated?: boolean;
+  viewer?: Viewer | null;
 };
 
 function buildDetailPhotoStyle(imageUrl: string): CSSProperties {
@@ -26,7 +28,7 @@ function buildDetailPhotoStyle(imageUrl: string): CSSProperties {
   };
 }
 
-export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAuthenticated = true }: ShowDetailClientProps) {
+export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAuthenticated = true, viewer = null }: ShowDetailClientProps) {
   const [show, setShow] = useState<ShowDetailRecord | null>(initialData ?? null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -396,6 +398,8 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
           )}
         </div>
       </div>
+
+      <ShowFeedClient showId={id} viewer={viewer ?? null} />
     </section>
   ) : loading ? (
     <p className="emptyBox">Carregando show...</p>

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import type { ShowRecord } from "@/lib/show-types";
+import type { ShowRecord, Viewer } from "@/lib/show-types";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletEntries, hydrateWalletFromServer, type WalletEntry } from "@/lib/wallet-storage";
@@ -446,7 +446,15 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
             : "Carteira sincronizada com sua conta. Seus shows ficam disponíveis em qualquer dispositivo."}
       </p>
 
-      {selectedShowId ? <ShowDetailClient id={selectedShowId} mode="overlay" onClose={closeShowOverlay} isAuthenticated /> : null}
+      {selectedShowId ? (
+        <ShowDetailClient
+          id={selectedShowId}
+          mode="overlay"
+          onClose={closeShowOverlay}
+          isAuthenticated
+          viewer={{ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer}
+        />
+      ) : null}
     </main>
   );
 }
