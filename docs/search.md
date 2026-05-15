@@ -124,18 +124,20 @@ Mesma função usada pelo parser em `findKnownArtistFromPrefix`.
 **Como popular a tabela com o dump do MusicBrainz (~3 M artistas):**
 
 ```bash
-# 1. Baixar o dump (≈ 500 MB comprimido)
-curl -O https://data.metabrainz.org/pub/musicbrainz/data/json-dumps/latest/mbdump-artist.tar.bz2
+# 1. Baixar o dump (≈ 1,6 GB — veja a data mais recente em
+#    https://data.metabrainz.org/pub/musicbrainz/data/json-dumps/)
+curl -L -o /tmp/mb-artist.tar.xz \
+  "https://data.metabrainz.org/pub/musicbrainz/data/json-dumps/20260513-001002/artist.tar.xz"
 
-# 2. Extrair o arquivo NDJSON interno
-tar -xjf mbdump-artist.tar.bz2 mbdump/artist
+# 2. Extrair o arquivo NDJSON interno (mbdump/artist)
+tar -xJf /tmp/mb-artist.tar.xz -C /tmp mbdump/artist
 
 # 3. Configurar env vars
 export NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co"
 export SUPABASE_SERVICE_ROLE_KEY="eyJ..."
 
 # 4. Rodar o script (≈ 20–40 min)
-npx tsx scripts/import-musicbrainz-artists.ts mbdump/artist
+npx tsx scripts/import-musicbrainz-artists.ts /tmp/mbdump/artist
 ```
 
 O script é idempotente (`ON CONFLICT DO NOTHING`) e pode ser re-executado.

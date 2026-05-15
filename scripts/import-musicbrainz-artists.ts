@@ -3,18 +3,20 @@
  *
  * Como usar:
  *
- * 1. Baixe o dump de artistas do MusicBrainz:
- *    curl -O https://data.metabrainz.org/pub/musicbrainz/data/json-dumps/latest/mbdump-artist.tar.bz2
+ * 1. Baixe o dump de artistas do MusicBrainz (veja a data mais recente em
+ *    https://data.metabrainz.org/pub/musicbrainz/data/json-dumps/):
+ *    curl -L -o /tmp/mb-artist.tar.xz \
+ *      "https://data.metabrainz.org/pub/musicbrainz/data/json-dumps/20260513-001002/artist.tar.xz"
  *
- * 2. Extraia o arquivo interno (requer bunzip2 e tar):
- *    tar -xjf mbdump-artist.tar.bz2 mbdump/artist
+ * 2. Extraia o arquivo interno (requer xz e tar):
+ *    tar -xJf /tmp/mb-artist.tar.xz -C /tmp mbdump/artist
  *
  * 3. Defina as variáveis de ambiente:
  *    export NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co"
  *    export SUPABASE_SERVICE_ROLE_KEY="eyJ..."
  *
  * 4. Rode o script:
- *    npx tsx scripts/import-musicbrainz-artists.ts mbdump/artist
+ *    npx tsx scripts/import-musicbrainz-artists.ts /tmp/mbdump/artist
  *
  * O script é idempotente: usa ON CONFLICT DO NOTHING, pode ser re-executado sem duplicar dados.
  * Tempo estimado: 20–40 min para ~3 M de artistas (limitado pela rede para o Supabase).
