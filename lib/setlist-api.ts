@@ -405,8 +405,10 @@ function scoreArtistAgainstPrefix(prefix: string, artist: ArtistCandidate, prefi
 
   if (nameNorm === prefixNorm) return STRONG_ARTIST_MATCH_SCORE + wordBonus;
   if (sortNorm === prefixNorm) return STRONG_ARTIST_MATCH_SCORE - 100 + wordBonus;
-  if (nameNorm.startsWith(prefixNorm) && nameNorm.length - prefixNorm.length <= 4) {
-    return 600 + wordBonus;
+  if (nameNorm.startsWith(prefixNorm)) {
+    const remaining = nameNorm.length - prefixNorm.length;
+    if (remaining <= 4) return 600 + wordBonus;
+    if (prefixNorm.length >= 4) return 480 + wordBonus;
   }
   if (prefixNorm.startsWith(nameNorm) && nameNorm.length >= 3) {
     return MIN_ACCEPTABLE_ARTIST_SCORE + wordBonus;

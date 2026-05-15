@@ -162,6 +162,17 @@ describe("scoreArtistAgainstPrefix", () => {
     );
     expect(threeWords).toBeGreaterThan(oneWord);
   });
+
+  it("scores partial mid-word prefix match above MIN_ACCEPTABLE threshold", () => {
+    // "hayley wi" while typing "Hayley Williams" — diff of 6 normalized chars
+    const score = scoreArtistAgainstPrefix("hayley wi", { mbid: "c", name: "Hayley Williams", sortName: "Williams, Hayley" }, 2);
+    expect(score).toBeGreaterThanOrEqual(400);
+  });
+
+  it("ignores very short prefixes (< 4 chars) for partial matches", () => {
+    const score = scoreArtistAgainstPrefix("hay", { mbid: "d", name: "Hayley Williams", sortName: "" }, 1);
+    expect(score).toBe(0);
+  });
 });
 
 // === Integration tests for the searchSetlists pipeline ===
