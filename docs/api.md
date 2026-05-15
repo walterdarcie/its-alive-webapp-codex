@@ -59,7 +59,7 @@ Remove um show da wallet.
 
 ### `GET /api/setlists/search?searchTerm={q}&p={page}`
 
-Busca shows no Setlist.fm. Cache in-memory de 6h.
+Busca shows no Setlist.fm. Cache in-memory de 6h. O pipeline interno (parsing, resolução de MBID, fallbacks) está documentado em [docs/search.md](search.md).
 
 **Auth:** Não.
 

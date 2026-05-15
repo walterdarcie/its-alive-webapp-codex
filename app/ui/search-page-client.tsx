@@ -351,15 +351,16 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
         </div>
 
         <div className="searchMetaBar">
-          <span className="muted">Use: artista ou local, cidade, país, ano (vírgulas) para busca precisa</span>
+          <span className="muted">Busque por artista, ou combine com cidade, país e ano. Vírgulas ajudam, mas não são obrigatórias.</span>
         </div>
 
         {normalizedQuery.length < 2 ? (
           <p className="emptyBox">
             Exemplos: <br />
             <strong>guns n&apos; roses</strong> <br />
-            <strong>guns n&apos; roses, são paulo, brasil, 2022</strong> <br />
-            <strong>&quot;guns n&apos; roses&quot; em são paulo 2022</strong>
+            <strong>iron maiden curitiba 2019</strong> <br />
+            <strong>foo fighters lollapalooza</strong> <br />
+            <strong>guns n&apos; roses, são paulo, brasil, 2022</strong>
           </p>
         ) : searchLoading ? (
           <p className="emptyBox">Buscando shows...</p>
@@ -385,7 +386,7 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
           <p className="emptyBox">
             Nenhum resultado encontrado para essa busca.
             <br />
-            Tente: <strong>artista, cidade, país, ano</strong> (ex.: <strong>guns n&apos; roses, são paulo, brasil, 2022</strong>).
+            Tente apenas o artista (ex.: <strong>iron maiden</strong>) ou adicione cidade, país e ano (ex.: <strong>iron maiden curitiba 2019</strong>).
           </p>
         )}
       </section>
