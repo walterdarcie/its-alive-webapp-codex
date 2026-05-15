@@ -2,6 +2,7 @@ import { mapSetlistToShowDetailRecord, mapSetlistToShowRecord, type SetlistFmSet
 import type { ShowRecord } from "@/lib/show-types";
 import { resolveArtistImage } from "@/lib/artist-image";
 import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
+import { getKnownArtistsClient } from "@/lib/supabase/known-artists-client";
 
 const BASE_URL = "https://api.setlist.fm/rest/1.0";
 
@@ -439,6 +440,67 @@ function findKnownArtistFromPrefix(coreText: string): ResolvedArtistMatch | null
   return null;
 }
 
+async function lookupArtistInDb(coreText: string): Promise<ResolvedArtistMatch | null> {
+  const supabase = getKnownArtistsClient();
+  if (!supabase) return null;
+
+  const normalized = normalizeSearchText(coreText);
+  if (!normalized) return null;
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+
+  const prefixes: string[] = [];
+  for (let take = words.length; take >= 1; take -= 1) {
+    const prefix = words.slice(0, take).join(" ");
+    const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
+    if (key) prefixes.push(key);
+  }
+  if (!prefixes.length) return null;
+
+  const cacheKey = `known_artist_db:${prefixes[0]}`;
+  const cached = getCacheValue<ResolvedArtistMatch>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const { data, error } = await supabase
+      .from("known_artists")
+      .select("mbid, canonical_name, name_normalized")
+      .in("name_normalized", prefixes)
+      .limit(prefixes.length);
+
+    if (error || !data || data.length === 0) return null;
+
+    const dataMap = new Map(data.map((row) => [row.name_normalized as string, row]));
+
+    for (let take = words.length; take >= 1; take -= 1) {
+      const prefix = words.slice(0, take).join(" ");
+      const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
+      const match = dataMap.get(key);
+      if (match) {
+        const result: ResolvedArtistMatch = {
+          mbid: match.mbid as string,
+          name: match.canonical_name as string,
+          matchedPrefix: prefix,
+          remaining: words.slice(take).join(" ").trim(),
+          score: STRONG_ARTIST_MATCH_SCORE + take * 20
+        };
+        setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
+        return result;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+async function findKnownArtistFromPrefixWithDb(coreText: string): Promise<ResolvedArtistMatch | null> {
+  const hardcoded = findKnownArtistFromPrefix(coreText);
+  if (hardcoded) return hardcoded;
+  return lookupArtistInDb(coreText);
+}
+
 async function resolveArtistCandidatesFromCore(coreText: string): Promise<ResolvedArtistMatch[]> {
   const normalized = normalizeSearchText(coreText);
   if (!normalized) return [];
@@ -448,7 +510,7 @@ async function resolveArtistCandidatesFromCore(coreText: string): Promise<Resolv
 
   const matches = new Map<string, ResolvedArtistMatch>();
 
-  const known = findKnownArtistFromPrefix(coreText);
+  const known = await findKnownArtistFromPrefixWithDb(coreText);
   if (known) {
     matches.set(known.mbid, known);
   }
@@ -887,7 +949,7 @@ async function runFreeFormFlow(parsed: StructuredQuery, pageOneBased: number): P
     return emptyResultFor(pageOneBased);
   }
 
-  const knownShortcut = coreText ? findKnownArtistFromPrefix(coreText) : null;
+  const knownShortcut = coreText ? await findKnownArtistFromPrefixWithDb(coreText) : null;
   if (knownShortcut) {
     const remaining = knownShortcut.remaining;
     const plan: SearchPlan = remaining

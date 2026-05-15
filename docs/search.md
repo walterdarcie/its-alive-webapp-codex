@@ -87,23 +87,58 @@ A função `tryPlansUntilHit` retorna no primeiro plano que devolve `shows.lengt
 | `metallica \| chicago \| usa` | Pipes funcionam como vírgulas |
 | `acdc` / `ac dc` / `gnr` | Aliases reescritos para AC/DC, Guns N' Roses |
 
-## MBIDs canônicos hardcoded
+## Resolução de MBID canônico — tabela `known_artists`
 
-Lista em `KNOWN_ARTIST_MBIDS` no topo de `lib/setlist-api.ts`. Existe para:
+O map `KNOWN_ARTIST_MBIDS` (hardcoded em `lib/setlist-api.ts`) foi complementado por uma tabela Supabase populada com o dump do MusicBrainz. A lógica é:
 
-1. **Eliminar ambiguidade** quando o setlist.fm tem múltiplas entradas com o mesmo nome (Iron Maiden, AC/DC etc.).
-2. **Reduzir custo** — pula a chamada a `/search/artists` quando o artista está mapeado.
-3. **Eliminar tribute bands** no resultado: `?artistMbid=...` retorna só a banda canônica; `?artistName=ac/dc` retorna substring matches que incluem "AC/DC UK", "Live/Wire — The AC/DC Show" etc.
+1. `findKnownArtistFromPrefixWithDb(coreText)` — tenta o map hardcoded (22 artistas de alta prioridade, sem rede), depois consulta o Supabase.
+2. `lookupArtistInDb(coreText)` — monta todos os prefixos possíveis do texto e faz um único `SELECT … WHERE name_normalized IN (…)` com índice B-tree (`text_pattern_ops`). Resultado cacheado 24h em memória.
 
-**Como adicionar um novo artista ao map:**
+A tabela existe para:
 
-1. Buscar o MBID em <https://musicbrainz.org/> (campo "MBID" do artista).
-2. Confirmar que o MBID retorna setlists em `https://api.setlist.fm/rest/1.0/search/setlists?artistMbid={mbid}`.
-3. Adicionar ao map com a chave em lowercase, sem acentos nem apóstrofos:
-   ```ts
-   "the killers": { mbid: "95e1ead9-...", name: "The Killers" }
-   ```
-4. Adicionar caso de teste em `tests/unit/setlist-api.test.ts` (`findKnownArtistFromPrefix`).
+1. **Eliminar ambiguidade** — `?artistMbid=...` retorna só o artista canônico; `?artistName=ac/dc` inclui tribute bands.
+2. **Reduzir chamadas à API do setlist.fm** — pula o endpoint `/search/artists` quando o artista está na tabela.
+3. **Escala** — centenas de milhares de artistas sem custo de bundle nem memória em excesso.
+
+**Schema:** `supabase/migrations/20260515000000_known_artists.sql`
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `mbid` | TEXT PK | MusicBrainz ID |
+| `canonical_name` | TEXT | Nome oficial do artista |
+| `name_normalized` | TEXT | lowercase, sem diacríticos, sem apóstrofos |
+
+**Normalização de `name_normalized`:**
+```
+normalizeLoose(name).replace(/['''`"]/g, "")
+```
+Mesma função usada pelo parser em `findKnownArtistFromPrefix`.
+
+**Como adicionar um artista individualmente:**
+
+1. Buscar o MBID em <https://musicbrainz.org/>.
+2. Confirmar que retorna setlists: `https://api.setlist.fm/rest/1.0/search/setlists?artistMbid={mbid}`.
+3. Se for um artista de alta prioridade / desambiguação conhecida, adicionar ao map hardcoded `KNOWN_ARTIST_MBIDS` em `lib/setlist-api.ts`.
+4. Para artistas comuns, basta inserir na tabela (a importação do MusicBrainz já cobre a maioria).
+
+**Como popular a tabela com o dump do MusicBrainz (~3 M artistas):**
+
+```bash
+# 1. Baixar o dump (≈ 500 MB comprimido)
+curl -O https://data.metabrainz.org/pub/musicbrainz/data/json-dumps/latest/mbdump-artist.tar.bz2
+
+# 2. Extrair o arquivo NDJSON interno
+tar -xjf mbdump-artist.tar.bz2 mbdump/artist
+
+# 3. Configurar env vars
+export NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="eyJ..."
+
+# 4. Rodar o script (≈ 20–40 min)
+npx tsx scripts/import-musicbrainz-artists.ts mbdump/artist
+```
+
+O script é idempotente (`ON CONFLICT DO NOTHING`) e pode ser re-executado.
 
 ## Cache
 

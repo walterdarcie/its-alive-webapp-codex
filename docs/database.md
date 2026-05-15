@@ -92,12 +92,36 @@ Registro de curtidas. Cada par `(post_id, user_id)` é único.
 
 ---
 
+---
+
+### `known_artists`
+
+Cache de artistas do MusicBrainz usado para resolução de MBID sem chamar `setlist.fm /search/artists`.
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| `mbid` | `text` | PK — MusicBrainz ID |
+| `canonical_name` | `text` | Nome oficial do artista |
+| `name_normalized` | `text` | lowercase, sem diacríticos, sem apóstrofos |
+
+**Índices:**
+- `known_artists_name_prefix_idx` ON `(name_normalized text_pattern_ops)` — lookup exato e LIKE 'prefix%'
+- `known_artists_trgm_idx` USING GIN `(name_normalized gin_trgm_ops)` — similaridade/autocomplete futuro
+
+**RLS:** SELECT público (`USING (true)`). Escrita apenas via service role key (script de importação).
+
+**Populado por:** `scripts/import-musicbrainz-artists.ts` (dump do MusicBrainz, ~3M artistas).
+Ver `docs/search.md` para instruções de importação.
+
+---
+
 ## Migrações
 
 | Arquivo | O que faz |
 |---|---|
 | `20260228161000_wallet_entries.sql` | Cria `wallet_entries`, índice, trigger de `updated_at`, RLS |
 | `20260514120000_show_posts.sql` | Cria `show_posts`, `post_likes`, trigger de `like_count`, RLS, bucket `post-photos` |
+| `20260515000000_known_artists.sql` | Cria `known_artists`, extensão `pg_trgm`, índices B-tree e trigrama, RLS pública, seed com 23 artistas |
 
 As migrations são idempotentes (`create table if not exists`, `drop trigger if exists`, `drop policy if exists`).
 
