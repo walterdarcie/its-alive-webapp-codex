@@ -468,24 +468,59 @@ async function lookupArtistInDb(coreText: string): Promise<ResolvedArtistMatch |
       .in("name_normalized", prefixes)
       .limit(prefixes.length);
 
-    if (error || !data || data.length === 0) return null;
+    if (!error && data && data.length > 0) {
+      const dataMap = new Map(data.map((row) => [row.name_normalized as string, row]));
 
-    const dataMap = new Map(data.map((row) => [row.name_normalized as string, row]));
+      for (let take = words.length; take >= 1; take -= 1) {
+        const prefix = words.slice(0, take).join(" ");
+        const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
+        const match = dataMap.get(key);
+        if (match) {
+          const result: ResolvedArtistMatch = {
+            mbid: match.mbid as string,
+            name: match.canonical_name as string,
+            matchedPrefix: prefix,
+            remaining: words.slice(take).join(" ").trim(),
+            score: STRONG_ARTIST_MATCH_SCORE + take * 20
+          };
+          setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
+          return result;
+        }
+      }
+    }
 
-    for (let take = words.length; take >= 1; take -= 1) {
-      const prefix = words.slice(0, take).join(" ");
-      const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
-      const match = dataMap.get(key);
-      if (match) {
-        const result: ResolvedArtistMatch = {
-          mbid: match.mbid as string,
-          name: match.canonical_name as string,
-          matchedPrefix: prefix,
-          remaining: words.slice(take).join(" ").trim(),
-          score: STRONG_ARTIST_MATCH_SCORE + take * 20
-        };
-        setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
-        return result;
+    // Prefix LIKE match: handles partial last word, e.g. "tame imp" → "tame impala".
+    // The text_pattern_ops B-tree index on name_normalized makes this efficient.
+    const longestKey = prefixes[0];
+    if (longestKey && longestKey.length >= 3) {
+      const { data: likeData } = await supabase
+        .from("known_artists")
+        .select("mbid, canonical_name, name_normalized")
+        .like("name_normalized", `${longestKey}%`)
+        .limit(5);
+
+      if (likeData && likeData.length > 0) {
+        const queryNorm = normalizeArtistNameForMatch(longestKey);
+        const best = likeData
+          .map((row) => ({
+            mbid: row.mbid as string,
+            name: row.canonical_name as string,
+            nameNorm: normalizeArtistNameForMatch(row.canonical_name as string)
+          }))
+          .filter((c) => c.nameNorm.startsWith(queryNorm))
+          .sort((a, b) => a.nameNorm.length - b.nameNorm.length)[0];
+
+        if (best) {
+          const result: ResolvedArtistMatch = {
+            mbid: best.mbid,
+            name: best.name,
+            matchedPrefix: longestKey,
+            remaining: "",
+            score: STRONG_ARTIST_MATCH_SCORE
+          };
+          setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
+          return result;
+        }
       }
     }
   } catch {

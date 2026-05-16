@@ -263,7 +263,7 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
       } finally {
         if (!isCancelled) setSearchLoading(false);
       }
-    }, 420);
+    }, 700);
 
     return () => {
       isCancelled = true;
