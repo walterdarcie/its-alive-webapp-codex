@@ -324,7 +324,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
           </button>
           {show.ticketUrl && isFutureOrTodayShow(show.eventDateIso) ? (
             <a
-              className="chip"
+              className="chip chipSecondary"
               href={show.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
