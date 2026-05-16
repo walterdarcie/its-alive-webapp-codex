@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
 
   try {
     if (pageNum === 0) {
-      const artistName = extractArtistForUpcoming(searchTerm);
       const yearFilter = extractYearFromSearchTerm(searchTerm);
       // Ticketmaster só retorna shows futuros. Se o usuário pediu um ano no passado,
       // o merge polui o ranking (futuros sobem antes dos passados) e a busca por ano
@@ -42,11 +41,16 @@ export async function GET(request: NextRequest) {
       // ano pedido é o atual ou futuro.
       const currentYear = new Date().getUTCFullYear();
       const yearAllowsUpcoming = !yearFilter || Number(yearFilter) >= currentYear;
-      const shouldFetchUpcoming = Boolean(artistName) && yearAllowsUpcoming;
 
       const [setlistPayload, upcomingShowsRaw] = await Promise.all([
         searchSetlists(searchTerm, 0),
-        shouldFetchUpcoming ? searchUpcomingByArtist(artistName) : Promise.resolve([] as ShowRecord[])
+        yearAllowsUpcoming
+          ? (async () => {
+              const artistName = await extractArtistForUpcoming(searchTerm);
+              if (!artistName) return [] as ShowRecord[];
+              return searchUpcomingByArtist(artistName);
+            })()
+          : Promise.resolve([] as ShowRecord[])
       ]);
 
       const upcomingShows = yearFilter
@@ -90,7 +94,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           {
             error: "Busca temporariamente limitada",
-            message: "Muitas buscas em sequência. Aguarde alguns segundos e tente novamente."
+            message: "Muitas buscas seguidas. Respira um segundo e tenta de novo."
           },
           { status: 429 }
         );
@@ -99,7 +103,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Falha ao buscar shows",
-          message: "Não foi possível buscar agora. Tente outra combinação (artista, cidade, país, ano)."
+          message: "Não conseguimos buscar agora. Tenta com artista, cidade ou ano separados."
         },
         { status: 502 }
       );
@@ -109,7 +113,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Falha ao buscar shows",
-        message: "Erro interno temporário ao consultar a busca.",
+        message: "Algo deu errado por aqui. Tenta novamente em instantes.",
         details: message
       },
       { status: 500 }

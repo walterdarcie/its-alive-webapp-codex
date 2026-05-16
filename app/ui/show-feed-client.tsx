@@ -82,7 +82,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("post-photos")
           .upload(path, photoFile, { contentType: photoFile.type });
-        if (uploadError) throw new Error("Falha ao enviar foto. Tente novamente.");
+        if (uploadError) throw new Error("Não conseguimos enviar a foto. Tente novamente.");
         const {
           data: { publicUrl }
         } = supabase.storage.from("post-photos").getPublicUrl(uploadData.path);
@@ -95,13 +95,13 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
         body: JSON.stringify({ body: body.trim(), photoUrl })
       });
       const data = (await res.json()) as { post?: Post; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Falha ao publicar");
+      if (!res.ok) throw new Error(data.error ?? "Não conseguimos guardar sua memória. Tente novamente.");
 
       if (data.post) setPosts((prev) => [data.post!, ...prev]);
       setBody("");
       removePhoto();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Falha ao publicar");
+      setSubmitError(err instanceof Error ? err.message : "Não conseguimos guardar sua memória. Tente novamente.");
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +165,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
   return (
     <section className="showFeed">
       <div className="feedSectionHeader">
-        <h2 className="feedSectionTitle">Comunidade</h2>
+        <h2 className="feedSectionTitle">Quem foi</h2>
         {posts.length > 0 ? <span className="feedPostCount">{posts.length}</span> : null}
       </div>
 
@@ -183,12 +183,12 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
               <textarea
                 ref={textareaRef}
                 className="newPostTextarea"
-                placeholder="O que você achou do show? Compartilhe sua memória..."
+                placeholder="Como foi estar lá? Conte como você se sentiu..."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 maxLength={1000}
                 rows={3}
-                aria-label="Novo relato do show"
+                aria-label="Compartilhar memória do show"
               />
               {photoPreview ? (
                 <div className="newPostPhotoPreview">
@@ -207,7 +207,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
                   Foto
                 </button>
                 <button type="submit" className="newPostSubmitBtn" disabled={!body.trim() || submitting}>
-                  {submitting ? "Publicando..." : "Publicar"}
+                  {submitting ? "Guardando memória..." : "Guardar memória"}
                 </button>
               </div>
               <input
@@ -222,14 +222,14 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
         </form>
       ) : (
         <p className="feedLoginPrompt">
-          <a href={`/signin?next=${encodeURIComponent(`/show/${showId}`)}`}>Entre</a> para compartilhar sua experiência no show.
+          <a href={`/signin?next=${encodeURIComponent(`/show/${showId}`)}`}>Entre</a> para guardar sua memória deste show.
         </p>
       )}
 
       {loading ? (
-        <p className="feedEmpty">Carregando relatos...</p>
+        <p className="feedEmpty">Carregando memórias...</p>
       ) : posts.length === 0 ? (
-        <p className="feedEmpty">Nenhum relato ainda. Seja o primeiro a compartilhar!</p>
+        <p className="feedEmpty">Ninguém escreveu ainda. Você foi lá — conta como foi!</p>
       ) : (
         <ul className="feedList">
           {posts.map((post) => (
@@ -282,7 +282,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
 
               {post.photoUrl ? (
                 <div className="feedPostPhoto">
-                  <Image src={post.photoUrl} alt="Foto do show" fill sizes="(max-width: 720px) 100vw, 430px" style={{ objectFit: "cover" }} loading="lazy" />
+                  <Image src={post.photoUrl} alt={`Foto do show por ${post.userDisplayName}`} fill sizes="(max-width: 720px) 100vw, 430px" style={{ objectFit: "cover" }} loading="lazy" />
                 </div>
               ) : null}
 

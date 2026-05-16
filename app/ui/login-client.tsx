@@ -52,7 +52,7 @@ function getErrorMessageByKey(errorKey?: string) {
     return "Ambiente de autenticação não configurado no deploy. Verifique as variáveis do Supabase no Vercel.";
   }
   if (errorKey === "oauth_callback_failed") {
-    return "Falha no retorno do login com Google. Tente novamente em alguns segundos.";
+    return "Algo deu errado no login com Google. Aguarda um segundo e tenta de novo.";
   }
   return null;
 }
@@ -81,7 +81,7 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
       }
     } catch (signInError) {
       trackEvent("login_google_error", { source: "landing_page" });
-      setError(signInError instanceof Error ? signInError.message : "Não foi possível iniciar o login com Google.");
+      setError(signInError instanceof Error ? signInError.message : "Não conseguimos conectar com o Google. Tenta de novo?");
       setLoading(false);
     }
   }
@@ -99,13 +99,13 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
 
         <section className="landingBlock landingBlockSearch">
           <div className="loginCopy">
-            <h1 className="loginTitle">Encontre qualquer show. Reviva cada setlist.</h1>
-            <p className="loginSubtitle">Busque por artista, cidade ou ano e descubra tudo sobre os shows que você viveu.</p>
+            <h1 className="loginTitle">Você estava lá. Nunca esqueça.</h1>
+            <p className="loginSubtitle">Busque por artista, cidade ou ano e reviva cada momento dos shows que marcaram você.</p>
           </div>
 
           <button type="button" className="landingSearchCta" onClick={handleSearchClick}>
             <SearchIcon />
-            <span className="landingSearchCtaLabel">Buscar shows</span>
+            <span className="landingSearchCtaLabel">Encontrar shows</span>
           </button>
         </section>
 
@@ -116,7 +116,7 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
         </div>
 
         <section className="landingBlock landingBlockLogin">
-          <p className="landingLoginHint">Entre para salvar shows na sua carteira e acessar de qualquer dispositivo.</p>
+          <p className="landingLoginHint">Entre para guardar suas memórias e acessá-las de qualquer lugar.</p>
 
           <button type="button" className={`ctaMain loginGoogleButton loginGoogleButtonSecondary ${loading ? "isLoading" : ""}`} onClick={onGoogleLogin} disabled={loading}>
             <span className="loginGoogleIcon">

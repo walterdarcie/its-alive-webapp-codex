@@ -198,31 +198,35 @@ describe("scoreArtistAgainstPrefix", () => {
 });
 
 describe("extractArtistForUpcoming", () => {
-  it("returns the explicit artist from a comma-separated query", () => {
-    expect(extractArtistForUpcoming("foo fighters, são paulo, brasil, 2025")).toBe("foo fighters");
+  it("returns the explicit artist from a comma-separated query", async () => {
+    expect(await extractArtistForUpcoming("foo fighters, são paulo, brasil, 2025")).toBe("foo fighters");
   });
 
-  it("returns the explicit artist from an 'em' query", () => {
-    expect(extractArtistForUpcoming("iron maiden em curitiba")).toBe("iron maiden");
+  it("returns the explicit artist from an 'em' query", async () => {
+    expect(await extractArtistForUpcoming("iron maiden em curitiba")).toBe("iron maiden");
   });
 
-  it("returns the canonical name for a known artist prefix", () => {
-    expect(extractArtistForUpcoming("metallica")).toBe("Metallica");
-    expect(extractArtistForUpcoming("iron maiden")).toBe("Iron Maiden");
+  it("returns the canonical name for a known artist prefix", async () => {
+    expect(await extractArtistForUpcoming("metallica")).toBe("Metallica");
+    expect(await extractArtistForUpcoming("iron maiden")).toBe("Iron Maiden");
   });
 
-  it("returns the full query for a short free-form term (≤ 3 words)", () => {
-    expect(extractArtistForUpcoming("some band")).toBe("some band");
-    expect(extractArtistForUpcoming("three word band")).toBe("three word band");
+  it("returns the canonical name when the known artist is at the END of the query", async () => {
+    expect(await extractArtistForUpcoming("são paulo metallica")).toBe("Metallica");
   });
 
-  it("returns empty string for a long ambiguous free-form query (> 3 words)", () => {
-    expect(extractArtistForUpcoming("very long ambiguous query that is unclear")).toBe("");
+  it("returns the full query for a short free-form term (≤ 3 words)", async () => {
+    expect(await extractArtistForUpcoming("some band")).toBe("some band");
+    expect(await extractArtistForUpcoming("three word band")).toBe("three word band");
   });
 
-  it("returns empty string for blank input", () => {
-    expect(extractArtistForUpcoming("")).toBe("");
-    expect(extractArtistForUpcoming("   ")).toBe("");
+  it("returns empty string for a long ambiguous free-form query (> 3 words)", async () => {
+    expect(await extractArtistForUpcoming("very long ambiguous query that is unclear")).toBe("");
+  });
+
+  it("returns empty string for blank input", async () => {
+    expect(await extractArtistForUpcoming("")).toBe("");
+    expect(await extractArtistForUpcoming("   ")).toBe("");
   });
 });
 

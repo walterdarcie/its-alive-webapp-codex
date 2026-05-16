@@ -15,6 +15,7 @@
 | [docs/features.md](docs/features.md) | Inventário de features, user flows, regras de negócio | Antes de tocar em qualquer feature de produto |
 | [docs/search.md](docs/search.md) | Pipeline da busca, integração com setlist.fm, rate limits, MBIDs canônicos, troubleshooting | Antes de mexer em busca, sugestões, integração com setlist.fm ou Ticketmaster |
 | [docs/security.md](docs/security.md) | Revisão de segurança pré-lançamento: vulnerabilidades encontradas, corrigidas e postura geral | Antes de mexer em auth, sessão, validação de input, CORS, headers, segredos |
+| [docs/voice.md](docs/voice.md) | Tom de voz, princípios de UX writing, vocabulário do produto, textos por contexto | Antes de escrever ou alterar qualquer texto visível ao usuário (labels, placeholders, erros, onboarding, estados vazios) |
 
 ### Atualizar a documentação ao final de cada tarefa (OBRIGATÓRIO)
 
@@ -27,6 +28,7 @@ Toda tarefa que altere **comportamento, estrutura, contrato ou decisão de proje
 - Mudança em variáveis de ambiente, build, deploy, convenções de arquivo → `docs/architecture.md`
 - Mudanças no pipeline da busca, integrações de música/shows, rate limits → `docs/search.md`
 - Qualquer mudança com impacto em segurança (auth, validação, headers, segredos, dependências sensíveis) → `docs/security.md`
+- Alteração de qualquer texto visível ao usuário (labels, placeholders, mensagens de erro, onboarding, CTAs) → `docs/voice.md` (verifique se o tom segue os princípios documentados)
 
 Se a doc estiver desatualizada em relação ao que você acabou de mudar, **corrija** — não deixe pendente. Se uma seção ficou obsoleta, remova-a. Se for uma mudança puramente cosmética/estilística sem impacto nas docs, isso pode ser dito explicitamente no final da resposta.
 

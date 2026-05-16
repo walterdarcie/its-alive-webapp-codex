@@ -115,7 +115,7 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile | null }) {
             <div className="profileMenu" role="menu" aria-label="Menu da conta">
               <p className="profileMenuName">{viewer.name}</p>
               {viewer.email ? <p className="profileMenuEmail">{viewer.email}</p> : null}
-              <p className="profileMenuHint">Conta sincronizada com Google + Supabase</p>
+              <p className="profileMenuHint">Seus shows ficam salvos em qualquer dispositivo</p>
               <button
                 type="button"
                 className="chip chipGhost profileSignOutBtn"
@@ -160,7 +160,7 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
           <p className="ticketVenue venueWithPin">
             <span className="venueText">{formatVenueLine(show)}</span>
           </p>
-          {show.tourName ? <p className="resultMeta">Turnê: {show.tourName}</p> : null}
+          {show.tourName ? <p className="resultMeta">{show.tourName}</p> : null}
         </div>
       </button>
     </div>
@@ -259,7 +259,7 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
         if (isCancelled) return;
         setSearchResults([]);
         setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
-        setSearchError(error instanceof Error ? error.message : "Falha ao buscar shows");
+        setSearchError(error instanceof Error ? error.message : "Não conseguimos buscar os shows agora.");
       } finally {
         if (!isCancelled) setSearchLoading(false);
       }
@@ -315,7 +315,7 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
       });
     } catch (error) {
       if (activeQueryRef.current !== queryValue) return;
-      setSearchError(error instanceof Error ? error.message : "Falha ao carregar mais resultados");
+      setSearchError(error instanceof Error ? error.message : "Não conseguimos carregar mais shows agora.");
     } finally {
       setSearchLoadingMore(false);
     }
@@ -351,19 +351,19 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
         </div>
 
         <div className="searchMetaBar">
-          <span className="muted">Busque por artista, ou combine com cidade, país e ano. Vírgulas ajudam, mas não são obrigatórias.</span>
+          <span className="muted">Artista, cidade, ano — escreva como lembrar.</span>
         </div>
 
         {normalizedQuery.length < 2 ? (
           <p className="emptyBox">
-            Exemplos: <br />
+            Por onde você começa? <br />
             <strong>guns n&apos; roses</strong> <br />
             <strong>iron maiden curitiba 2019</strong> <br />
             <strong>foo fighters lollapalooza</strong> <br />
-            <strong>guns n&apos; roses, são paulo, brasil, 2022</strong>
+            <strong>guns n&apos; roses são paulo 2022</strong>
           </p>
         ) : searchLoading ? (
-          <p className="emptyBox">Buscando shows...</p>
+          <p className="emptyBox">Procurando shows...</p>
         ) : searchError ? (
           <p className="emptyBox errorBox">{searchError}</p>
         ) : searchResults.length ? (
@@ -378,15 +378,15 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
                 }}
               />
             ))}
-            {searchLoadingMore ? <p className="emptyBox">Carregando mais resultados...</p> : null}
+            {searchLoadingMore ? <p className="emptyBox">Carregando mais...</p> : null}
             {!searchLoadingMore && searchMeta.hasMore ? <div ref={searchSentinelRef} className="searchSentinel" aria-hidden /> : null}
-            {!searchMeta.hasMore && searchResults.length > 0 ? <p className="muted">Fim dos resultados ({searchMeta.total}).</p> : null}
+            {!searchMeta.hasMore && searchResults.length > 0 ? <p className="muted">Isso é tudo — {searchMeta.total} {searchMeta.total === 1 ? "show encontrado" : "shows encontrados"}.</p> : null}
           </div>
         ) : (
           <p className="emptyBox">
-            Nenhum resultado encontrado para essa busca.
+            Nenhum show encontrado.
             <br />
-            Tente apenas o artista (ex.: <strong>iron maiden</strong>) ou adicione cidade, país e ano (ex.: <strong>iron maiden curitiba 2019</strong>).
+            Tente só o artista (ex.: <strong>iron maiden</strong>) ou acrescente cidade e ano (ex.: <strong>iron maiden curitiba 2019</strong>).
           </p>
         )}
       </section>
@@ -409,7 +409,7 @@ async function fetchSearchPage(queryValue: string, page: number) {
   const response = await fetch(`/api/setlists/search?searchTerm=${encodeURIComponent(queryValue)}&p=${page}`);
   const payload = (await response.json()) as SearchResponse | { error?: string; message?: string };
   if (!response.ok) {
-    throw new Error(payload && "message" in payload ? payload.message ?? payload.error ?? "Erro na busca" : "Erro na busca");
+    throw new Error(payload && "message" in payload ? payload.message ?? payload.error ?? "Não conseguimos buscar os shows agora." : "Não conseguimos buscar os shows agora.");
   }
   return payload as SearchResponse;
 }

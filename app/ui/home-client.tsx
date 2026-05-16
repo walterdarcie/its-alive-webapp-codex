@@ -79,7 +79,7 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
           <div className="profileMenu" role="menu" aria-label="Menu da conta">
             <p className="profileMenuName">{viewer.name}</p>
             {viewer.email ? <p className="profileMenuEmail">{viewer.email}</p> : null}
-            <p className="profileMenuHint">Conta sincronizada com Google + Supabase</p>
+            <p className="profileMenuHint">Seus shows ficam salvos em qualquer dispositivo</p>
             <button
               type="button"
               className="chip chipGhost profileSignOutBtn"
@@ -153,7 +153,7 @@ function TicketRow({
     <div className="ticketWrap">
       <button type="button" className="ticket ticketClickable ticketButtonReset" onClick={() => onOpenDetail(show.id)}>
         <div className={`ticketThumb ${imageUrl ? "hasPhoto" : ""}`} style={imageUrl ? buildPhotoStyle(imageUrl, "thumb") : undefined}>
-          {imageUrl ? null : "Foto"}
+          {imageUrl ? null : show.artist}
         </div>
         <div className="ticketBody">
           <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
@@ -428,7 +428,7 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
                 ))}
               </div>
             ) : (
-              <p className="muted">Nenhum show passado marcado na carteira.</p>
+              <p className="muted">Nenhum show passado guardado ainda.</p>
             )}
           </section>
 
@@ -440,10 +440,10 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
 
       <p className={`footerHint ${hasWalletContent && walletSynced === false ? "footerHintOffline" : ""}`}>
         {!hasWalletContent
-          ? "Sua carteira começa na busca. Encontre um show e marque como Eu fui ou Eu vou."
+          ? "Sua carteira começa na busca. Encontre um show e marque como Eu fui ou Eu vou para guardar a memória."
           : walletSynced === false
-            ? "Seus shows estão salvos neste dispositivo. A sincronização será retomada automaticamente."
-            : "Carteira sincronizada com sua conta. Seus shows ficam disponíveis em qualquer dispositivo."}
+            ? "Seus shows estão salvos aqui. A sincronização volta assim que a conexão retornar."
+            : "Tudo sincronizado. Suas memórias estão disponíveis em qualquer dispositivo."}
       </p>
 
       {selectedShowId ? (

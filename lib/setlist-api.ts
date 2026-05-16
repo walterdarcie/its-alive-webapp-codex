@@ -417,23 +417,47 @@ function scoreArtistAgainstPrefix(prefix: string, artist: ArtistCandidate, prefi
   return 0;
 }
 
-function findKnownArtistFromPrefix(coreText: string): ResolvedArtistMatch | null {
+type ArtistWindow = {
+  artistText: string;
+  artistKey: string;
+  remaining: string;
+  wordCount: number;
+  startIdx: number;
+};
+
+// Generates every contiguous word window (longest first, then left-to-right).
+// Lets us match a known artist anywhere in the query — not just at the prefix —
+// so "São Paulo Metallica" or "Bogotá Tame Imp" resolve the artist correctly.
+function generateContiguousWindows(words: string[]): ArtistWindow[] {
+  const result: ArtistWindow[] = [];
+  for (let len = words.length; len >= 1; len--) {
+    for (let start = 0; start <= words.length - len; start++) {
+      const end = start + len;
+      const artistText = words.slice(start, end).join(" ");
+      const artistKey = normalizeLoose(artistText).replace(/['"`’‘]/g, "");
+      const remaining = [...words.slice(0, start), ...words.slice(end)].join(" ").trim();
+      result.push({ artistText, artistKey, remaining, wordCount: len, startIdx: start });
+    }
+  }
+  return result;
+}
+
+function findKnownArtistInQuery(coreText: string): ResolvedArtistMatch | null {
   const normalized = normalizeSearchText(coreText);
   if (!normalized) return null;
   const words = normalized.split(/\s+/).filter(Boolean);
   if (!words.length) return null;
 
-  for (let take = words.length; take >= 1; take -= 1) {
-    const prefix = words.slice(0, take).join(" ");
-    const key = normalizeLoose(prefix).replace(/['"`’‘]/g, "");
-    const known = KNOWN_ARTIST_MBIDS[key];
+  for (const win of generateContiguousWindows(words)) {
+    if (!win.artistKey) continue;
+    const known = KNOWN_ARTIST_MBIDS[win.artistKey];
     if (known) {
       return {
         mbid: known.mbid,
         name: known.name,
-        matchedPrefix: prefix,
-        remaining: words.slice(take).join(" ").trim(),
-        score: STRONG_ARTIST_MATCH_SCORE + take * 20
+        matchedPrefix: win.artistText,
+        remaining: win.remaining,
+        score: STRONG_ARTIST_MATCH_SCORE + win.wordCount * 20
       };
     }
   }
@@ -449,119 +473,91 @@ async function lookupArtistInDb(coreText: string): Promise<ResolvedArtistMatch |
   const words = normalized.split(/\s+/).filter(Boolean);
   if (!words.length) return null;
 
-  const prefixes: string[] = [];
-  for (let take = words.length; take >= 1; take -= 1) {
-    const prefix = words.slice(0, take).join(" ");
-    const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
-    if (key) prefixes.push(key);
-  }
-  if (!prefixes.length) return null;
+  const windows = generateContiguousWindows(words);
+  const uniqueKeys = Array.from(new Set(windows.map((w) => w.artistKey).filter(Boolean)));
+  if (!uniqueKeys.length) return null;
 
-  const cacheKey = `known_artist_db:${prefixes[0]}`;
+  // Cache key is the normalized full query so different orderings hit the same entry.
+  const fullKey = normalizeLoose(normalized).replace(/['"`’‘]/g, "");
+  const cacheKey = `known_artist_db:${fullKey}`;
   const cached = getCacheValue<ResolvedArtistMatch>(cacheKey);
   if (cached) return cached;
 
-  const longestKey = prefixes[0];
-
   try {
-    // Step 1: Exact match for the LONGEST prefix only (the full normalized query).
-    // E.g., "Tame Impala" → finds it directly. "Tame imp" → not found, falls through.
-    // This must precede shorter-prefix matching so a generic artist named "Tame"
-    // doesn't shadow "Tame Impala" when the user typed "Tame imp".
-    const { data: exactLongest } = await supabase
+    // Batched exact match across all windows in a single IN query.
+    const { data: exactData } = await supabase
       .from("known_artists")
       .select("mbid, canonical_name, name_normalized")
-      .eq("name_normalized", longestKey)
-      .limit(5);
+      .in("name_normalized", uniqueKeys)
+      .limit(uniqueKeys.length * 4);
 
-    if (exactLongest && exactLongest.length > 0) {
-      const canonical = pickCanonicalRow(exactLongest, longestKey);
-      const result: ResolvedArtistMatch = {
-        mbid: canonical.mbid,
-        name: canonical.name,
-        matchedPrefix: longestKey,
-        remaining: "",
-        score: STRONG_ARTIST_MATCH_SCORE + words.length * 20
-      };
-      setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
-      return result;
+    const exactMap = new Map<string, Array<{ mbid: string; canonical_name: string; name_normalized: string }>>();
+    for (const row of exactData ?? []) {
+      const k = row.name_normalized as string;
+      const list = exactMap.get(k) ?? [];
+      list.push(row as { mbid: string; canonical_name: string; name_normalized: string });
+      exactMap.set(k, list);
     }
 
-    // Step 2: Prefix LIKE on the longest key. Resolves partial last word like
-    // "tame imp" → "tame impala". Min length 4 to avoid noisy disambiguation.
-    if (longestKey.length >= 4) {
-      const { data: likeData } = await supabase
-        .from("known_artists")
-        .select("mbid, canonical_name, name_normalized")
-        .like("name_normalized", `${longestKey}%`)
-        .order("name_normalized", { ascending: true })
-        .limit(20);
+    // Iterate by length DESC. At each length, try exact match for every window
+    // first; if nothing exact, try prefix-LIKE on suffix windows (the user's
+    // partial typing usually ends at the cursor). Stop on first hit so longer
+    // matches always beat shorter ones — "tame imp" wins over a bare "tame".
+    for (let len = words.length; len >= 1; len--) {
+      const sameLen = windows.filter((w) => w.wordCount === len);
 
-      if (likeData && likeData.length > 0) {
-        const queryNorm = normalizeArtistNameForMatch(longestKey);
-        const valid = likeData
-          .map((row) => ({
-            mbid: row.mbid as string,
-            name: row.canonical_name as string,
-            nameNormDb: row.name_normalized as string,
-            nameNorm: normalizeArtistNameForMatch(row.canonical_name as string)
-          }))
-          .filter((c) => c.nameNorm.startsWith(queryNorm))
-          // Shortest alphanumeric-normalized name wins. This favors "beyonce"
-          // over "beyon-d-lusion" and avoids special-char-laden noise.
-          .sort((a, b) => a.nameNorm.length - b.nameNorm.length);
-
-        if (valid.length > 0) {
-          const firstName = valid[0].nameNormDb;
-          const canonical = KNOWN_ARTIST_MBIDS[firstName];
-          const best = canonical
-            ? { mbid: canonical.mbid, name: canonical.name }
-            : { mbid: valid[0].mbid, name: valid[0].name };
-
+      for (const win of sameLen) {
+        const rows = exactMap.get(win.artistKey);
+        if (rows && rows.length) {
+          const canonical = pickCanonicalRow(rows, win.artistKey);
           const result: ResolvedArtistMatch = {
-            mbid: best.mbid,
-            name: best.name,
-            matchedPrefix: longestKey,
-            remaining: "",
-            score: STRONG_ARTIST_MATCH_SCORE
+            mbid: canonical.mbid,
+            name: canonical.name,
+            matchedPrefix: win.artistText,
+            remaining: win.remaining,
+            score: STRONG_ARTIST_MATCH_SCORE + len * 20
           };
           setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
           return result;
         }
       }
-    }
 
-    // Step 3: Exact match on shorter prefixes (artist + remaining text).
-    // E.g., "iron maiden curitiba" → "iron maiden" + remaining "curitiba".
-    if (prefixes.length > 1) {
-      const shorterPrefixes = prefixes.slice(1);
-      const { data, error } = await supabase
-        .from("known_artists")
-        .select("mbid, canonical_name, name_normalized")
-        .in("name_normalized", shorterPrefixes)
-        .limit(shorterPrefixes.length * 2);
+      const suffixWindows = sameLen.filter((w) => w.startIdx + len === words.length);
+      for (const win of suffixWindows) {
+        if (win.artistKey.length < 4) continue;
+        const { data: likeData } = await supabase
+          .from("known_artists")
+          .select("mbid, canonical_name, name_normalized")
+          .like("name_normalized", `${win.artistKey}%`)
+          .order("name_normalized", { ascending: true })
+          .limit(20);
 
-      if (!error && data && data.length > 0) {
-        const dataMap = new Map<string, typeof data>();
-        for (const row of data) {
-          const k = row.name_normalized as string;
-          const list = dataMap.get(k) ?? [];
-          list.push(row);
-          dataMap.set(k, list);
-        }
+        if (likeData && likeData.length > 0) {
+          const queryNorm = normalizeArtistNameForMatch(win.artistKey);
+          const valid = likeData
+            .map((row) => ({
+              mbid: row.mbid as string,
+              name: row.canonical_name as string,
+              nameNormDb: row.name_normalized as string,
+              nameNorm: normalizeArtistNameForMatch(row.canonical_name as string)
+            }))
+            .filter((c) => c.nameNorm.startsWith(queryNorm))
+            // Shortest alphanumeric-normalized name wins. Favors "beyonce" over
+            // "beyon-d-lusion" and avoids special-char-laden noise.
+            .sort((a, b) => a.nameNorm.length - b.nameNorm.length);
 
-        for (let take = words.length - 1; take >= 1; take -= 1) {
-          const prefix = words.slice(0, take).join(" ");
-          const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
-          const matches = dataMap.get(key);
-          if (matches && matches.length > 0) {
-            const canonical = pickCanonicalRow(matches, key);
+          if (valid.length > 0) {
+            const firstName = valid[0].nameNormDb;
+            const canonical = KNOWN_ARTIST_MBIDS[firstName];
+            const best = canonical
+              ? { mbid: canonical.mbid, name: canonical.name }
+              : { mbid: valid[0].mbid, name: valid[0].name };
             const result: ResolvedArtistMatch = {
-              mbid: canonical.mbid,
-              name: canonical.name,
-              matchedPrefix: prefix,
-              remaining: words.slice(take).join(" ").trim(),
-              score: STRONG_ARTIST_MATCH_SCORE + take * 20
+              mbid: best.mbid,
+              name: best.name,
+              matchedPrefix: win.artistText,
+              remaining: win.remaining,
+              score: STRONG_ARTIST_MATCH_SCORE + len * 20 - 5
             };
             setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
             return result;
@@ -587,7 +583,7 @@ function pickCanonicalRow(
 }
 
 async function findKnownArtistFromPrefixWithDb(coreText: string): Promise<ResolvedArtistMatch | null> {
-  const hardcoded = findKnownArtistFromPrefix(coreText);
+  const hardcoded = findKnownArtistInQuery(coreText);
   if (hardcoded) return hardcoded;
   return lookupArtistInDb(coreText);
 }
@@ -608,19 +604,20 @@ async function resolveArtistCandidatesFromCore(coreText: string): Promise<Resolv
 
   let apiCalls = 0;
   let bestScoreSeen = known ? known.score : 0;
+  const seenKeys = new Set<string>();
 
-  for (let take = words.length; take >= 1; take -= 1) {
+  for (const win of generateContiguousWindows(words)) {
     if (apiCalls >= MAX_ARTIST_RESOLVE_API_CALLS) break;
-
-    const prefix = words.slice(0, take).join(" ");
-    if (!normalizeArtistNameForMatch(prefix)) continue;
+    if (!win.artistKey || seenKeys.has(win.artistKey)) continue;
+    if (!normalizeArtistNameForMatch(win.artistText)) continue;
+    seenKeys.add(win.artistKey);
 
     apiCalls += 1;
-    const candidates = await fetchArtistsByName(prefix);
+    const candidates = await fetchArtistsByName(win.artistText);
     if (!candidates.length) continue;
 
     for (const candidate of candidates) {
-      const score = scoreArtistAgainstPrefix(prefix, candidate, take);
+      const score = scoreArtistAgainstPrefix(win.artistText, candidate, win.wordCount);
       if (!score || score < MIN_ACCEPTABLE_ARTIST_SCORE) continue;
       bestScoreSeen = Math.max(bestScoreSeen, score);
       const existing = matches.get(candidate.mbid);
@@ -628,8 +625,8 @@ async function resolveArtistCandidatesFromCore(coreText: string): Promise<Resolv
         matches.set(candidate.mbid, {
           mbid: candidate.mbid,
           name: candidate.name,
-          matchedPrefix: prefix,
-          remaining: words.slice(take).join(" ").trim(),
+          matchedPrefix: win.artistText,
+          remaining: win.remaining,
           score
         });
       }
@@ -1256,12 +1253,18 @@ export async function getSetlistById(id: string) {
   return show;
 }
 
-export function extractArtistForUpcoming(searchTerm: string): string {
+export async function extractArtistForUpcoming(searchTerm: string): Promise<string> {
   const parsed = parseStructuredQuery(searchTerm);
   if (parsed.explicitArtist) return parsed.explicitArtist;
 
-  const known = findKnownArtistFromPrefix(parsed.coreText);
+  const known = findKnownArtistInQuery(parsed.coreText);
   if (known) return known.name;
+
+  // DB lookup resolves partial / DB-only artists ("Tame Imp" → "Tame Impala",
+  // "Bogotá Tame Imp" → "Tame Impala"). Without this, the Ticketmaster keyword
+  // would be the raw user input, which TM's exact-attraction filter rejects.
+  const dbMatch = await lookupArtistInDb(parsed.coreText);
+  if (dbMatch) return dbMatch.name;
 
   const words = parsed.coreText.trim().split(/\s+/).filter(Boolean);
   if (words.length <= 3) return parsed.coreText;

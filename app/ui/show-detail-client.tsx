@@ -308,12 +308,12 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
             <div className="detailHeroOverlay" aria-hidden />
           </>
         ) : (
-          "Imagem do show (placeholder)"
+          show.artist
         )}
       </div>
 
       <div className="detailBody detailBodyTicket">
-        {show.tourName ? <p className="resultMeta detailTour">Turnê: {show.tourName}</p> : null}
+        {show.tourName ? <p className="resultMeta detailTour">{show.tourName}</p> : null}
 
         <div className="detailActions">
           <button
@@ -325,7 +325,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
             aria-pressed={saved}
             disabled={savingWallet}
           >
-            <span className="ctaMainLabel">{savingWallet ? "SALVANDO..." : `${ctaLabel}!`}</span>
+            <span className="ctaMainLabel">{savingWallet ? "Guardando..." : `${ctaLabel}!`}</span>
             <span className="ctaMainPulse" aria-hidden />
           </button>
           {show.ticketUrl && isFutureOrTodayShow(show.eventDateIso) ? (
@@ -354,13 +354,13 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
               SETLIST.FM
             </a>
           ) : null}
-          {lastSyncFailed ? <p className="muted walletSyncHint">Salvo neste dispositivo. Sincroniza ao reconectar.</p> : null}
+          {lastSyncFailed ? <p className="muted walletSyncHint">Guardado aqui. Sincroniza quando a conexão voltar.</p> : null}
         </div>
 
         <div className="setlistPanel">
           <h2 className="setlistTitle">Setlist</h2>
           {loading && !show.songNames.length ? (
-            <p className="muted">Carregando setlist...</p>
+            <p className="muted">Buscando as músicas...</p>
           ) : show.songNames.length ? (
             <>
               <ol className="songList">
@@ -384,7 +384,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
                       }
                       aria-expanded={setlistExpanded}
                     >
-                      SETLIST COMPLETA
+                      VER TUDO
                     </button>
                   ) : null}
                   <div className="setlistAccordionBody" aria-hidden={!setlistExpanded}>
@@ -407,14 +407,14 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
                       }
                       aria-expanded={setlistExpanded}
                     >
-                      RECOLHER SETLIST
+                      RECOLHER
                     </button>
                   ) : null}
                 </div>
               ) : null}
             </>
           ) : (
-            <p className="muted">Setlist não disponível para este show.</p>
+            <p className="muted">Setlist não registrada para este show.</p>
           )}
         </div>
       </div>
@@ -422,9 +422,9 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
       <ShowFeedClient showId={id} viewer={viewer ?? null} />
     </section>
   ) : loading ? (
-    <p className="emptyBox">Carregando show...</p>
+    <p className="emptyBox">Carregando...</p>
   ) : (
-    <p className="emptyBox errorBox">{error ?? "Show não encontrado."}</p>
+    <p className="emptyBox errorBox">{error ?? "Não encontramos este show."}</p>
   );
 
   if (isOverlay) {

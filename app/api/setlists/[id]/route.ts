@@ -28,7 +28,7 @@ export async function GET(_: Request, context: { params: { id: string } }) {
   // Ticketmaster upcoming shows have no setlist on setlist.fm
   if (id.startsWith("tm-")) {
     return NextResponse.json(
-      { error: "Upcoming show", message: "Este show ainda não aconteceu — setlist indisponível." },
+      { error: "Upcoming show", message: "Este show ainda não aconteceu — a setlist aparece depois." },
       { status: 404 }
     );
   }
