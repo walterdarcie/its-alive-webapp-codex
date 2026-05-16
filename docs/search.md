@@ -4,16 +4,62 @@
 
 ## Visão geral
 
-A busca aceita texto livre (`metallica chicago 2024`), separadores explícitos (`iron maiden, são paulo, brasil, 2022`) e preposições (`foo fighters em são paulo`). O parser converte a query em filtros estruturados, identifica o artista pelo MBID quando possível, e tenta uma sequência curta de planos contra a API do setlist.fm.
+A busca aceita texto livre (`metallica chicago 2024`), separadores explícitos (`iron maiden, são paulo, brasil, 2022`) e preposições (`foo fighters em são paulo`). O parser converte a query em filtros estruturados, identifica o artista pelo MBID quando possível, e tenta uma sequência curta de planos contra a API do setlist.fm. Paralelamente, busca shows futuros no Ticketmaster e mescla os resultados.
 
 Pontos de entrada:
 
 | Camada | Arquivo | Responsabilidade |
 |---|---|---|
 | UI | `app/ui/search-page-client.tsx` | Input, debounce de 420ms, ranking visual, paginação por scroll |
-| Route handler | `app/api/setlists/search/route.ts` | Validação, cache (6h), tratamento de 429/erros |
-| Cliente da API | `lib/setlist-api.ts` | Parsing, resolução de MBID, plano de queries, fallbacks |
-| Cache | `lib/setlist-cache.ts` | LRU in-memory (TTL 6h busca / 24h artistas / 30min negativo) |
+| Route handler | `app/api/setlists/search/route.ts` | Validação, cache (6h), chamadas paralelas, merge de resultados |
+| Cliente Setlist.fm | `lib/setlist-api.ts` | Parsing, resolução de MBID, plano de queries, fallbacks |
+| Cliente Ticketmaster | `lib/ticketmaster-api.ts` | Shows futuros, cache 1h |
+| Cache | `lib/setlist-cache.ts` | LRU in-memory (TTL 6h busca / 24h artistas / 30min negativo / 1h Ticketmaster) |
+
+## Ticketmaster Discovery API v2
+
+**Propósito:** única fonte de shows futuros. O setlist.fm não tem endpoint de upcoming shows.
+
+**Rate limit:** 5.000 req/dia no plano gratuito. Erros são silenciosos (retornam `[]`).
+
+**Endpoint usado:** `GET /discovery/v2/events.json`
+
+**Parâmetros enviados:**
+
+| Parâmetro | Valor |
+|---|---|
+| `apikey` | `TICKETMASTER_API_KEY` |
+| `keyword` | Nome do artista (extraído por `extractArtistForUpcoming`) |
+| `classificationName` | `music` |
+| `sort` | `date,asc` |
+| `size` | `20` |
+| `startDateTime` | Timestamp atual em UTC (ISO 8601) |
+
+**Mapeamento para `ShowRecord`:**
+
+| Campo TM | Campo ShowRecord | Observação |
+|---|---|---|
+| `id` | `id` | Prefixado com `tm-` |
+| `attractions[0].name` | `artist` | Fallback: nome do artista da query |
+| `venues[0].name` | `venue` | |
+| `venues[0].city.name + state.stateCode` | `city` | Concatenados com `, ` |
+| `venues[0].country.name` | `country` | |
+| `dates.start.localDate` | `eventDateIso` | Formato `YYYY-MM-DD` |
+| `url` | `ticketUrl` | Só quando `dates.status.code === "onsale"` |
+| `name` (se diferente do artista) | `tourName` | |
+
+**Extração do artista para busca no Ticketmaster:**
+
+A função `extractArtistForUpcoming(searchTerm)` determina qual nome enviar como `keyword`:
+
+1. Se a query tem artista explícito (`foo fighters, são paulo`) → retorna o artista explícito
+2. Se há correspondência no mapa `KNOWN_ARTIST_MBIDS` (ex: `"metallica"` → `"Metallica"`) → retorna o nome canônico
+3. Se a query livre tem ≤ 3 palavras → retorna o `coreText` completo
+4. Caso contrário (query longa e ambígua) → retorna `""` e a chamada é pulada
+
+**Cobertura:** Ticketmaster cobre Live Nation, TicketWeb, Universe, FrontGate, MoshTix e outras bilheterias parceiras — a mesma infraestrutura da Live Nation (fusão em 2010).
+
+---
 
 ## API do setlist.fm — o que importa
 
@@ -150,7 +196,9 @@ O script é idempotente (`ON CONFLICT DO NOTHING`) e pode ser re-executado.
 |---|---|---|---|
 | Cache do route handler | `lib/setlist-cache.ts` | 6h | `search:{lower}:{page}` |
 | Cache de `/search/artists` | mesmo cache | 24h (hit) / 30min (404) | `artists:{lower}` |
+| Cache Ticketmaster upcoming | mesmo cache | 1h | `tm:upcoming:{lower}` |
 | `Next.js fetch revalidate` | `lib/setlist-api.ts` | 6h busca / 24h artistas | URL completa |
+| `Next.js fetch revalidate` | `lib/ticketmaster-api.ts` | 1h | URL completa |
 | Cache HTTP do navegador | header `Cache-Control` | 1min cliente / 6h CDN | URL completa |
 
 O cache é LRU com limite de 600 entradas (`MAX_CACHE_ENTRIES` em `setlist-cache.ts`). Reinicio do dev server limpa o cache em memória.
@@ -167,7 +215,14 @@ Cobertura unitária em `tests/unit/setlist-api.test.ts`:
 | `extractTrailingCountry` | Detecção de país no final da string |
 | `scoreArtistAgainstPrefix` | Scoring do MBID match |
 | `findKnownArtistFromPrefix` | Atalho via KNOWN map |
+| `extractArtistForUpcoming` | Extração do artista para Ticketmaster em todos os formatos de query |
 | `searchSetlists` (com fetch mock) | Pipeline end-to-end: direct hit, MBID shortcut, resolução, fallbacks |
+
+Cobertura unitária em `tests/unit/ticketmaster-api.test.ts`:
+
+| Bloco | O que valida |
+|---|---|
+| `searchUpcomingByArtist` | Retorno vazio sem API key, mapeamento de evento para ShowRecord, prefixo `tm-`, `ticketUrl` apenas para `onsale`, eventos com status diferente, input muito curto |
 
 Rodando localmente:
 

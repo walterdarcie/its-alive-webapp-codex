@@ -1200,6 +1200,19 @@ export async function getSetlistById(id: string) {
   return show;
 }
 
+export function extractArtistForUpcoming(searchTerm: string): string {
+  const parsed = parseStructuredQuery(searchTerm);
+  if (parsed.explicitArtist) return parsed.explicitArtist;
+
+  const known = findKnownArtistFromPrefix(parsed.coreText);
+  if (known) return known.name;
+
+  const words = parsed.coreText.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 3) return parsed.coreText;
+
+  return "";
+}
+
 export const __testing__ = {
   parseStructuredQuery,
   applyArtistAliases,

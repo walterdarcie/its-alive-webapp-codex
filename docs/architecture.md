@@ -14,6 +14,7 @@
 | Storage | Supabase Storage | Bucket `post-photos` para fotos de posts |
 | Imagens | Wikipedia / Wikimedia via MusicBrainz | Fallback automático para artistas |
 | Setlists | Setlist.fm API | Cache in-memory 6h (search) / 24h (detail) |
+| Shows futuros | Ticketmaster Discovery API v2 | Cache in-memory 1h; exige `TICKETMASTER_API_KEY` |
 | Analytics | Google Analytics 4 (`G-LDQLEFB0DR`) | `trackEvent()` manual + page tracker |
 | Deploy | Vercel (auto-deploy via push no `main`) | Branch `main` = produção |
 | CI | GitHub Actions (Release Quality) | ESLint + Next.js build + Vitest a cada push/PR |
@@ -34,7 +35,8 @@ Browser
   │
   ├─► API Routes (Next.js Route Handlers)
   │     ├─ /api/wallet          ← localStorage sync + Supabase
-  │     ├─ /api/setlists/*      ← Setlist.fm (SETLISTFM_API_KEY)
+  │     ├─ /api/setlists/search ← Setlist.fm + Ticketmaster (mergeados)
+  │     ├─ /api/setlists/[id]   ← Setlist.fm detalhe (tm-* retorna 404 imediato)
   │     ├─ /api/artist-image    ← MusicBrainz + Wikipedia
   │     ├─ /api/posts/*         ← Supabase show_posts + post_likes
   │     └─ /api/auth/signout    ← Supabase signOut
@@ -110,6 +112,7 @@ Excluir:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sim | middleware, lib/supabase/* |
 | `SUPABASE_SERVICE_ROLE_KEY` | Não (futuro) | Não usado ainda |
 | `SETLISTFM_API_KEY` | Sim | lib/setlist-api.ts |
+| `TICKETMASTER_API_KEY` | Sim | lib/ticketmaster-api.ts |
 | `BYPASS_AUTH` | Não | Bypassa auth em testes (`BYPASS_AUTH=1`) |
 | `NEXT_PUBLIC_BYPASS_AUTH` | Não | Mesma coisa, lado cliente |
 
@@ -132,6 +135,7 @@ lib/
   auth.ts               ← Helpers de auth (server-only)
   wallet-storage.ts     ← Lógica de wallet (client + server)
   setlist-api.ts        ← Cliente Setlist.fm (server-only)
+  ticketmaster-api.ts   ← Cliente Ticketmaster Discovery API (server-only)
   setlist-cache.ts      ← Cache in-memory (server-only)
   artist-image.ts       ← Resolução de imagem (server-only)
   artist-image-client.ts← Idem, para client components

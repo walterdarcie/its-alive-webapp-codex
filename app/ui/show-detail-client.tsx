@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
-import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
+import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletShow, isSavedInWallet, removeFromWalletServer, saveToWalletServer } from "@/lib/wallet-storage";
 import { trackEvent } from "@/lib/analytics";
@@ -321,7 +321,20 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
             <span className="ctaMainLabel">{savingWallet ? "SALVANDO..." : `${ctaLabel}!`}</span>
             <span className="ctaMainPulse" aria-hidden />
           </button>
-          {show.setlistUrl ? (
+          {show.ticketUrl && isFutureOrTodayShow(show.eventDateIso) ? (
+            <a
+              className="chip"
+              href={show.ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                trackEvent("ticket_buy_click", { show_id: show.id, source: "show_detail" });
+              }}
+            >
+              INGRESSOS
+            </a>
+          ) : null}
+          {show.setlistUrl && !show.id.startsWith("tm-") ? (
             <a
               className="chip chipGhost"
               href={show.setlistUrl}

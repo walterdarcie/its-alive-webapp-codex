@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
-import { searchSetlists, SetlistApiError } from "@/lib/setlist-api";
+import { searchSetlists, SetlistApiError, extractArtistForUpcoming } from "@/lib/setlist-api";
+import { searchUpcomingByArtist } from "@/lib/ticketmaster-api";
+import type { ShowRecord } from "@/lib/show-types";
 
 const SEARCH_TTL_MS = 1000 * 60 * 60 * 6;
 
@@ -8,12 +10,13 @@ export async function GET(request: NextRequest) {
   const searchTerm = request.nextUrl.searchParams.get("searchTerm")?.trim() ?? "";
   const pageParam = request.nextUrl.searchParams.get("p") ?? "0";
   const page = Number.parseInt(pageParam, 10);
+  const pageNum = Number.isNaN(page) ? 0 : page;
 
   if (!searchTerm || searchTerm.length < 2) {
     return NextResponse.json({ error: "searchTerm must have at least 2 characters" }, { status: 400 });
   }
 
-  const cacheKey = `search:${searchTerm.toLowerCase()}:${Number.isNaN(page) ? 0 : page}`;
+  const cacheKey = `search:${searchTerm.toLowerCase()}:${pageNum}`;
   const cached = getCacheValue<unknown>(cacheKey);
   if (cached) {
     return NextResponse.json(cached, {
@@ -25,7 +28,37 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const payload = await searchSetlists(searchTerm, Number.isNaN(page) ? 0 : page);
+    if (pageNum === 0) {
+      const artistName = extractArtistForUpcoming(searchTerm);
+      const [setlistPayload, upcomingShows] = await Promise.all([
+        searchSetlists(searchTerm, 0),
+        artistName ? searchUpcomingByArtist(artistName) : Promise.resolve([] as ShowRecord[])
+      ]);
+
+      // Merge: setlist.fm past shows + Bandsintown upcoming shows, dedup by ID
+      const merged = new Map<string, ShowRecord>();
+      for (const show of setlistPayload.shows) merged.set(show.id, show);
+      for (const show of upcomingShows) {
+        if (!merged.has(show.id)) merged.set(show.id, show);
+      }
+
+      const payload = {
+        ...setlistPayload,
+        shows: Array.from(merged.values()),
+        total: setlistPayload.total + upcomingShows.length
+      };
+
+      setCacheValue(cacheKey, payload, SEARCH_TTL_MS);
+      return NextResponse.json(payload, {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=21600",
+          "x-cache": "MISS"
+        }
+      });
+    }
+
+    // Pages > 0: only setlist.fm (Bandsintown upcoming already included in page 0)
+    const payload = await searchSetlists(searchTerm, pageNum);
     setCacheValue(cacheKey, payload, SEARCH_TTL_MS);
     return NextResponse.json(payload, {
       headers: {

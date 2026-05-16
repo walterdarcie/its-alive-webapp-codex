@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { daysUntilShow, deriveWalletStatus, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 
 function toIso(date: Date) {
-  return date.toISOString().slice(0, 10);
+  // Use local date components to match parseIsoDateAtLocalMidnight
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 describe("show-utils", () => {

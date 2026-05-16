@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
-import type { ShowRecord, Viewer } from "@/lib/show-types";
-import { formatVenueLine } from "@/lib/show-utils";
+import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
+import { formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 
@@ -140,16 +140,26 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile | null }) {
   );
 }
 
-function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (showId: string) => void }) {
+function TicketIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" className="iconSvg">
+      <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (show: ShowRecord) => void }) {
   const eventDate = new Date(`${show.eventDateIso}T00:00:00`);
   const ptBrMonthAbbr = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
   const month = ptBrMonthAbbr[eventDate.getMonth()] ?? "";
   const day = new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(eventDate);
   const year = new Intl.DateTimeFormat("en-US", { year: "numeric" }).format(eventDate);
 
+  const hasTicket = Boolean(show.ticketUrl) && isFutureOrTodayShow(show.eventDateIso);
+
   return (
-    <div className="ticketWrap">
-      <button type="button" className="ticket ticketClickable ticketButtonReset searchTicketDateLayout" onClick={() => onOpenDetail(show.id)}>
+    <div className={`ticketWrap${hasTicket ? " hasTicketLink" : ""}`}>
+      <button type="button" className="ticket ticketClickable ticketButtonReset searchTicketDateLayout" onClick={() => onOpenDetail(show)}>
         <div className="ticketDateStub" aria-hidden>
           <span className="ticketDateStubMonth">{month}</span>
           <span className="ticketDateStubDay">{day}</span>
@@ -163,6 +173,21 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
           {show.tourName ? <p className="resultMeta">Turnê: {show.tourName}</p> : null}
         </div>
       </button>
+      {hasTicket ? (
+        <a
+          href={show.ticketUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ticketBuyRow"
+          onClick={(e) => {
+            e.stopPropagation();
+            trackEvent("ticket_buy_click", { show_id: show.id, source: "search_results" });
+          }}
+        >
+          <TicketIcon />
+          <span>Ingressos</span>
+        </a>
+      ) : null}
     </div>
   );
 }
@@ -179,15 +204,15 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
     hasMore: false,
     total: 0
   });
-  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const [selectedShow, setSelectedShow] = useState<{ id: string; initialData?: ShowRecord } | null>(null);
 
-  function openShowOverlay(showId: string) {
-    setSelectedShowId(showId);
-    window.history.pushState({ showOverlay: showId }, "", `/show/${encodeURIComponent(showId)}`);
+  function openShowOverlay(show: ShowRecord) {
+    setSelectedShow({ id: show.id, initialData: show });
+    window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
   }
 
   function closeShowOverlay() {
-    setSelectedShowId(null);
+    setSelectedShow(null);
     window.history.pushState({}, "", "/search");
   }
 
@@ -195,9 +220,9 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
     function handlePopState(event: PopStateEvent) {
       const state = event.state as { showOverlay?: string } | null;
       if (state?.showOverlay) {
-        setSelectedShowId(state.showOverlay);
+        setSelectedShow({ id: state.showOverlay });
       } else {
-        setSelectedShowId(null);
+        setSelectedShow(null);
       }
     }
     window.addEventListener("popstate", handlePopState);
@@ -372,9 +397,9 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
               <SearchResultRow
                 key={show.id}
                 show={show}
-                onOpenDetail={(showId) => {
-                  trackEvent("show_detail_open", { source: "search_results", show_id: showId });
-                  openShowOverlay(showId);
+                onOpenDetail={(s) => {
+                  trackEvent("show_detail_open", { source: "search_results", show_id: s.id });
+                  openShowOverlay(s);
                 }}
               />
             ))}
@@ -391,13 +416,14 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
         )}
       </section>
 
-      {selectedShowId ? (
+      {selectedShow ? (
         <ShowDetailClient
-          id={selectedShowId}
+          id={selectedShow.id}
           mode="overlay"
           onClose={closeShowOverlay}
           isAuthenticated={isAuthenticated}
           viewer={viewer ? ({ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer) : null}
+          initialData={selectedShow.initialData ? ({ ...selectedShow.initialData, songNames: [], setlistSections: [] } satisfies ShowDetailRecord) : undefined}
         />
       ) : null}
     </main>
@@ -497,8 +523,21 @@ function scoreShowForQuery(query: string, show: ShowRecord) {
 }
 
 function rankSearchResults(query: string, shows: ShowRecord[]) {
+  const todayIso = new Date().toISOString().split("T")[0] ?? "";
   return [...shows].sort((a, b) => {
-    if (a.eventDateIso !== b.eventDateIso) return a.eventDateIso < b.eventDateIso ? 1 : -1;
+    const aFuture = a.eventDateIso >= todayIso;
+    const bFuture = b.eventDateIso >= todayIso;
+
+    // Future shows before past shows
+    if (aFuture !== bFuture) return aFuture ? -1 : 1;
+
+    // Future: nearest first (ascending); past: most recent first (descending)
+    if (a.eventDateIso !== b.eventDateIso) {
+      return aFuture
+        ? a.eventDateIso < b.eventDateIso ? -1 : 1
+        : a.eventDateIso < b.eventDateIso ? 1 : -1;
+    }
+
     const scoreDiff = scoreShowForQuery(query, b) - scoreShowForQuery(query, a);
     if (scoreDiff !== 0) return scoreDiff;
     return a.artist.localeCompare(b.artist);

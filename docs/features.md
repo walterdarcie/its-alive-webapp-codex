@@ -24,18 +24,25 @@
 
 ---
 
-## 2. Busca de Shows (Setlist.fm)
+## 2. Busca de Shows (Setlist.fm + Ticketmaster)
 
 **Fluxo:**
-1. Usuário digita na `SearchPageClient` (debounce 300ms)
+1. Usuário digita na `SearchPageClient` (debounce 420ms)
 2. GET `/api/setlists/search?searchTerm=...&p=...`
-3. API busca no Setlist.fm com `SETLISTFM_API_KEY`
-4. Resultado cacheado in-memory por 6h
-5. Cards exibidos; clique abre detalhe em overlay
+3. Na página 0: Setlist.fm e Ticketmaster Discovery API são chamados em paralelo
+   - Setlist.fm retorna shows passados com setlists
+   - Ticketmaster retorna shows futuros com `ticketUrl` quando ingresso está à venda (`status === "onsale"`)
+4. Resultados mesclados, deduplicados por ID e ordenados: futuros primeiro (ordem cronológica), passados depois (ordem decrescente)
+5. Resultado cacheado in-memory por 6h (busca) / 1h (Ticketmaster)
+6. Cards exibidos; clique abre detalhe em overlay com `initialData` pré-populado para shows Ticketmaster
 
-**Paginação:** parâmetro `p` (0-indexed). UI exibe botões "Anterior / Próxima".
+**Prefixo `tm-`:** IDs de shows Ticketmaster começam com `tm-`. Esses shows não têm setlist disponível e o botão SETLIST.FM não é exibido.
 
-**Rate limiting:** se Setlist.fm retornar 429, a API retorna 429 com mensagem amigável em PT-BR.
+**Botão de ingressos:** Shows com `ticketUrl` e data futura exibem `.ticketBuyRow` (lista) e chip "INGRESSOS" (detalhe). O botão desaparece depois que o show acontece.
+
+**Paginação:** parâmetro `p` (0-indexed). Páginas > 0 consultam apenas o Setlist.fm.
+
+**Rate limiting:** se Setlist.fm retornar 429, a API retorna 429 com mensagem amigável em PT-BR. Erros do Ticketmaster são silenciosos (retorna lista vazia).
 
 ---
 
@@ -43,8 +50,13 @@
 
 **Fluxo:**
 1. Acesso direto via `/show/{id}` OU overlay a partir de busca/wallet
-2. `getSetlistById(id)` → cache 24h (com setlist) ou 5min (sem setlist)
-3. `ShowDetailClient` renderiza header com foto do artista, metadados do show, setlist secionado
+2. Para shows Setlist.fm: `getSetlistById(id)` → cache 24h (com setlist) ou 5min (sem setlist)
+3. Para shows Ticketmaster (`tm-*`): `initialData` passado diretamente pelo `SearchPageClient`, sem chamada de API
+4. `ShowDetailClient` renderiza header com foto do artista, metadados do show, setlist secionado
+
+**Botão de ingressos:** exibido quando `show.ticketUrl` está presente e `isFutureOrTodayShow(eventDateIso)` retorna `true`. Desaparece após o show acontecer. Analytics: evento `ticket_buy_click` com `{ show_id, source: "show_detail" }`.
+
+**Botão SETLIST.FM:** suprimido para shows com `id.startsWith("tm-")` pois não há setlist externo.
 
 **Resolução de imagem do artista:**
 - Busca no MusicBrainz por `artistMbid` ou nome
@@ -141,3 +153,6 @@
 | Status da wallet | Calculado em runtime por `deriveWalletStatus`, não armazenado como verdade absoluta |
 | Redirect pós-login | Apenas caminhos internos aceitos (sanitização no `/auth/callback`) |
 | Cache Setlist.fm | 6h para busca, 24h para detalhe com setlist, 5min para detalhe sem setlist |
+| Cache Ticketmaster | 1h para shows futuros por artista |
+| `ticketUrl` presente | Apenas quando `dates.status.code === "onsale"` na resposta do Ticketmaster |
+| Botão ingressos | Visível somente se `ticketUrl` existe E `isFutureOrTodayShow()` retorna true |

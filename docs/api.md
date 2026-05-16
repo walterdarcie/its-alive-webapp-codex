@@ -59,7 +59,11 @@ Remove um show da wallet.
 
 ### `GET /api/setlists/search?searchTerm={q}&p={page}`
 
-Busca shows no Setlist.fm. Cache in-memory de 6h. O pipeline interno (parsing, resolução de MBID, fallbacks) está documentado em [docs/search.md](search.md).
+Busca shows mesclando Setlist.fm (shows passados) + Ticketmaster Discovery API (shows futuros). Cache in-memory de 6h. O pipeline interno está documentado em [docs/search.md](search.md).
+
+Na página `p=0` as duas APIs são chamadas em paralelo com `Promise.all`. Resultados são deduplicados por `id` (shows do Setlist.fm têm prioridade sobre Ticketmaster para o mesmo ID). A partir de `p=1` apenas o Setlist.fm é consultado.
+
+Shows do Ticketmaster têm `id` com prefixo `tm-`. Quando têm ingresso à venda (`dates.status.code === "onsale"`), incluem `ticketUrl`.
 
 **Auth:** Não.
 
@@ -67,7 +71,7 @@ Busca shows no Setlist.fm. Cache in-memory de 6h. O pipeline interno (parsing, r
 - `searchTerm` (obrigatório, mínimo 2 chars)
 - `p` — página (default 0)
 
-**Response 200:** payload do Setlist.fm mapeado para `ShowRecord[]`.
+**Response 200:** `{ shows: ShowRecord[], total: number, page: number, itemsPerPage: number }`
 
 **Headers:** `Cache-Control: public, max-age=60, s-maxage=21600` + `x-cache: HIT|MISS`
 
@@ -84,9 +88,13 @@ Busca shows no Setlist.fm. Cache in-memory de 6h. O pipeline interno (parsing, r
 
 Carrega detalhes de um show específico. Cache 24h (com setlist) ou 5min (sem setlist).
 
+IDs com prefixo `tm-` (Ticketmaster) retornam `404` imediatamente — shows futuros ainda não têm setlist no Setlist.fm. A UI trata esse caso via `initialData` passado na abertura do overlay, evitando a chamada à API.
+
 **Auth:** Não.
 
 **Response 200:** `ShowDetailRecord` (inclui `songNames`, `setlistSections`).
+
+**Response 404 para `tm-*`:** `{ error: "Upcoming show", message: "Este show ainda não aconteceu — setlist indisponível." }`
 
 **Headers:** `Cache-Control` varia por conteúdo + `x-cache: HIT|MISS`
 

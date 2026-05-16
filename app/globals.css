@@ -1094,6 +1094,40 @@ input {
   border-left: none;
 }
 
+.ticketWrap.hasTicketLink .ticket {
+  border-radius: 20px 20px 0 0;
+}
+
+.ticketBuyRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, rgba(255, 47, 146, 0.1), rgba(255, 122, 92, 0.1));
+  border-top: 1px solid rgba(255, 47, 146, 0.18);
+  border-radius: 0 0 20px 20px;
+  text-decoration: none;
+  color: var(--pink-light);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.ticketBuyRow:hover,
+.ticketBuyRow:focus-visible {
+  background: linear-gradient(90deg, rgba(255, 47, 146, 0.2), rgba(255, 122, 92, 0.2));
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticketBuyRow {
+    transition: none;
+  }
+}
+
 .detailBodyTicket {
   -webkit-mask:
     radial-gradient(12px at left 50%, transparent 98%, #000 100%) left / 50.1% 100% no-repeat,
