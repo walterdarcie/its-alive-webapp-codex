@@ -1,16 +1,34 @@
 # it's alive webapp — Claude Code Guide
 
-## Documentação do Projeto
+## Documentação do Projeto (LEIA ANTES DE COMEÇAR)
 
-| Documento | Conteúdo |
-|---|---|
-| [docs/architecture.md](docs/architecture.md) | Stack, diagrama de sistema, fluxos de auth/wallet/posts, variáveis de ambiente, convenções de arquivos, regras de produção |
-| [docs/database.md](docs/database.md) | Schema completo das tabelas, RLS, índices, triggers, migrações, Storage bucket |
-| [docs/api.md](docs/api.md) | Todos os endpoints com request/response shapes |
-| [docs/components.md](docs/components.md) | Árvore de componentes, props, estado, helpers de lib |
-| [docs/features.md](docs/features.md) | Inventário de features, user flows, regras de negócio |
-| [docs/search.md](docs/search.md) | Pipeline da busca, integração com setlist.fm, rate limits, MBIDs canônicos, troubleshooting |
-| [docs/security.md](docs/security.md) | Revisão de segurança pré-lançamento: vulnerabilidades encontradas, corrigidas e postura geral |
+> **OBRIGATÓRIO:** A pasta [`docs/`](docs/) contém a documentação canônica deste projeto. Antes de iniciar **qualquer** tarefa (implementação, refactor, debug, revisão), leia os arquivos relevantes abaixo. Não assuma comportamento a partir do código sem antes consultar a doc correspondente — ela descreve regras de negócio, decisões e contratos que não são óbvios pelo código.
+
+### Arquivos da pasta `docs/`
+
+| Documento | Conteúdo | Quando ler |
+|---|---|---|
+| [docs/architecture.md](docs/architecture.md) | Stack, diagrama de sistema, fluxos de auth/wallet/posts, variáveis de ambiente, convenções de arquivos, regras de produção | Sempre antes de mexer em estrutura, env, build ou fluxos transversais |
+| [docs/database.md](docs/database.md) | Schema completo das tabelas, RLS, índices, triggers, migrações, Storage bucket | Antes de qualquer alteração de schema, query, RLS ou bucket |
+| [docs/api.md](docs/api.md) | Todos os endpoints com request/response shapes | Antes de criar/alterar rotas em `app/api/**` ou consumi-las no client |
+| [docs/components.md](docs/components.md) | Árvore de componentes, props, estado, helpers de `lib/` | Antes de criar/alterar componentes em `app/ui/**` ou helpers em `lib/**` |
+| [docs/features.md](docs/features.md) | Inventário de features, user flows, regras de negócio | Antes de tocar em qualquer feature de produto |
+| [docs/search.md](docs/search.md) | Pipeline da busca, integração com setlist.fm, rate limits, MBIDs canônicos, troubleshooting | Antes de mexer em busca, sugestões, integração com setlist.fm ou Ticketmaster |
+| [docs/security.md](docs/security.md) | Revisão de segurança pré-lançamento: vulnerabilidades encontradas, corrigidas e postura geral | Antes de mexer em auth, sessão, validação de input, CORS, headers, segredos |
+
+### Atualizar a documentação ao final de cada tarefa (OBRIGATÓRIO)
+
+Toda tarefa que altere **comportamento, estrutura, contrato ou decisão de projeto** deve terminar com a atualização dos arquivos de `docs/` afetados — na mesma sessão, antes de considerar a tarefa concluída. Isso inclui:
+
+- Novos endpoints, mudanças de payload/response, novos códigos de erro → `docs/api.md`
+- Mudanças de schema, novas tabelas/colunas, alteração de RLS/índices/triggers, novas migrações → `docs/database.md`
+- Novos componentes, mudança de props, novos helpers em `lib/` → `docs/components.md`
+- Nova feature, mudança de user flow ou regra de negócio → `docs/features.md`
+- Mudança em variáveis de ambiente, build, deploy, convenções de arquivo → `docs/architecture.md`
+- Mudanças no pipeline da busca, integrações de música/shows, rate limits → `docs/search.md`
+- Qualquer mudança com impacto em segurança (auth, validação, headers, segredos, dependências sensíveis) → `docs/security.md`
+
+Se a doc estiver desatualizada em relação ao que você acabou de mudar, **corrija** — não deixe pendente. Se uma seção ficou obsoleta, remova-a. Se for uma mudança puramente cosmética/estilística sem impacto nas docs, isso pode ser dito explicitamente no final da resposta.
 
 ## Project Overview
 
