@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/auth/"]
       }
     ],
-    sitemap: "https://itsalivememories.vercel.app/sitemap.xml"
+    sitemap: "https://itsalive.fans/sitemap.xml"
   };
 }

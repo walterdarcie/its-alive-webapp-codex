@@ -8,7 +8,7 @@ import { extractViewerProfile, getServerUser } from "@/lib/auth";
 
 const DETAIL_TTL_WITH_SETLIST_MS = 1000 * 60 * 60 * 24;
 const DETAIL_TTL_EMPTY_SETLIST_MS = 1000 * 60 * 5;
-const SITE_URL = "https://itsalivememories.vercel.app";
+const SITE_URL = "https://itsalive.fans";
 
 async function fetchShowData(id: string): Promise<ShowDetailRecord | null> {
   const cacheKey = `detail:${id}`;

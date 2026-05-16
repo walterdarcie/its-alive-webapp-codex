@@ -16,14 +16,14 @@ export const metadata: Metadata = {
     template: "%s"
   },
   description: "Carteira de shows, memórias e emoções ao vivo. Guarde setlists, reviva momentos e compartilhe experiências de shows inesquecíveis.",
-  metadataBase: new URL("https://itsalivememories.vercel.app"),
+  metadataBase: new URL("https://itsalive.fans"),
   applicationName: "it's alive",
   verification: {
     google: "wKIQJvYts5_hKfwhaDy5614dnR2-e21c8HLsTN-jikU",
   },
   manifest: "/manifest.webmanifest",
   alternates: {
-    canonical: "https://itsalivememories.vercel.app"
+    canonical: "https://itsalive.fans"
   },
   robots: {
     index: true,
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: "https://itsalivememories.vercel.app",
+    url: "https://itsalive.fans",
     title: "it's alive – Carteira de shows ao vivo",
     description: "Memórias intensas dos seus shows, sempre vivas. Setlists, detalhes e emoções de cada show que você viveu.",
     siteName: "it's alive",

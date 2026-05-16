@@ -37,9 +37,9 @@ MVP do webapp "it's alive" para buscar shows e montar carteira (`eu vou` / `eu f
   - Adicionar Client ID/Secret do Google OAuth.
 - URLs de callback:
   - Local: `http://localhost:3000/auth/callback`
-  - Produção: `https://itsalivememories.vercel.app/auth/callback`
+  - Produção: `https://itsalive.fans/auth/callback`
 - Defina em Authentication -> URL Configuration:
-  - Site URL: `https://itsalivememories.vercel.app`
+  - Site URL: `https://itsalive.fans`
   - Redirect URLs: incluir local e produção.
 
 ### 3) Fluxo

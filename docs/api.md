@@ -201,5 +201,5 @@ Encerra a sessão Supabase e retorna URL de redirect.
 
 **Response 200:**
 ```json
-{ "ok": true, "redirectTo": "https://itsalivememories.vercel.app/login" }
+{ "ok": true, "redirectTo": "https://itsalive.fans/login" }
 ```
