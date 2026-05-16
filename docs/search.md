@@ -65,8 +65,9 @@ else:
          b. artistMbid + venueName + year + countryCode (se há remaining)
     2. direct hit: artistName=coreText + year + countryCode
     3. resolveArtistCandidatesFromCore → para cada candidato:
-         artistMbid + cityName=remaining + year + countryCode
-    4. (top candidato + remaining) venueName, tourName, upcoming HTML
+         se `remaining` for sufixo parcial do nome do artista → ignora como localidade
+         artistMbid + cityName=effectiveRemaining + year + countryCode
+    4. (top candidato + effectiveRemaining) venueName, tourName, upcoming HTML
     5. (sem candidato algum) venueName=coreText e cityName=coreText
 ```
 
@@ -86,6 +87,7 @@ A função `tryPlansUntilHit` retorna no primeiro plano que devolve `shows.lengt
 | `iron maiden, são paulo, brasil, 2022` | Vírgulas separam artista / cidade / país / ano (qualquer ordem após o primeiro) |
 | `metallica \| chicago \| usa` | Pipes funcionam como vírgulas |
 | `acdc` / `ac dc` / `gnr` | Aliases reescritos para AC/DC, Guns N' Roses |
+| `Tame imp` (digitando "Tame Impala") | Detecta prefixo parcial do nome → busca sem cidade, não falha |
 
 ## Resolução de MBID canônico — tabela `known_artists`
 

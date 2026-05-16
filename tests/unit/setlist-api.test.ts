@@ -173,6 +173,22 @@ describe("scoreArtistAgainstPrefix", () => {
     const score = scoreArtistAgainstPrefix("hay", { mbid: "d", name: "Hayley Williams", sortName: "" }, 1);
     expect(score).toBe(0);
   });
+
+  it("scores 'tame imp' (partial) against 'Tame Impala' above threshold", () => {
+    // Simulates the user typing "Tame Impala" and pausing mid-word
+    const score = scoreArtistAgainstPrefix("tame imp", { mbid: "e", name: "Tame Impala", sortName: "Tame Impala" }, 2);
+    expect(score).toBeGreaterThanOrEqual(400);
+  });
+
+  it("scores 'arctic monk' (partial) against 'Arctic Monkeys' above threshold", () => {
+    const score = scoreArtistAgainstPrefix("arctic monk", { mbid: "f", name: "Arctic Monkeys", sortName: "Arctic Monkeys" }, 2);
+    expect(score).toBeGreaterThanOrEqual(400);
+  });
+
+  it("scores 'linkin par' (partial) against 'Linkin Park' above threshold", () => {
+    const score = scoreArtistAgainstPrefix("linkin par", { mbid: "g", name: "Linkin Park", sortName: "Linkin Park" }, 2);
+    expect(score).toBeGreaterThanOrEqual(400);
+  });
 });
 
 // === Integration tests for the searchSetlists pipeline ===
@@ -419,6 +435,115 @@ describe("searchSetlists (integration with mocked fetch)", () => {
     const result = await searchSetlists("never-existed-band-9999");
     expect(result.shows).toHaveLength(0);
     expect(result.total).toBe(0);
+  });
+
+  it("'Tame imp' resolves to Tame Impala without using 'imp' as cityName", async () => {
+    const MBID = "mbid-tame-impala-test";
+    const { calls } = installFetchMock([
+      (url) => {
+        if (url.pathname.endsWith("/search/artists")) {
+          const term = (url.searchParams.get("artistName") ?? "").toLowerCase();
+          if (term === "tame") {
+            return { status: 200, body: { artist: [{ mbid: MBID, name: "Tame Impala", sortName: "Tame Impala" }] } };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        if (url.pathname.endsWith("/search/setlists")) {
+          if (url.searchParams.get("artistMbid") === MBID && !url.searchParams.get("cityName")) {
+            return { status: 200, body: setlistsResponse([buildSetlist({ artist: "Tame Impala", mbid: MBID, city: "Los Angeles", date: "15-06-2023" })]) };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        return null;
+      }
+    ]);
+
+    const result = await searchSetlists("Tame imp");
+    expect(result.shows).toHaveLength(1);
+    expect(result.shows[0].artist).toBe("Tame Impala");
+    // The partial word "imp" must never be sent as a city filter
+    expect(calls.filter((c) => c.params.cityName === "imp")).toHaveLength(0);
+  });
+
+  it("'Arctic Monk' resolves to Arctic Monkeys without using 'Monk' as cityName", async () => {
+    const MBID = "mbid-arctic-monkeys-test";
+    const { calls } = installFetchMock([
+      (url) => {
+        if (url.pathname.endsWith("/search/artists")) {
+          const term = (url.searchParams.get("artistName") ?? "").toLowerCase();
+          if (term === "arctic") {
+            return { status: 200, body: { artist: [{ mbid: MBID, name: "Arctic Monkeys", sortName: "Arctic Monkeys" }] } };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        if (url.pathname.endsWith("/search/setlists")) {
+          if (url.searchParams.get("artistMbid") === MBID && !url.searchParams.get("cityName")) {
+            return { status: 200, body: setlistsResponse([buildSetlist({ artist: "Arctic Monkeys", mbid: MBID, city: "Sheffield", date: "20-06-2023" })]) };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        return null;
+      }
+    ]);
+
+    const result = await searchSetlists("Arctic Monk");
+    expect(result.shows).toHaveLength(1);
+    expect(result.shows[0].artist).toBe("Arctic Monkeys");
+    expect(calls.filter((c) => c.params.cityName === "Monk" || c.params.cityName === "monk")).toHaveLength(0);
+  });
+
+  it("'Linkin Par' resolves to Linkin Park without using 'Par' as cityName", async () => {
+    const MBID = "mbid-linkin-park-test";
+    const { calls } = installFetchMock([
+      (url) => {
+        if (url.pathname.endsWith("/search/artists")) {
+          const term = (url.searchParams.get("artistName") ?? "").toLowerCase();
+          if (term === "linkin") {
+            return { status: 200, body: { artist: [{ mbid: MBID, name: "Linkin Park", sortName: "Linkin Park" }] } };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        if (url.pathname.endsWith("/search/setlists")) {
+          if (url.searchParams.get("artistMbid") === MBID && !url.searchParams.get("cityName")) {
+            return { status: 200, body: setlistsResponse([buildSetlist({ artist: "Linkin Park", mbid: MBID, city: "Los Angeles", date: "05-09-2017" })]) };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        return null;
+      }
+    ]);
+
+    const result = await searchSetlists("Linkin Par");
+    expect(result.shows).toHaveLength(1);
+    expect(result.shows[0].artist).toBe("Linkin Park");
+    expect(calls.filter((c) => c.params.cityName === "Par" || c.params.cityName === "par")).toHaveLength(0);
+  });
+
+  it("'Red Hot Chi' resolves to Red Hot Chili Peppers without using 'Chi' as cityName", async () => {
+    const MBID = "mbid-rhcp-test";
+    const { calls } = installFetchMock([
+      (url) => {
+        if (url.pathname.endsWith("/search/artists")) {
+          const term = (url.searchParams.get("artistName") ?? "").toLowerCase();
+          if (term === "red hot" || term === "red") {
+            return { status: 200, body: { artist: [{ mbid: MBID, name: "Red Hot Chili Peppers", sortName: "Red Hot Chili Peppers" }] } };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        if (url.pathname.endsWith("/search/setlists")) {
+          if (url.searchParams.get("artistMbid") === MBID && !url.searchParams.get("cityName")) {
+            return { status: 200, body: setlistsResponse([buildSetlist({ artist: "Red Hot Chili Peppers", mbid: MBID, city: "Los Angeles", date: "10-09-2022" })]) };
+          }
+          return { status: 404, body: { code: 404 } };
+        }
+        return null;
+      }
+    ]);
+
+    const result = await searchSetlists("Red Hot Chi");
+    expect(result.shows).toHaveLength(1);
+    expect(result.shows[0].artist).toBe("Red Hot Chili Peppers");
+    expect(calls.filter((c) => c.params.cityName === "Chi" || c.params.cityName === "chi")).toHaveLength(0);
   });
 
   it("keeps total API calls within budget for a free-form multi-word query (≤ 5 calls)", async () => {

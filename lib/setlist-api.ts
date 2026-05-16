@@ -1007,11 +1007,18 @@ async function runFreeFormFlow(parsed: StructuredQuery, pageOneBased: number): P
     if (candidates.length) {
       const remaining = candidates[0].remaining;
 
+      // If coreText (normalized) is a prefix of the top artist's normalized name, the
+      // remaining text is just the tail of an incomplete artist word — not a city/venue.
+      // e.g. query "Tame imp", artist "Tame Impala": "tameimpala".startsWith("tameimp") → true
+      const coreNorm = normalizeArtistNameForMatch(coreText);
+      const topArtistNorm = normalizeArtistNameForMatch(candidates[0].name);
+      const effectiveRemaining = remaining && topArtistNorm.startsWith(coreNorm) ? "" : remaining;
+
       for (const resolved of candidates) {
-        const primaryPlan: SearchPlan = remaining
+        const primaryPlan: SearchPlan = effectiveRemaining
           ? {
               artistMbid: resolved.mbid,
-              cityName: remaining,
+              cityName: effectiveRemaining,
               year: parsed.year || undefined,
               countryCode: parsed.countryCode || undefined
             }
@@ -1029,11 +1036,11 @@ async function runFreeFormFlow(parsed: StructuredQuery, pageOneBased: number): P
         }
       }
 
-      if (remaining) {
+      if (effectiveRemaining) {
         const top = candidates[0];
         const venuePlan: SearchPlan = {
           artistMbid: top.mbid,
-          venueName: remaining,
+          venueName: effectiveRemaining,
           year: parsed.year || undefined,
           countryCode: parsed.countryCode || undefined
         };
@@ -1044,7 +1051,7 @@ async function runFreeFormFlow(parsed: StructuredQuery, pageOneBased: number): P
 
         const tourPlan: SearchPlan = {
           artistMbid: top.mbid,
-          tourName: remaining,
+          tourName: effectiveRemaining,
           year: parsed.year || undefined,
           countryCode: parsed.countryCode || undefined
         };
@@ -1055,10 +1062,10 @@ async function runFreeFormFlow(parsed: StructuredQuery, pageOneBased: number): P
 
         const upcoming = await searchUpcomingShowsByVenueFallback({
           artistName: top.name,
-          cityName: remaining,
+          cityName: effectiveRemaining,
           year: parsed.year,
           countryCode: parsed.countryCode,
-          remaining
+          remaining: effectiveRemaining
         });
         if (upcoming.shows.length > 0) return upcoming;
       }
