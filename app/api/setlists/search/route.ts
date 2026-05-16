@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
-import { searchSetlists, SetlistApiError, extractArtistForUpcoming } from "@/lib/setlist-api";
+import {
+  searchSetlists,
+  SetlistApiError,
+  extractArtistForUpcoming,
+  extractYearFromSearchTerm
+} from "@/lib/setlist-api";
 import { searchUpcomingByArtist } from "@/lib/ticketmaster-api";
 import type { ShowRecord } from "@/lib/show-types";
 
@@ -30,12 +35,25 @@ export async function GET(request: NextRequest) {
   try {
     if (pageNum === 0) {
       const artistName = extractArtistForUpcoming(searchTerm);
-      const [setlistPayload, upcomingShows] = await Promise.all([
+      const yearFilter = extractYearFromSearchTerm(searchTerm);
+      // Ticketmaster só retorna shows futuros. Se o usuário pediu um ano no passado,
+      // o merge polui o ranking (futuros sobem antes dos passados) e a busca por ano
+      // some na prática. Pulamos a chamada nesse caso e filtramos por ano quando o
+      // ano pedido é o atual ou futuro.
+      const currentYear = new Date().getUTCFullYear();
+      const yearAllowsUpcoming = !yearFilter || Number(yearFilter) >= currentYear;
+      const shouldFetchUpcoming = Boolean(artistName) && yearAllowsUpcoming;
+
+      const [setlistPayload, upcomingShowsRaw] = await Promise.all([
         searchSetlists(searchTerm, 0),
-        artistName ? searchUpcomingByArtist(artistName) : Promise.resolve([] as ShowRecord[])
+        shouldFetchUpcoming ? searchUpcomingByArtist(artistName) : Promise.resolve([] as ShowRecord[])
       ]);
 
-      // Merge: setlist.fm past shows + Bandsintown upcoming shows, dedup by ID
+      const upcomingShows = yearFilter
+        ? upcomingShowsRaw.filter((show) => show.eventDateIso.startsWith(yearFilter))
+        : upcomingShowsRaw;
+
+      // Merge: setlist.fm past shows + Ticketmaster upcoming shows, dedup by ID
       const merged = new Map<string, ShowRecord>();
       for (const show of setlistPayload.shows) merged.set(show.id, show);
       for (const show of upcomingShows) {
@@ -57,7 +75,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Pages > 0: only setlist.fm (Bandsintown upcoming already included in page 0)
+    // Pages > 0: only setlist.fm (Ticketmaster upcoming already included in page 0)
     const payload = await searchSetlists(searchTerm, pageNum);
     setCacheValue(cacheKey, payload, SEARCH_TTL_MS);
     return NextResponse.json(payload, {

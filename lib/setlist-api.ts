@@ -1269,6 +1269,10 @@ export function extractArtistForUpcoming(searchTerm: string): string {
   return "";
 }
 
+export function extractYearFromSearchTerm(searchTerm: string): string {
+  return parseStructuredQuery(searchTerm).year;
+}
+
 export const __testing__ = {
   parseStructuredQuery,
   applyArtistAliases,

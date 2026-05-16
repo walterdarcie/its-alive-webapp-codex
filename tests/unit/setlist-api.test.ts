@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { __testing__, extractArtistForUpcoming, searchSetlists, SetlistApiError } from "@/lib/setlist-api";
+import {
+  __testing__,
+  extractArtistForUpcoming,
+  extractYearFromSearchTerm,
+  searchSetlists,
+  SetlistApiError
+} from "@/lib/setlist-api";
 
 const {
   parseStructuredQuery,
@@ -220,6 +226,28 @@ describe("extractArtistForUpcoming", () => {
   });
 });
 
+describe("extractYearFromSearchTerm", () => {
+  it("returns the trailing year from a free-form query", () => {
+    expect(extractYearFromSearchTerm("metallica 2010")).toBe("2010");
+    expect(extractYearFromSearchTerm("iron maiden curitiba 2019")).toBe("2019");
+  });
+
+  it("returns the year from comma-separated input regardless of segment order", () => {
+    expect(extractYearFromSearchTerm("metallica, são paulo, 2022")).toBe("2022");
+    expect(extractYearFromSearchTerm("iron maiden, 2003, brasil")).toBe("2003");
+  });
+
+  it("returns the year from 'artist in city year' free-form syntax", () => {
+    expect(extractYearFromSearchTerm("the rolling stones in london 2022")).toBe("2022");
+  });
+
+  it("returns empty string when no year is present", () => {
+    expect(extractYearFromSearchTerm("metallica")).toBe("");
+    expect(extractYearFromSearchTerm("iron maiden curitiba")).toBe("");
+    expect(extractYearFromSearchTerm("")).toBe("");
+  });
+});
+
 // === Integration tests for the searchSetlists pipeline ===
 // We stub global fetch so the tests never hit the real setlist.fm API.
 // Each test uses a unique query so the in-memory cache in lib/setlist-cache.ts
@@ -376,6 +404,34 @@ describe("searchSetlists (integration with mocked fetch)", () => {
     expect(result.shows[0].artist).toBe("Obscure Band XYZ");
     expect(artistsCalls).toBeGreaterThan(0);
     expect(setlistsCallsCount).toBeGreaterThan(0);
+  });
+
+  it("free-form query with trailing year forwards year to setlist.fm via known artist shortcut", async () => {
+    const { calls } = installFetchMock([
+      (url) => {
+        if (!url.pathname.endsWith("/search/setlists")) return null;
+        if (
+          url.searchParams.get("artistMbid") === "65f4f0c5-ef9e-490c-aee3-909e7ae6b2ab" &&
+          url.searchParams.get("year") === "2010"
+        ) {
+          return {
+            status: 200,
+            body: setlistsResponse([
+              buildSetlist({ artist: "Metallica", venue: "Estádio do Maracanã", city: "Rio", country: "BR", date: "30-01-2010" })
+            ])
+          };
+        }
+        return null;
+      }
+    ]);
+
+    const result = await searchSetlists("metallica 2010");
+    // Sanity: we want at least one call to land with year=2010 on the canonical Metallica MBID.
+    const yearMatches = calls.filter(
+      (c) => c.params.artistMbid === "65f4f0c5-ef9e-490c-aee3-909e7ae6b2ab" && c.params.year === "2010"
+    );
+    expect(yearMatches.length).toBeGreaterThan(0);
+    expect(result.shows[0]?.artist).toBe("Metallica");
   });
 
   it("explicit comma-separated query queries with artistName + cityName + year + country", async () => {

@@ -57,6 +57,14 @@ A função `extractArtistForUpcoming(searchTerm)` determina qual nome enviar com
 3. Se a query livre tem ≤ 3 palavras → retorna o `coreText` completo
 4. Caso contrário (query longa e ambígua) → retorna `""` e a chamada é pulada
 
+**Interação com o filtro de ano (`year`):**
+
+O Ticketmaster só lista shows futuros (`startDateTime = agora`). Para não poluir o ranking quando o usuário pede um ano específico, o route handler em `app/api/setlists/search/route.ts` aplica duas regras antes do merge:
+
+1. `extractYearFromSearchTerm(searchTerm)` devolve o ano da query (vazio quando não houver).
+2. Se o ano pedido for **anterior ao ano atual**, a chamada ao Ticketmaster é pulada (`shouldFetchUpcoming = false`). Sem isso, o merge incluiria shows futuros (ex.: 2026) numa busca por `metallica 2010`, e o `rankSearchResults` jogaria os futuros para o topo, fazendo o filtro de ano sumir na prática.
+3. Se o ano pedido for o atual ou futuro, a chamada acontece e os resultados são filtrados por `eventDateIso.startsWith(year)` antes do merge.
+
 **Cobertura:** Ticketmaster cobre Live Nation, TicketWeb, Universe, FrontGate, MoshTix e outras bilheterias parceiras — a mesma infraestrutura da Live Nation (fusão em 2010).
 
 ---
