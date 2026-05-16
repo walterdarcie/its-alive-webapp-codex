@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
 import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
@@ -19,14 +19,6 @@ type ShowDetailClientProps = {
   viewer?: Viewer | null;
 };
 
-function buildDetailPhotoStyle(imageUrl: string): CSSProperties {
-  const sanitized = imageUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  return {
-    backgroundImage: `linear-gradient(180deg, rgba(7, 14, 30, 0.2), rgba(7, 14, 30, 0.52)), url("${sanitized}")`,
-    backgroundPosition: "center",
-    backgroundSize: "cover"
-  };
-}
 
 export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAuthenticated = true, viewer = null }: ShowDetailClientProps) {
   const [show, setShow] = useState<ShowDetailRecord | null>(initialData ?? null);
@@ -302,8 +294,22 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
         </p>
       </div>
 
-      <div className={`detailHero cardImage ${artistImageUrl ? "hasPhoto" : ""}`} style={artistImageUrl ? buildDetailPhotoStyle(artistImageUrl) : undefined}>
-        {artistImageUrl ? null : "Imagem do show (placeholder)"}
+      <div className={`detailHero cardImage ${artistImageUrl ? "hasPhoto" : ""}`}>
+        {artistImageUrl ? (
+          <>
+            <Image
+              src={artistImageUrl}
+              alt={show.artist}
+              fill
+              sizes="(min-width: 900px) 520px, 100vw"
+              className="detailHeroImage"
+              priority
+            />
+            <div className="detailHeroOverlay" aria-hidden />
+          </>
+        ) : (
+          "Imagem do show (placeholder)"
+        )}
       </div>
 
       <div className="detailBody detailBodyTicket">

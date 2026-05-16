@@ -891,6 +891,19 @@ input {
   height: auto;
   border-radius: 0;
   margin-top: 8px;
+  overflow: hidden;
+}
+
+.detailHeroImage {
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.detailHeroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 14, 30, 0.2), rgba(7, 14, 30, 0.52));
+  pointer-events: none;
 }
 
 .detailBody {
@@ -1749,7 +1762,6 @@ input {
 
   .detailHero {
     aspect-ratio: 4 / 3;
-    background-position: center 28% !important;
   }
 }
 
