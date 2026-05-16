@@ -5,7 +5,7 @@ import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
-import { formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
+import { formatVenueLine } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 
@@ -140,14 +140,6 @@ function BrandHeader({ viewer }: { viewer: ViewerProfile | null }) {
   );
 }
 
-function TicketIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" className="iconSvg">
-      <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2Z" fill="currentColor" />
-    </svg>
-  );
-}
-
 function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (show: ShowRecord) => void }) {
   const eventDate = new Date(`${show.eventDateIso}T00:00:00`);
   const ptBrMonthAbbr = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
@@ -155,10 +147,8 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
   const day = new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(eventDate);
   const year = new Intl.DateTimeFormat("en-US", { year: "numeric" }).format(eventDate);
 
-  const hasTicket = Boolean(show.ticketUrl) && isFutureOrTodayShow(show.eventDateIso);
-
   return (
-    <div className={`ticketWrap${hasTicket ? " hasTicketLink" : ""}`}>
+    <div className="ticketWrap">
       <button type="button" className="ticket ticketClickable ticketButtonReset searchTicketDateLayout" onClick={() => onOpenDetail(show)}>
         <div className="ticketDateStub" aria-hidden>
           <span className="ticketDateStubMonth">{month}</span>
@@ -173,21 +163,6 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
           {show.tourName ? <p className="resultMeta">Turnê: {show.tourName}</p> : null}
         </div>
       </button>
-      {hasTicket ? (
-        <a
-          href={show.ticketUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ticketBuyRow"
-          onClick={(e) => {
-            e.stopPropagation();
-            trackEvent("ticket_buy_click", { show_id: show.id, source: "search_results" });
-          }}
-        >
-          <TicketIcon />
-          <span>Ingressos</span>
-        </a>
-      ) : null}
     </div>
   );
 }

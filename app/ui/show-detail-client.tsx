@@ -183,6 +183,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
           artistMbid: show.artistMbid,
           venueMbid: show.venueMbid,
           tourName: show.tourName,
+          ticketUrl: show.ticketUrl,
           artistImageUrl: show.artistImageUrl ?? artistImageUrl ?? undefined,
           artistImagePageUrl: show.artistImagePageUrl,
           artistImageSource: show.artistImageSource

@@ -38,6 +38,20 @@ function getApiKey() {
   return process.env.TICKETMASTER_API_KEY ?? "";
 }
 
+function normalizeArtistName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Filters out tribute bands and festival events where the artist is only
+// mentioned in the event title. Only returns events where an attraction
+// in the lineup actually matches the queried artist name.
+function eventMatchesArtist(event: TicketmasterEvent, queryArtistName: string): boolean {
+  const queryNorm = normalizeArtistName(queryArtistName);
+  if (!queryNorm) return false;
+  const attractions = event._embedded?.attractions ?? [];
+  return attractions.some((a) => normalizeArtistName(a.name ?? "") === queryNorm);
+}
+
 function eventToShowRecord(event: TicketmasterEvent, queryArtistName: string): ShowRecord | null {
   if (!event.id || !event.dates?.start?.localDate) return null;
 
@@ -110,6 +124,7 @@ export async function searchUpcomingByArtist(artistName: string): Promise<ShowRe
   }
 
   const shows = (data._embedded?.events ?? [])
+    .filter((event) => eventMatchesArtist(event, trimmed))
     .map((event) => eventToShowRecord(event, trimmed))
     .filter((s): s is ShowRecord => s !== null);
 
