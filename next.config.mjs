@@ -7,6 +7,16 @@ const nextConfig = {
         hostname: "**"
       }
     ]
+  },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.itsalive.fans" }],
+        destination: "https://itsalive.fans/:path*",
+        permanent: true
+      }
+    ];
   }
 };
 
