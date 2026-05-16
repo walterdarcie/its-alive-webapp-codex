@@ -461,56 +461,63 @@ async function lookupArtistInDb(coreText: string): Promise<ResolvedArtistMatch |
   const cached = getCacheValue<ResolvedArtistMatch>(cacheKey);
   if (cached) return cached;
 
+  const longestKey = prefixes[0];
+
   try {
-    const { data, error } = await supabase
+    // Step 1: Exact match for the LONGEST prefix only (the full normalized query).
+    // E.g., "Tame Impala" → finds it directly. "Tame imp" → not found, falls through.
+    // This must precede shorter-prefix matching so a generic artist named "Tame"
+    // doesn't shadow "Tame Impala" when the user typed "Tame imp".
+    const { data: exactLongest } = await supabase
       .from("known_artists")
       .select("mbid, canonical_name, name_normalized")
-      .in("name_normalized", prefixes)
-      .limit(prefixes.length);
+      .eq("name_normalized", longestKey)
+      .limit(5);
 
-    if (!error && data && data.length > 0) {
-      const dataMap = new Map(data.map((row) => [row.name_normalized as string, row]));
-
-      for (let take = words.length; take >= 1; take -= 1) {
-        const prefix = words.slice(0, take).join(" ");
-        const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
-        const match = dataMap.get(key);
-        if (match) {
-          const result: ResolvedArtistMatch = {
-            mbid: match.mbid as string,
-            name: match.canonical_name as string,
-            matchedPrefix: prefix,
-            remaining: words.slice(take).join(" ").trim(),
-            score: STRONG_ARTIST_MATCH_SCORE + take * 20
-          };
-          setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
-          return result;
-        }
-      }
+    if (exactLongest && exactLongest.length > 0) {
+      const canonical = pickCanonicalRow(exactLongest, longestKey);
+      const result: ResolvedArtistMatch = {
+        mbid: canonical.mbid,
+        name: canonical.name,
+        matchedPrefix: longestKey,
+        remaining: "",
+        score: STRONG_ARTIST_MATCH_SCORE + words.length * 20
+      };
+      setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
+      return result;
     }
 
-    // Prefix LIKE match: handles partial last word, e.g. "tame imp" → "tame impala".
-    // The text_pattern_ops B-tree index on name_normalized makes this efficient.
-    const longestKey = prefixes[0];
-    if (longestKey && longestKey.length >= 3) {
+    // Step 2: Prefix LIKE on the longest key. Resolves partial last word like
+    // "tame imp" → "tame impala". Min length 4 to avoid noisy disambiguation.
+    if (longestKey.length >= 4) {
       const { data: likeData } = await supabase
         .from("known_artists")
         .select("mbid, canonical_name, name_normalized")
         .like("name_normalized", `${longestKey}%`)
-        .limit(5);
+        .order("name_normalized", { ascending: true })
+        .limit(20);
 
       if (likeData && likeData.length > 0) {
         const queryNorm = normalizeArtistNameForMatch(longestKey);
-        const best = likeData
+        const valid = likeData
           .map((row) => ({
             mbid: row.mbid as string,
             name: row.canonical_name as string,
+            nameNormDb: row.name_normalized as string,
             nameNorm: normalizeArtistNameForMatch(row.canonical_name as string)
           }))
           .filter((c) => c.nameNorm.startsWith(queryNorm))
-          .sort((a, b) => a.nameNorm.length - b.nameNorm.length)[0];
+          // Shortest alphanumeric-normalized name wins. This favors "beyonce"
+          // over "beyon-d-lusion" and avoids special-char-laden noise.
+          .sort((a, b) => a.nameNorm.length - b.nameNorm.length);
 
-        if (best) {
+        if (valid.length > 0) {
+          const firstName = valid[0].nameNormDb;
+          const canonical = KNOWN_ARTIST_MBIDS[firstName];
+          const best = canonical
+            ? { mbid: canonical.mbid, name: canonical.name }
+            : { mbid: valid[0].mbid, name: valid[0].name };
+
           const result: ResolvedArtistMatch = {
             mbid: best.mbid,
             name: best.name,
@@ -523,11 +530,60 @@ async function lookupArtistInDb(coreText: string): Promise<ResolvedArtistMatch |
         }
       }
     }
+
+    // Step 3: Exact match on shorter prefixes (artist + remaining text).
+    // E.g., "iron maiden curitiba" → "iron maiden" + remaining "curitiba".
+    if (prefixes.length > 1) {
+      const shorterPrefixes = prefixes.slice(1);
+      const { data, error } = await supabase
+        .from("known_artists")
+        .select("mbid, canonical_name, name_normalized")
+        .in("name_normalized", shorterPrefixes)
+        .limit(shorterPrefixes.length * 2);
+
+      if (!error && data && data.length > 0) {
+        const dataMap = new Map<string, typeof data>();
+        for (const row of data) {
+          const k = row.name_normalized as string;
+          const list = dataMap.get(k) ?? [];
+          list.push(row);
+          dataMap.set(k, list);
+        }
+
+        for (let take = words.length - 1; take >= 1; take -= 1) {
+          const prefix = words.slice(0, take).join(" ");
+          const key = normalizeLoose(prefix).replace(/['"`'']/g, "");
+          const matches = dataMap.get(key);
+          if (matches && matches.length > 0) {
+            const canonical = pickCanonicalRow(matches, key);
+            const result: ResolvedArtistMatch = {
+              mbid: canonical.mbid,
+              name: canonical.name,
+              matchedPrefix: prefix,
+              remaining: words.slice(take).join(" ").trim(),
+              score: STRONG_ARTIST_MATCH_SCORE + take * 20
+            };
+            setCacheValue(cacheKey, result, ARTIST_LOOKUP_TTL_MS);
+            return result;
+          }
+        }
+      }
+    }
   } catch {
     return null;
   }
 
   return null;
+}
+
+function pickCanonicalRow(
+  rows: Array<{ mbid: unknown; canonical_name: unknown; name_normalized: unknown }>,
+  nameKey: string
+): { mbid: string; name: string } {
+  const canonical = KNOWN_ARTIST_MBIDS[nameKey];
+  if (canonical) return { mbid: canonical.mbid, name: canonical.name };
+  const first = rows[0];
+  return { mbid: first.mbid as string, name: first.canonical_name as string };
 }
 
 async function findKnownArtistFromPrefixWithDb(coreText: string): Promise<ResolvedArtistMatch | null> {
