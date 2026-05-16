@@ -13,10 +13,6 @@ CREATE TABLE IF NOT EXISTS known_artists (
 CREATE INDEX IF NOT EXISTS known_artists_name_prefix_idx
   ON known_artists (name_normalized text_pattern_ops);
 
--- Índice trigrama para buscas de similaridade / autocomplete futuro
-CREATE INDEX IF NOT EXISTS known_artists_trgm_idx
-  ON known_artists USING GIN (name_normalized gin_trgm_ops);
-
 ALTER TABLE known_artists ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "known_artists_select_public" ON known_artists;

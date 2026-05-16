@@ -19,15 +19,19 @@
  *    npx tsx scripts/import-musicbrainz-artists.ts /tmp/mbdump/artist
  *
  * O script é idempotente: usa ON CONFLICT DO NOTHING, pode ser re-executado sem duplicar dados.
- * Tempo estimado: 20–40 min para ~3 M de artistas (limitado pela rede para o Supabase).
  */
 
 import { createClient } from "@supabase/supabase-js";
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 
-const BATCH_SIZE = 500;
-const EXCLUDED_TYPES = new Set(["Character"]);
+const BATCH_SIZE = 800;
+const CONCURRENCY = 3;
+const MAX_RETRIES = 5;
+// Apenas tipos que fazem shows ao vivo. null inclui artistas sem tipo definido
+// mas que são frequentemente buscados (artistas mais antigos / menos documentados).
+// Excluímos Character (personagens fictícios) e Other (categorias genéricas).
+const ALLOWED_TYPES = new Set(["Group", "Person", "Orchestra", "Choir", null]);
 
 type ArtistRow = {
   mbid: string;
@@ -45,21 +49,31 @@ function normalizeForDb(name: string): string {
     .replace(/['''`"]/g, "");
 }
 
-async function flushBatch(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-  batch: ArtistRow[],
-  inserted: { count: number }
-) {
-  if (batch.length === 0) return;
-  const { error } = await supabase
-    .from("known_artists")
-    .upsert(batch, { onConflict: "mbid", ignoreDuplicates: true });
-  if (error) {
-    process.stderr.write(`[warn] batch error: ${error.message}\n`);
-  } else {
-    inserted.count += batch.length;
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function flushBatch(supabase: any, batch: ArtistRow[]): Promise<number> {
+  if (batch.length === 0) return 0;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const { error } = await supabase
+      .from("known_artists")
+      .upsert(batch, { onConflict: "mbid", ignoreDuplicates: true });
+
+    if (!error) return batch.length;
+
+    const isTimeout = error.message?.includes("timeout") || error.message?.includes("statement");
+    if (!isTimeout || attempt === MAX_RETRIES) {
+      process.stderr.write(`\n[warn] batch falhou (tentativa ${attempt}/${MAX_RETRIES}): ${error.message}\n`);
+      return 0;
+    }
+
+    // Backoff exponencial: 2s, 4s, 8s, 16s
+    await sleep(2000 * 2 ** (attempt - 1));
   }
+  return 0;
 }
 
 async function main() {
@@ -82,10 +96,23 @@ async function main() {
 
   const rl = createInterface({ input: createReadStream(filePath), crlfDelay: Infinity });
 
-  const batch: ArtistRow[] = [];
-  const inserted = { count: 0 };
+  let currentBatch: ArtistRow[] = [];
+  let inserted = 0;
   let parsed = 0;
   let skipped = 0;
+
+  const inFlight = new Set<Promise<void>>();
+
+  async function dispatchBatch(batch: ArtistRow[]) {
+    const p = flushBatch(supabase, batch).then((n) => {
+      inserted += n;
+      inFlight.delete(p);
+    });
+    inFlight.add(p);
+    if (inFlight.size >= CONCURRENCY) {
+      await Promise.race(inFlight);
+    }
+  }
 
   for await (const line of rl) {
     const trimmed = line.trim();
@@ -103,37 +130,30 @@ async function main() {
     const name = typeof obj["name"] === "string" ? obj["name"] : "";
     const type = typeof obj["type"] === "string" ? obj["type"] : null;
 
-    if (!mbid || !name) {
-      skipped++;
-      continue;
-    }
-
-    if (type !== null && EXCLUDED_TYPES.has(type)) {
-      skipped++;
-      continue;
-    }
+    if (!mbid || !name) { skipped++; continue; }
+    if (!ALLOWED_TYPES.has(type)) { skipped++; continue; }
 
     const name_normalized = normalizeForDb(name);
-    if (!name_normalized) {
-      skipped++;
-      continue;
-    }
+    if (!name_normalized) { skipped++; continue; }
 
-    batch.push({ mbid, canonical_name: name, name_normalized });
+    currentBatch.push({ mbid, canonical_name: name, name_normalized });
     parsed++;
 
-    if (batch.length >= BATCH_SIZE) {
-      await flushBatch(supabase, batch.splice(0), inserted);
-      process.stdout.write(`\r  inseridos: ${inserted.count.toLocaleString()}  lidos: ${parsed.toLocaleString()}`);
+    if (currentBatch.length >= BATCH_SIZE) {
+      await dispatchBatch(currentBatch.splice(0));
+      process.stdout.write(`\r  inseridos: ${inserted.toLocaleString("pt-BR")}  lidos: ${parsed.toLocaleString("pt-BR")}  `);
     }
   }
 
-  await flushBatch(supabase, batch.splice(0), inserted);
+  if (currentBatch.length > 0) {
+    await dispatchBatch(currentBatch.splice(0));
+  }
+  await Promise.all(inFlight);
 
   process.stdout.write(`\n\nConcluído.\n`);
-  process.stdout.write(`  Lidos:     ${parsed.toLocaleString()}\n`);
-  process.stdout.write(`  Inseridos: ${inserted.count.toLocaleString()}\n`);
-  process.stdout.write(`  Ignorados: ${skipped.toLocaleString()}\n`);
+  process.stdout.write(`  Lidos:     ${parsed.toLocaleString("pt-BR")}\n`);
+  process.stdout.write(`  Inseridos: ${inserted.toLocaleString("pt-BR")}\n`);
+  process.stdout.write(`  Ignorados: ${skipped.toLocaleString("pt-BR")}\n`);
 }
 
 main().catch((err) => {
