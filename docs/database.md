@@ -94,6 +94,60 @@ Registro de curtidas. Cada par `(post_id, user_id)` é único.
 
 ---
 
+### `profiles`
+
+Espelho consultável de `auth.users` com nome de exibição e avatar. Necessário para a busca de amigos e a exibição de contadores SEGUINDO/SEGUIDORES sem expor a tabela de auth.
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| `user_id` | `uuid` | PK — FK → `auth.users.id` ON DELETE CASCADE |
+| `display_name` | `text` | Nome derivado de `full_name`/`name` do metadata Google ou parte antes do `@` no e-mail |
+| `display_name_normalized` | `text` | lowercase + sem diacríticos — usado pela busca de amigos |
+| `avatar_url` | `text` | Nullable, espelha `avatar_url`/`picture` do metadata |
+| `created_at` | `timestamptz` | UTC |
+| `updated_at` | `timestamptz` | UTC, atualizado por trigger |
+
+**Índices:**
+- `profiles_display_name_normalized_idx` ON `(display_name_normalized text_pattern_ops)` — lookup exato e LIKE `'prefix%'`
+- `profiles_display_name_trgm_idx` USING GIN `(display_name_normalized gin_trgm_ops)` — busca por similaridade futura
+
+**Triggers:**
+- `profiles_set_updated_at_trigger` — antes de UPDATE, atualiza `updated_at`
+- `on_auth_user_profile_sync` em `auth.users` — após INSERT ou UPDATE de `email`/`raw_user_meta_data`, faz upsert em `profiles` via `handle_auth_user_profile_sync()`
+
+**RLS:**
+- SELECT: público (anon + authenticated)
+- INSERT: `auth.uid() = user_id`
+- UPDATE: `auth.uid() = user_id`
+
+**Backfill:** a migration popula `profiles` para todos os `auth.users` já existentes na primeira aplicação.
+
+---
+
+### `user_follows`
+
+Pares (seguidor, seguido) que constituem o grafo social.
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| `follower_id` | `uuid` | FK → `auth.users.id` ON DELETE CASCADE |
+| `following_id` | `uuid` | FK → `auth.users.id` ON DELETE CASCADE |
+| `created_at` | `timestamptz` | UTC |
+
+**Primary key:** `(follower_id, following_id)`  
+**Check:** `follower_id <> following_id` (ninguém segue a si mesmo)
+
+**Índices:**
+- `user_follows_follower_idx` ON `(follower_id, created_at DESC)`
+- `user_follows_following_idx` ON `(following_id, created_at DESC)`
+
+**RLS:**
+- SELECT: público (anon + authenticated) — contadores são públicos
+- INSERT: `auth.uid() = follower_id`
+- DELETE: `auth.uid() = follower_id`
+
+---
+
 ### `known_artists`
 
 Cache de artistas do MusicBrainz usado para resolução de MBID sem chamar `setlist.fm /search/artists`.
@@ -122,6 +176,7 @@ Ver `docs/search.md` para instruções de importação.
 | `20260228161000_wallet_entries.sql` | Cria `wallet_entries`, índice, trigger de `updated_at`, RLS |
 | `20260514120000_show_posts.sql` | Cria `show_posts`, `post_likes`, trigger de `like_count`, RLS, bucket `post-photos` |
 | `20260515000000_known_artists.sql` | Cria `known_artists`, extensão `pg_trgm`, índices B-tree e trigrama, RLS pública, seed com 23 artistas |
+| `20260517000000_social_profiles_follows.sql` | Cria `profiles` (com trigger de sync a `auth.users` + backfill) e `user_follows` (com check `follower_id <> following_id`), `normalize_display_name(text)` SQL function, índices B-tree e trigrama em `display_name_normalized`, RLS públicas para SELECT |
 
 As migrations são idempotentes (`create table if not exists`, `drop trigger if exists`, `drop policy if exists`).
 
@@ -130,6 +185,23 @@ As migrations são idempotentes (`create table if not exists`, `drop trigger if 
 ---
 
 ## Funções PostgreSQL
+
+### `handle_auth_user_profile_sync()`
+
+```sql
+-- Trigger AFTER INSERT OR UPDATE em auth.users.
+-- Upsert em public.profiles com display_name, display_name_normalized
+-- e avatar_url derivados de raw_user_meta_data + email.
+-- security definer (escreve em public.profiles sem RLS do caller).
+```
+
+### `normalize_display_name(text)`
+
+```sql
+-- Função SQL imutável usada pelo trigger de sync.
+-- Aplica lower() + translate() para remover diacríticos comuns
+-- (Portuguese/Spanish coverage). Sem extensão "unaccent".
+```
 
 ### `post_likes_update_count()`
 

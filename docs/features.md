@@ -131,7 +131,67 @@
 
 ---
 
-## 6. Analytics (Google Analytics 4)
+## 6. Rede Social (release `release-social-update`)
+
+A home logada virou uma rede social de "diário de shows". O viewer pode seguir outros usuários, ver as atividades de quem segue e descobrir shows em alta.
+
+### Home — Abas `Novidades` / `Meus shows`
+
+| Tab | Conteúdo |
+|---|---|
+| `Novidades` (default) | `Shows em alta` (carrossel) + `Seguindo` (feed vertical) |
+| `Meus shows` | `Eu vou!` (carrossel) + tickets passados agrupados por ano |
+
+O parâmetro `?tab=meus-shows` deep-linka a aba (usado pelo drawer e por testes). A troca local de aba atualiza o URL via `replaceState`.
+
+### Perfil próprio (cabeçalho)
+
+- Avatar 96px, nome (22px / 700)
+- Dois contadores: `SEGUINDO` e `SEGUIDORES`
+- Formatação pt-BR com separador (`9.999.999`); zero exibido como `—`
+- `font-variant-numeric: tabular-nums` para estabilidade visual quando o número atualiza
+
+### Drawer lateral (menu)
+
+Acionado pelo botão hambúrguer (substituiu o avatar com menu antigo). Itens topo: `Meus shows`, `Buscar shows`, `Buscar amigos`. Itens base: `Termos de uso`, `Privacidade`, `Sair`. Slide-in 320ms da direita com backdrop blurred. ESC + clique fora fecham.
+
+### Feed "Seguindo"
+
+Lê `/api/feed/following`. Cada item: avatar + nome em bold + verbo `Foi` (memória, `pink-light`) ou `Vai` (antecipação, `blue-glow`) + data, seguido do ticket do show. Estado vazio convida a buscar amigos.
+
+### Carrossel "Shows em alta"
+
+Lê `/api/shows/trending`. Duas fontes mescladas:
+
+1. **Sinal da plataforma**: `wallet_entries` futuros (`status = "going"`) agrupados por `setlist_id` ordenados por contagem desc — quanto mais usuários marcam "Eu vou", mais alto.
+2. **Fonte de descoberta**: Ticketmaster Discovery API (`classificationName=music`, `countryCode=BR`, `sort=date,asc`) preenche os slots restantes quando a plataforma ainda não tem volume.
+
+Limite 12. Dedup por `id` com prioridade pra plataforma. Cache de 1h no Ticketmaster. Renderiza com o mesmo `EventCard` da wallet (badge "Faltam X dias!"). Quando vazio (sem TM key, sem dados, sem internet), a seção não renderiza.
+
+### Busca dupla (`/search?tab=...`)
+
+- Aba `Shows` (default): pipeline existente em `/api/setlists/search`.
+- Aba `Amigos`: `/api/profiles/search?q=...` (debounce 350ms). Cada resultado renderiza avatar (link para `/u/[userId]`), nome (link) e `FollowButton` inline.
+
+### Página `/u/[userId]`
+
+Server component faz `fetch` interno em `/api/profiles/[userId]` + `/api/profiles/[userId]/wallet` repassando o cookie da request. Client renderiza:
+
+- `ProfileHeader` com CTA `Seguir`/`Seguindo` (`FollowButton` otimístico) ou link de login.
+- Carrossel "Vai!" para shows futuros + tickets passados agrupados por ano.
+- Estado vazio: `"X ainda não guardou shows por aqui."`.
+
+### Seguir/Deixar de seguir
+
+`POST /api/follows/[userId]` (upsert idempotente em `user_follows`) e `DELETE` (idempotente). A UI usa `FollowButton` que faz atualização otimística e reverte em caso de erro. Self-follow → `400`.
+
+### Grafo social e contadores
+
+Contadores derivam direto de `user_follows` (via `COUNT(*)` headless). Não há cache server-side ainda — o cálculo é fresco a cada requisição. Ver `docs/database.md` para a definição da tabela.
+
+---
+
+## 7. Analytics (Google Analytics 4)
 
 **ID:** `G-LDQLEFB0DR`
 
@@ -156,3 +216,8 @@
 | Cache Ticketmaster | 1h para shows futuros por artista |
 | `ticketUrl` presente | Apenas quando `dates.status.code === "onsale"` na resposta do Ticketmaster |
 | Botão ingressos | Visível somente se `ticketUrl` existe E `isFutureOrTodayShow()` retorna true |
+| Self-follow | Impossível — endpoint retorna 400 e DB tem `check (follower_id <> following_id)` |
+| Contadores zero | Renderizados como `—` em vez de `0` (escolha de tom — ver `docs/voice.md`) |
+| Verbos do feed | `Foi` em `pink-light` (memória), `Vai` em `blue-glow` (antecipação) — diferenciação cromática deliberada |
+| Agrupamento por ano | Ano renderizado só como número (`2025`, não `ANO 2025`); ordem decrescente dentro de cada ano |
+| Trending shows | Agrupa `wallet_entries` com `status = "going"` e `event_date >= today`; ordena por contagem desc |

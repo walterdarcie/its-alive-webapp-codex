@@ -34,16 +34,23 @@ Browser
   │     └─ app/login, signin    → redirect se já autenticado
   │
   ├─► API Routes (Next.js Route Handlers)
-  │     ├─ /api/wallet          ← localStorage sync + Supabase
-  │     ├─ /api/setlists/search ← Setlist.fm + Ticketmaster (mergeados)
-  │     ├─ /api/setlists/[id]   ← Setlist.fm detalhe (tm-* retorna 404 imediato)
-  │     ├─ /api/artist-image    ← MusicBrainz + Wikipedia
-  │     ├─ /api/posts/*         ← Supabase show_posts + post_likes
-  │     └─ /api/auth/signout    ← Supabase signOut
+  │     ├─ /api/wallet              ← localStorage sync + Supabase
+  │     ├─ /api/setlists/search     ← Setlist.fm + Ticketmaster (mergeados)
+  │     ├─ /api/setlists/[id]       ← Setlist.fm detalhe (tm-* retorna 404 imediato)
+  │     ├─ /api/artist-image        ← MusicBrainz + Wikipedia
+  │     ├─ /api/posts/*             ← Supabase show_posts + post_likes
+  │     ├─ /api/profiles/me         ← perfil do viewer + ensure
+  │     ├─ /api/profiles/[id]       ← perfil público + contadores
+  │     ├─ /api/profiles/[id]/wallet← wallet pública de outro usuário
+  │     ├─ /api/profiles/search     ← busca de amigos por nome
+  │     ├─ /api/follows/[id]        ← POST seguir / DELETE deixar de seguir
+  │     ├─ /api/feed/following      ← atividade dos seguidos
+  │     ├─ /api/shows/trending      ← shows futuros com mais "Vai"
+  │     └─ /api/auth/signout        ← Supabase signOut
   │
   └─► Supabase
         ├─ Auth (Google OAuth)
-        ├─ DB: wallet_entries, show_posts, post_likes
+        ├─ DB: wallet_entries, show_posts, post_likes, profiles, user_follows, known_artists
         └─ Storage: post-photos (público)
 ```
 
@@ -123,8 +130,11 @@ app/
   globals.css           ← TODOS os estilos aqui, sem exceção
   layout.tsx            ← Root layout, fonte Work Sans, GA
   page.tsx              ← Server Component → chama HomeClient
+  u/[userId]/page.tsx   ← Página de perfil de outro usuário (rede social)
   ui/
     *-client.tsx        ← Client Components ("use client")
+    profile-header.tsx  ← Reuso entre home e perfil de outro
+    social-drawer.tsx   ← Drawer lateral (home, search, perfil)
   api/
     [recurso]/route.ts  ← Route Handlers Next.js
   [rota]/page.tsx       ← Server Components
@@ -132,6 +142,8 @@ app/
 lib/
   show-types.ts         ← Types compartilhados
   show-utils.ts         ← Helpers de formatação (sem efeitos colaterais)
+  social-types.ts       ← Types do mundo social + formatPtBrNumber
+  social-utils.ts       ← Helpers sociais (deriveActionFromShow, normalize…)
   auth.ts               ← Helpers de auth (server-only)
   wallet-storage.ts     ← Lógica de wallet (client + server)
   setlist-api.ts        ← Cliente Setlist.fm (server-only)
@@ -143,6 +155,7 @@ lib/
     shared.ts           ← Env helpers
     server.ts           ← SSR client factory
     client.ts           ← Browser client singleton
+    social-helpers.ts   ← Helpers para endpoints sociais (server-only)
 
 supabase/
   migrations/           ← SQL numerado por timestamp YYYYMMDDHHMMSS
