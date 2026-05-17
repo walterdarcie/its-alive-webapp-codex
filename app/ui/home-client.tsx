@@ -436,12 +436,12 @@ function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTa
   );
 }
 
-export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
+export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: ViewerProfile; initialTab?: HomeTab }) {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [overlayInitialData, setOverlayInitialData] = useState<ShowRecord | undefined>(undefined);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<HomeTab>("novidades");
+  const [activeTab, setActiveTab] = useState<HomeTab>(initialTab);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [profile, setProfile] = useState<UserProfileWithCounts | null>(null);
@@ -654,7 +654,16 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
 
       <ProfileHeader profile={profile} fallbackName={viewer.name} fallbackAvatarUrl={viewer.avatarUrl} />
 
-      <TabsBar active={activeTab} onChange={setActiveTab} />
+      <TabsBar
+        active={activeTab}
+        onChange={(nextTab) => {
+          setActiveTab(nextTab);
+          const url = new URL(window.location.href);
+          if (nextTab === "novidades") url.searchParams.delete("tab");
+          else url.searchParams.set("tab", nextTab);
+          window.history.replaceState({}, "", url.toString());
+        }}
+      />
 
       <div key={activeTab} className="tabPanel">
         {activeTab === "novidades" ? (
