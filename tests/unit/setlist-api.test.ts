@@ -635,7 +635,7 @@ describe("searchSetlists (integration with mocked fetch)", () => {
     expect(calls.filter((c) => c.params.cityName === "Chi" || c.params.cityName === "chi")).toHaveLength(0);
   });
 
-  it("keeps total API calls within budget for a free-form multi-word query (≤ 5 calls)", async () => {
+  it("keeps total API calls within budget for a free-form multi-word query (≤ 8 calls)", async () => {
     const { calls } = installFetchMock([
       (url) => {
         if (url.pathname.endsWith("/search/setlists")) return { status: 404, body: { code: 404 } };
