@@ -161,7 +161,12 @@ Lê `/api/feed/following`. Cada item: avatar + nome em bold + verbo `Foi` (memó
 
 ### Carrossel "Shows em alta"
 
-Lê `/api/shows/trending`. Aggregação server-side: `wallet_entries` futuros (`status = "going"`) agrupados por `setlist_id` ordenados por contagem desc, limit 12. Renderiza com o mesmo `EventCard` da wallet (badge "Faltam X dias!"). Quando vazio, simplesmente não renderiza a seção.
+Lê `/api/shows/trending`. Duas fontes mescladas:
+
+1. **Sinal da plataforma**: `wallet_entries` futuros (`status = "going"`) agrupados por `setlist_id` ordenados por contagem desc — quanto mais usuários marcam "Eu vou", mais alto.
+2. **Fonte de descoberta**: Ticketmaster Discovery API (`classificationName=music`, `countryCode=BR`, `sort=date,asc`) preenche os slots restantes quando a plataforma ainda não tem volume.
+
+Limite 12. Dedup por `id` com prioridade pra plataforma. Cache de 1h no Ticketmaster. Renderiza com o mesmo `EventCard` da wallet (badge "Faltam X dias!"). Quando vazio (sem TM key, sem dados, sem internet), a seção não renderiza.
 
 ### Busca dupla (`/search?tab=...`)
 

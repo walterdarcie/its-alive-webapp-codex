@@ -3,6 +3,7 @@ import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
 
 const BASE_URL = "https://app.ticketmaster.com/discovery/v2";
 const UPCOMING_TTL_MS = 1000 * 60 * 60; // 1h
+const TRENDING_TTL_MS = 1000 * 60 * 60; // 1h
 
 type TicketmasterVenue = {
   name?: string;
@@ -80,6 +81,94 @@ function eventToShowRecord(event: TicketmasterEvent, queryArtistName: string): S
     ticketUrl,
     tourName
   };
+}
+
+function trendingEventToShowRecord(event: TicketmasterEvent): ShowRecord | null {
+  if (!event.id || !event.dates?.start?.localDate) return null;
+
+  const dateIso = event.dates.start.localDate;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) return null;
+
+  const attraction = event._embedded?.attractions?.[0];
+  // Skip generic events sem artista principal — não viram um bom card.
+  if (!attraction?.name) return null;
+
+  const venue = event._embedded?.venues?.[0];
+  const city = [venue?.city?.name, venue?.state?.stateCode ?? venue?.state?.name]
+    .filter(Boolean)
+    .join(", ");
+
+  const eventName = event.name ?? "";
+  const tourName = eventName && eventName !== attraction.name ? eventName : undefined;
+  const ticketUrl = event.dates?.status?.code === "onsale" ? event.url : undefined;
+
+  return {
+    id: `tm-${event.id}`,
+    artist: attraction.name,
+    venue: venue?.name ?? "",
+    city,
+    country: venue?.country?.name ?? "",
+    eventDateIso: dateIso,
+    ticketUrl,
+    tourName
+  };
+}
+
+export async function searchTrendingUpcoming(
+  opts: { countryCode?: string; size?: number } = {}
+): Promise<ShowRecord[]> {
+  const countryCode = opts.countryCode ?? "BR";
+  const size = opts.size ?? 20;
+
+  const apiKey = getApiKey();
+  if (!apiKey) return [];
+
+  const cacheKey = `tm:trending:${countryCode}:${size}`;
+  const cached = getCacheValue<ShowRecord[]>(cacheKey);
+  if (cached) return cached;
+
+  const startDateTime = `${new Date().toISOString().split(".")[0]}Z`;
+
+  const params = new URLSearchParams({
+    apikey: apiKey,
+    classificationName: "music",
+    countryCode,
+    sort: "date,asc",
+    size: String(size),
+    startDateTime
+  });
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}/events.json?${params.toString()}`, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 60 * 60 }
+    });
+  } catch {
+    return [];
+  }
+
+  if (!response.ok) return [];
+
+  let data: TicketmasterResponse;
+  try {
+    data = (await response.json()) as TicketmasterResponse;
+  } catch {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const shows: ShowRecord[] = [];
+  for (const event of data._embedded?.events ?? []) {
+    const mapped = trendingEventToShowRecord(event);
+    if (!mapped) continue;
+    if (seen.has(mapped.id)) continue;
+    seen.add(mapped.id);
+    shows.push(mapped);
+  }
+
+  setCacheValue(cacheKey, shows, TRENDING_TTL_MS);
+  return shows;
 }
 
 export async function searchUpcomingByArtist(artistName: string): Promise<ShowRecord[]> {

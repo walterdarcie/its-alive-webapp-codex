@@ -338,18 +338,27 @@ Quando o viewer não segue ninguém → `{ "items": [] }`.
 
 ### `GET /api/shows/trending`
 
-Shows em alta: agrupa `wallet_entries` futuros (`status = "going"`) por `setlist_id` e ordena por contagem decrescente. Limite 12.
+Shows em alta — combina duas fontes:
 
-**Auth:** Não. Tabela tem SELECT público.
+1. **Plataforma**: agrupa `wallet_entries` futuros (`status = "going"`) por `setlist_id` e ordena por contagem decrescente. É o sinal primário (quanto mais usuários marcaram "Eu vou", mais alto fica).
+2. **Ticketmaster Discovery API**: preenche os slots restantes com shows futuros classificados como música em `countryCode=BR`, ordenados por data ascendente. Cache in-memory de 1h.
+
+Limite final: 12 shows. Dedup por `id` (shows da plataforma com mesmo `setlist_id` têm prioridade sobre os do Ticketmaster). Shows do Ticketmaster têm `id` com prefixo `tm-` e `attendingCount: 0`.
+
+**Auth:** Não. Tabela `wallet_entries` tem SELECT público.
 
 **Response 200:**
 ```json
 {
   "shows": [
     { "show": { /* ShowRecord */ }, "attendingCount": 8 }
-  ]
+  ],
+  "source": "mixed" | "ticketmaster"
 }
 ```
+
+- `source: "mixed"` — pelo menos um show veio da plataforma
+- `source: "ticketmaster"` — todos os shows são do TM (plataforma sem registros)
 
 ---
 
