@@ -439,7 +439,6 @@ function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTa
 export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: ViewerProfile; initialTab?: HomeTab }) {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
-  const [overlayInitialData, setOverlayInitialData] = useState<ShowRecord | undefined>(undefined);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<HomeTab>(initialTab);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -452,13 +451,11 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
 
   const openShowOverlay = useCallback((show: ShowRecord) => {
     setSelectedShowId(show.id);
-    setOverlayInitialData(show);
     window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
   }, []);
 
   const closeShowOverlay = useCallback(() => {
     setSelectedShowId(null);
-    setOverlayInitialData(undefined);
     window.history.pushState({}, "", "/");
   }, []);
 
@@ -469,7 +466,6 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
         setSelectedShowId(state.showOverlay);
       } else {
         setSelectedShowId(null);
-        setOverlayInitialData(undefined);
       }
     }
     window.addEventListener("popstate", handlePopState);
@@ -709,11 +705,6 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
           onClose={closeShowOverlay}
           isAuthenticated
           viewer={{ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer}
-          initialData={
-            overlayInitialData
-              ? { ...overlayInitialData, songNames: [], setlistSections: [] }
-              : undefined
-          }
         />
       ) : null}
     </main>

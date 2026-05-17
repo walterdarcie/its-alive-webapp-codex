@@ -44,6 +44,50 @@ export async function withMvpMocks(page: Page) {
     });
   });
 
+  // Social endpoints — default to empty payloads so the home renders
+  // without depending on Supabase being reachable.
+  await page.route("**/api/profiles/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        profile: {
+          userId: "bypass-user",
+          displayName: "QA User",
+          avatarUrl: null,
+          followingCount: 0,
+          followerCount: 0,
+          isViewerFollowing: false,
+          isSelf: true
+        }
+      })
+    });
+  });
+
+  await page.route("**/api/feed/following", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [] })
+    });
+  });
+
+  await page.route("**/api/shows/trending", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ shows: [] })
+    });
+  });
+
+  await page.route("**/api/profiles/search**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ profiles: [] })
+    });
+  });
+
   await page.addInitScript((shows) => {
     const store = {
       items: Object.fromEntries(

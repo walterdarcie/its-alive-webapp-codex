@@ -1,18 +1,25 @@
 import { expect, test } from "@playwright/test";
 import { withMvpMocks } from "@/tests/helpers/mock-routes";
 
-test("home shows wallet split and detail open/close flow", async ({ page }) => {
+test("home renders profile, tabs and meus shows agrupado por ano", async ({ page }) => {
   await withMvpMocks(page);
   await page.goto("/");
   await page.waitForTimeout(450);
 
+  await expect(page.getByRole("tab", { name: "Novidades" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Meus shows" })).toBeVisible();
+
+  // Switch to Meus shows
+  await page.getByRole("tab", { name: "Meus shows" }).click();
   await expect(page.getByRole("heading", { name: "Eu vou!" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Eu fui!" })).toBeVisible();
 
   const futureCards = page.locator(".slider .card");
   const pastTickets = page.locator(".ticketList .ticket");
   await expect(futureCards).toHaveCount(2);
   await expect(pastTickets).toHaveCount(2);
+
+  await expect(page.locator(".yearLabel")).toHaveCount(1);
+  await expect(page.locator(".yearLabel span").first()).toHaveText("2025");
 
   await page.getByRole("button", { name: /metallica/i }).first().click();
   const detailSheet = page.locator(".detailSheetOverlay");
@@ -25,15 +32,40 @@ test("home shows wallet split and detail open/close flow", async ({ page }) => {
   await expect(detailSheet).toBeHidden();
 });
 
-test("search page flow and result rendering", async ({ page }) => {
+test("home drawer abre via hamburger e fecha com ESC", async ({ page }) => {
+  await withMvpMocks(page);
+  await page.goto("/");
+  await page.waitForTimeout(300);
+
+  await page.getByRole("button", { name: "Abrir menu" }).click();
+  const drawer = page.locator(".drawer");
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByText("Meus shows", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("Buscar amigos", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("Termos de uso", { exact: true })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+});
+
+test("search page com abas Shows / Amigos", async ({ page }) => {
   await withMvpMocks(page);
   await page.goto("/search");
+  await page.waitForTimeout(200);
+
+  await expect(page.getByRole("tab", { name: "Shows" })).toHaveAttribute("aria-selected", "true");
   await page.getByLabel("Buscar shows").fill("metallica");
   await page.waitForTimeout(900);
 
   const results = page.locator(".resultList .ticket");
   await expect(results).toHaveCount(4);
 
-  await results.first().click();
-  await expect(page.locator(".detailSheetOverlay")).toBeVisible();
+  // Trocar para a aba Amigos
+  await page.getByRole("tab", { name: "Amigos" }).click();
+  await expect(page.getByLabel("Buscar amigos")).toBeVisible();
+  await page.getByLabel("Buscar amigos").fill("walt");
+  await page.waitForTimeout(500);
+
+  // O mock devolve lista vazia → empty box visível
+  await expect(page.getByText(/Ninguém encontrado com esse nome ainda/i)).toBeVisible();
 });

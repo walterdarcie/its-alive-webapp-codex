@@ -12,7 +12,7 @@ async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
 
 test("home and search visual QA", async ({ page }, testInfo) => {
   await withMvpMocks(page);
-  await page.goto("/");
+  await page.goto("/?tab=meus-shows");
   await page.waitForTimeout(450);
 
   const slider = page.locator(".slider").first();
@@ -40,7 +40,7 @@ test("home and search visual QA", async ({ page }, testInfo) => {
 
 test("detail visual QA", async ({ page }, testInfo) => {
   await withMvpMocks(page);
-  await page.goto("/");
+  await page.goto("/?tab=meus-shows");
   await page.waitForTimeout(450);
 
   await page.getByRole("button", { name: /metallica/i }).first().click();
