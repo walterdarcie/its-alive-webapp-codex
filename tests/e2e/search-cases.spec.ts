@@ -47,6 +47,17 @@ const TM_VALIDATION_CASES = [
 const describeLive = LIVE ? test.describe : test.describe.skip;
 
 describeLive("busca end-to-end (API real)", () => {
+  // Mais retries que o padrão (2) porque dependemos de APIs externas (setlist.fm,
+  // Ticketmaster) que ocasionalmente devolvem 5xx ou rate-limit transitórios.
+  test.describe.configure({ retries: 3 });
+
+  // setlist.fm tolera 2 req/s no plano contratado, e cada caso de teste pode
+  // gerar mais de uma chamada interna (MBID resolve, plano principal, fallback
+  // de venue). Um respiro entre casos espalha o tráfego e evita 429 em cascata.
+  test.afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  });
+
   for (const query of SEARCH_CASES) {
     test(`retorna >=1 show para: ${query}`, async ({ request }) => {
       const response = await request.get(

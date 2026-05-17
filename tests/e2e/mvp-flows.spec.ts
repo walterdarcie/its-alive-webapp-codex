@@ -18,8 +18,8 @@ test("home shows wallet split and detail open/close flow", async ({ page }) => {
   const detailSheet = page.locator(".detailSheetOverlay");
   await expect(detailSheet).toBeVisible();
 
-  await page.getByRole("button", { name: /setlist completa/i }).click();
-  await expect(page.getByRole("button", { name: /recolher setlist/i })).toBeVisible();
+  await page.getByRole("button", { name: /ver tudo/i }).click();
+  await expect(page.getByRole("button", { name: /^recolher$/i })).toBeVisible();
 
   await page.locator(".detailOverlayContainer").getByLabel("Fechar detalhes").click();
   await expect(detailSheet).toBeHidden();
