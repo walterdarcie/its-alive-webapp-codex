@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test:unit": "vitest run",
     "test:e2e": "playwright test tests/e2e",
+    "test:search": "LIVE_SEARCH_TESTS=1 playwright test tests/e2e/search-cases.spec.ts --project=desktop-chrome",
     "qa:visual": "playwright test tests/visual",
     "qa:visual:update": "playwright test tests/visual --update-snapshots"
   },

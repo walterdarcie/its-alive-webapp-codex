@@ -213,7 +213,7 @@ O cache é LRU com limite de 600 entradas (`MAX_CACHE_ENTRIES` em `setlist-cache
 
 ## Testes
 
-Cobertura unitária em `tests/unit/setlist-api.test.ts`:
+### Unitários (`tests/unit/setlist-api.test.ts`)
 
 | Bloco | O que valida |
 |---|---|
@@ -222,9 +222,9 @@ Cobertura unitária em `tests/unit/setlist-api.test.ts`:
 | `countryNameToCode` | Mapeamento de nomes + opt-in para códigos de 2 letras |
 | `extractTrailingCountry` | Detecção de país no final da string |
 | `scoreArtistAgainstPrefix` | Scoring do MBID match |
-| `findKnownArtistFromPrefix` | Atalho via KNOWN map |
-| `extractArtistForUpcoming` | Extração do artista para Ticketmaster em todos os formatos de query |
-| `searchSetlists` (com fetch mock) | Pipeline end-to-end: direct hit, MBID shortcut, resolução, fallbacks |
+| `extractArtistForUpcoming` | Extração do artista para Ticketmaster em todos os formatos de query, incluindo nome canônico via janela quando o artista está no meio/fim |
+| `extractYearFromSearchTerm` | Extração do filtro de ano (free-form, vírgula, "in/em", vazio) |
+| `searchSetlists` (com fetch mock) | Pipeline end-to-end: direct hit, MBID shortcut, resolução, fallbacks, forward do `year` no plano |
 
 Cobertura unitária em `tests/unit/ticketmaster-api.test.ts`:
 
@@ -239,6 +239,30 @@ npm run test:unit
 ```
 
 Os testes mockam `globalThis.fetch` — **não fazem chamadas reais à API**. CI roda automaticamente em todo push/PR via `.github/workflows/release-quality.yml`.
+
+### Suite de busca contra API real (`tests/e2e/search-cases.spec.ts`)
+
+Validação a cada deploy de que a busca real (setlist.fm + Ticketmaster + Supabase `known_artists`) atende todas as combinações de ordem dos termos. Cobertura:
+
+- **Nome simples** — `Metallica`
+- **Nome composto completo e parcial** — `Tame Impala`, `Tame Imp`
+- **Nome + ano em qualquer ordem** — `Metallica 2010`, `2010 Metallica`, `Tame Impala 2010`, `2010 Tame Imp`
+- **Nome + cidade em qualquer ordem** — `Metallica São Paulo`, `São Paulo Metallica`, `Tame Impala Bogotá`, `Bogotá Tame Imp`
+- **Nome + ano + cidade em qualquer ordem** — `Metallica 2010 São Paulo`, `São Paulo 2010 Metallica`, `2010 Metallica São Paulo`, `Tame Impala Bogotá 2016`, `2016 Bogotá Tame Imp`
+
+Cada caso assert `shows.length > 0`. Cinco casos sem filtro de ano no passado (`Metallica`, `Tame Impala`, `Tame Imp`, `Tame Impala Bogotá`, `Bogotá Tame Imp` — e os equivalentes com cidade) também assertam pelo menos um show com `id` iniciado por `tm-`, validando a integração do Ticketmaster Discovery API.
+
+> `Tame Impala Bogotá 2010` ficou de fora porque o setlist.fm não tem dado para essa combinação (Tame Impala em Bogotá só consta para 2016). Os cases com 2016 cobrem o mesmo cenário sem depender de dado inexistente.
+
+**Habilitação:** a suite só roda quando `LIVE_SEARCH_TESTS=1` (e API keys reais disponíveis). Sem essa variável, todos os testes de `search-cases.spec.ts` são `test.skip()` — isso permite que `npm run test:e2e` (PR / desenvolvimento local) continue rápido e determinístico.
+
+**Rodando localmente** (precisa de `.env.local` com `SETLISTFM_API_KEY`, `TICKETMASTER_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`):
+
+```bash
+npm run test:search
+```
+
+**CI:** o job `search-live` em `.github/workflows/release-quality.yml` roda essa suite a cada push em `main` (e via `workflow_dispatch`), nunca em PR. Requer os mesmos secrets configurados em `Settings → Secrets and variables → Actions`. Se algum secret estiver faltando, o job falha em vez de silenciar — isso é proposital, para que regressões em provisão de credenciais sejam visíveis.
 
 ## Troubleshooting
 
