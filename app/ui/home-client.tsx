@@ -2,98 +2,42 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ShowRecord, Viewer } from "@/lib/show-types";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
+import { SocialDrawer } from "@/app/ui/social-drawer";
+import { ProfileHeader } from "@/app/ui/profile-header";
 import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletEntries, hydrateWalletFromServer, type WalletEntry } from "@/lib/wallet-storage";
-import { daysUntilShow, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
+import {
+  daysUntilShow,
+  formatDatePtBrLong,
+  formatPostDate,
+  formatVenueLine,
+  groupShowsByYearDesc,
+  isFutureOrTodayShow
+} from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
+import type {
+  FollowFeedItem,
+  TrendingShow,
+  UserProfileWithCounts
+} from "@/lib/social-types";
 import { trackEvent } from "@/lib/analytics";
 
-function BrandHeader({ viewer }: { viewer: ViewerProfile }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+type HomeTab = "novidades" | "meus-shows";
 
-  useEffect(() => {
-    if (!isMenuOpen) return;
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (menuRef.current?.contains(target)) return;
-      setIsMenuOpen(false);
-    }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsMenuOpen(false);
-    }
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [isMenuOpen]);
-
-  async function signOut() {
-    trackEvent("sign_out_click", { source: "home_header_menu" });
-    try {
-      await fetch("/api/auth/signout", { method: "POST" });
-    } finally {
-      window.location.href = "/login";
-    }
-  }
-
+function HamburgerIcon() {
   return (
-    <header className="topbar">
-      <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
-        <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
-      </Link>
-      <div className="profileMenuWrap" ref={menuRef}>
-        <button
-          type="button"
-          className="avatarStub avatarButtonReset"
-          aria-label={`Abrir menu da conta de ${viewer.name}`}
-          aria-expanded={isMenuOpen}
-          onClick={() =>
-            setIsMenuOpen((v) => {
-              const next = !v;
-              if (next) trackEvent("profile_menu_open", { source: "home_header" });
-              return next;
-            })
-          }
-        >
-          {viewer.avatarUrl ? (
-            <span
-              className="avatarPhoto"
-              style={{
-                backgroundImage: `url("${viewer.avatarUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
-              }}
-              aria-hidden
-            />
-          ) : (
-            <span className="avatarFallbackIcon" aria-hidden />
-          )}
-        </button>
-
-        {isMenuOpen ? (
-          <div className="profileMenu" role="menu" aria-label="Menu da conta">
-            <p className="profileMenuName">{viewer.name}</p>
-            {viewer.email ? <p className="profileMenuEmail">{viewer.email}</p> : null}
-            <p className="profileMenuHint">Seus shows ficam salvos em qualquer dispositivo</p>
-            <button
-              type="button"
-              className="chip chipGhost profileSignOutBtn"
-              role="menuitem"
-              onClick={() => {
-                void signOut();
-              }}
-            >
-              Sair
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </header>
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" className="iconSvg">
+      <path
+        d="M4 7h16 M4 12h16 M4 17h16"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
   );
 }
 
@@ -105,6 +49,27 @@ function SearchIcon() {
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+function TopBarSocial({ onOpenDrawer }: { onOpenDrawer: () => void }) {
+  return (
+    <header className="topBarSocial">
+      <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
+        <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
+      </Link>
+      <button
+        type="button"
+        className="hamburgerBtn iconBtn"
+        aria-label="Abrir menu"
+        onClick={() => {
+          trackEvent("social_drawer_open", { source: "home_topbar" });
+          onOpenDrawer();
+        }}
+      >
+        <HamburgerIcon />
+      </button>
+    </header>
   );
 }
 
@@ -167,6 +132,188 @@ function TicketRow({
   );
 }
 
+function buildAvatarStyle(url: string): CSSProperties {
+  const sanitized = url.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return { backgroundImage: `url("${sanitized}")` };
+}
+
+type FeedTicketProps = {
+  item: FollowFeedItem;
+  imageUrl?: string;
+  onOpenDetail: (showId: string) => void;
+};
+
+function FeedActivityItem({ item, imageUrl, onOpenDetail }: FeedTicketProps) {
+  const verbLabel = item.action === "went" ? "Foi" : "Vai";
+  const verbClass = item.action === "went" ? "verbWent" : "verbGoing";
+
+  return (
+    <article className="activityItem">
+      <header className="activityHeader">
+        <Link
+          href={`/u/${encodeURIComponent(item.actor.userId)}`}
+          className="activityAvatarLink"
+          aria-label={`Abrir perfil de ${item.actor.displayName}`}
+          onClick={() => trackEvent("activity_avatar_click", { target_user_id: item.actor.userId })}
+        >
+          {item.actor.avatarUrl ? (
+            <span className="activityAvatar activityAvatarPhoto" style={buildAvatarStyle(item.actor.avatarUrl)} aria-hidden />
+          ) : (
+            <span className="activityAvatar activityAvatarFallback" aria-hidden />
+          )}
+        </Link>
+        <div className="activityHeaderText">
+          <p className="activityNameLine">
+            <Link
+              href={`/u/${encodeURIComponent(item.actor.userId)}`}
+              className="activityName"
+              onClick={() => trackEvent("activity_name_click", { target_user_id: item.actor.userId })}
+            >
+              {item.actor.displayName}
+            </Link>
+            <span className={`activityVerb ${verbClass}`}>{verbLabel}</span>
+          </p>
+          <p className="activityDate">{formatPostDate(item.occurredAtIso)}</p>
+        </div>
+      </header>
+      <TicketRow show={item.show} imageUrl={imageUrl} onOpenDetail={onOpenDetail} />
+    </article>
+  );
+}
+
+type TrendingPanelProps = {
+  trending: TrendingShow[];
+  loading: boolean;
+  resolveShowImageUrl: (show: ShowRecord) => string | undefined;
+  onOpenShow: (show: ShowRecord) => void;
+};
+
+function TrendingShowsPanel({ trending, loading, resolveShowImageUrl, onOpenShow }: TrendingPanelProps) {
+  if (loading) {
+    return (
+      <section className="section" aria-label="Carregando shows em alta">
+        <h2 className="sectionTitle">Shows em alta</h2>
+        <div className="slider sliderPeek skeletonSlider" aria-hidden>
+          <div className="skeletonCard" />
+          <div className="skeletonCard" />
+        </div>
+      </section>
+    );
+  }
+
+  if (!trending.length) return null;
+
+  return (
+    <section className="section" aria-labelledby="shows-em-alta">
+      <h2 id="shows-em-alta" className="sectionTitle">
+        Shows em alta
+      </h2>
+      <div className={`slider ${trending.length > 1 ? "sliderPeek" : ""}`}>
+        {trending.map(({ show }) => (
+          <button
+            key={show.id}
+            type="button"
+            className="cardLink cardButtonReset"
+            onClick={() => {
+              trackEvent("show_detail_open", { source: "home_trending", show_id: show.id });
+              onOpenShow(show);
+            }}
+          >
+            <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type FollowingPanelProps = {
+  items: FollowFeedItem[];
+  loading: boolean;
+  followsAnyone: boolean;
+  resolveShowImageUrl: (show: ShowRecord) => string | undefined;
+  onOpenShow: (show: ShowRecord) => void;
+  onOpenFriendsDrawer: () => void;
+};
+
+function FollowingFeedPanel({
+  items,
+  loading,
+  followsAnyone,
+  resolveShowImageUrl,
+  onOpenShow,
+  onOpenFriendsDrawer
+}: FollowingPanelProps) {
+  if (loading) {
+    return (
+      <section className="section" aria-label="Carregando novidades dos amigos">
+        <h2 className="sectionTitle">Seguindo</h2>
+        <div className="activityFeed skeletonFeed" aria-hidden>
+          <div className="skeletonTicket" />
+          <div className="skeletonTicket" />
+        </div>
+      </section>
+    );
+  }
+
+  if (!followsAnyone) {
+    return (
+      <section className="section" aria-labelledby="seguindo-empty">
+        <h2 id="seguindo-empty" className="sectionTitle">
+          Seguindo
+        </h2>
+        <div className="emptyBox emptyFollowState">
+          <p className="emptyFollowText">
+            Comece a seguir gente que também guarda memórias de shows. Vocês podem se reencontrar nos próximos.
+          </p>
+          <Link
+            href="/search?tab=amigos"
+            className="chip chipGhost emptyFollowCta"
+            onClick={() => {
+              trackEvent("empty_following_cta_click", { source: "home_following_empty" });
+              onOpenFriendsDrawer();
+            }}
+          >
+            Buscar amigos
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (!items.length) {
+    return (
+      <section className="section" aria-labelledby="seguindo-quiet">
+        <h2 id="seguindo-quiet" className="sectionTitle">
+          Seguindo
+        </h2>
+        <p className="emptyBox">Ninguém que você segue marcou show por aqui ainda. Logo aparece algo.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="section" aria-labelledby="seguindo">
+      <h2 id="seguindo" className="sectionTitle">
+        Seguindo
+      </h2>
+      <div className="activityFeed">
+        {items.map((item) => (
+          <FeedActivityItem
+            key={item.id}
+            item={item}
+            imageUrl={resolveShowImageUrl(item.show)}
+            onOpenDetail={(showId) => {
+              trackEvent("show_detail_open", { source: "home_following_feed", show_id: showId });
+              onOpenShow(item.show);
+            }}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function splitWallet(entries: WalletEntry[]) {
   const shows = entries.map((entry) => entry.show);
   return {
@@ -175,82 +322,145 @@ function splitWallet(entries: WalletEntry[]) {
   };
 }
 
-function EmptyWalletOnboarding() {
-  return (
-    <section className="onboardingEntry" aria-label="Comece sua carteira">
-      <div className="onboardingGlow onboardingGlowA" aria-hidden />
-      <div className="onboardingGlow onboardingGlowB" aria-hidden />
-      <div className="onboardingBeam" aria-hidden />
+type MyShowsPanelProps = {
+  futureShows: ShowRecord[];
+  pastShows: ShowRecord[];
+  resolveShowImageUrl: (show: ShowRecord) => string | undefined;
+  onOpenShow: (show: ShowRecord) => void;
+};
 
-      <div className="onboardingCard">
-        <p className="onboardingKicker">Shows acabam. Memórias não.</p>
-        <h2 className="onboardingTitle">
-          Alguns momentos duram poucas horas.
-          <br />
-          Mas a emoção fica para sempre.
-        </h2>
-        <p className="onboardingSubtitle">
-          Use a busca para cadastrar os shows que marcaram sua vida e mantenha suas memórias vivas em qualquer dispositivo.
+function MyShowsPanel({ futureShows, pastShows, resolveShowImageUrl, onOpenShow }: MyShowsPanelProps) {
+  const groupedPast = useMemo(() => groupShowsByYearDesc(pastShows), [pastShows]);
+
+  if (!futureShows.length && !pastShows.length) {
+    return (
+      <section className="myShowsEmpty section">
+        <p className="emptyBox">
+          Sua carteira começa na busca. <br />
+          Encontre um show e marque como <strong>Eu fui</strong> ou <strong>Eu vou</strong>.
         </p>
-
         <Link
-          href="/search"
-          className="ctaMain onboardingCta"
-          onClick={() => {
-            trackEvent("onboarding_empty_wallet_cta_click", { source: "home_empty_wallet" });
-          }}
+          href="/search?tab=shows"
+          className="ctaMain"
+          onClick={() => trackEvent("my_shows_empty_cta", { source: "home_my_shows_empty" })}
         >
-          <span className="ctaMainLabel">Buscar meus shows agora</span>
+          <span className="ctaMainLabel">Buscar meus shows</span>
         </Link>
-      </div>
-    </section>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      {futureShows.length ? (
+        <section className="section" aria-labelledby="shows-futuros">
+          <h2 id="shows-futuros" className="sectionTitle">
+            Eu vou!
+          </h2>
+          <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
+            {futureShows.map((show) => (
+              <button
+                key={show.id}
+                type="button"
+                className="cardLink cardButtonReset"
+                onClick={() => {
+                  trackEvent("show_detail_open", { source: "my_shows_future_slider", show_id: show.id });
+                  onOpenShow(show);
+                }}
+              >
+                <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {groupedPast.length ? (
+        <section className="section" aria-label="Shows passados agrupados por ano">
+          {groupedPast.map((group, index) => (
+            <div key={group.year} className="yearGroup" style={{ animationDelay: `${80 + index * 60}ms` }}>
+              <h3 className="yearLabel">
+                <span>{group.year}</span>
+              </h3>
+              <div className="ticketList">
+                {group.items.map((show) => (
+                  <TicketRow
+                    key={show.id}
+                    show={show}
+                    imageUrl={resolveShowImageUrl(show)}
+                    onOpenDetail={(showId) => {
+                      trackEvent("show_detail_open", { source: "my_shows_past_list", show_id: showId });
+                      onOpenShow(show);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
+    </>
   );
 }
 
-function FutureShowsOnboarding() {
+function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTab) => void }) {
   return (
-    <section className="onboardingEntry onboardingEntryInline" aria-label="Encontre próximos shows">
-      <div className="onboardingGlow onboardingGlowA" aria-hidden />
-      <div className="onboardingGlow onboardingGlowB" aria-hidden />
-      <div className="onboardingBeam" aria-hidden />
-
-      <div className="onboardingCard">
-        <p className="onboardingKicker">O próximo momento inesquecível começa na busca.</p>
-        <h2 className="onboardingTitle onboardingTitleInline">
-          A expectativa também faz parte da emoção.
-          <br />
-          Qual é o seu próximo show?
-        </h2>
-        <p className="onboardingSubtitle">Descubra próximas datas dos seus artistas favoritos e mantenha sua agenda de emoções ao vivo atualizada.</p>
-        <Link
-          href="/search"
-          className="ctaMain onboardingCta"
-          onClick={() => {
-            trackEvent("onboarding_future_shows_cta_click", { source: "home_future_empty" });
-          }}
-        >
-          <span className="ctaMainLabel">Buscar próximos shows</span>
-        </Link>
-      </div>
-    </section>
+    <div className="tabsBar" role="tablist" aria-label="Seções da home">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active === "novidades"}
+        className={`tab ${active === "novidades" ? "isActive" : ""}`}
+        onClick={() => {
+          if (active === "novidades") return;
+          trackEvent("home_tab_change", { tab: "novidades" });
+          onChange("novidades");
+        }}
+      >
+        Novidades
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active === "meus-shows"}
+        className={`tab ${active === "meus-shows" ? "isActive" : ""}`}
+        onClick={() => {
+          if (active === "meus-shows") return;
+          trackEvent("home_tab_change", { tab: "meus_shows" });
+          onChange("meus-shows");
+        }}
+      >
+        Meus shows
+      </button>
+    </div>
   );
 }
 
 export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const [overlayInitialData, setOverlayInitialData] = useState<ShowRecord | undefined>(undefined);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
-  const [walletSynced, setWalletSynced] = useState<boolean | null>(null);
+  const [activeTab, setActiveTab] = useState<HomeTab>("novidades");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  function openShowOverlay(showId: string) {
-    setSelectedShowId(showId);
-    window.history.pushState({ showOverlay: showId }, "", `/show/${encodeURIComponent(showId)}`);
-  }
+  const [profile, setProfile] = useState<UserProfileWithCounts | null>(null);
+  const [trending, setTrending] = useState<TrendingShow[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [feedItems, setFeedItems] = useState<FollowFeedItem[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
 
-  function closeShowOverlay() {
+  const openShowOverlay = useCallback((show: ShowRecord) => {
+    setSelectedShowId(show.id);
+    setOverlayInitialData(show);
+    window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
+  }, []);
+
+  const closeShowOverlay = useCallback(() => {
     setSelectedShowId(null);
+    setOverlayInitialData(undefined);
     window.history.pushState({}, "", "/");
-  }
+  }, []);
 
   useEffect(() => {
     function handlePopState(event: PopStateEvent) {
@@ -259,6 +469,7 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
         setSelectedShowId(state.showOverlay);
       } else {
         setSelectedShowId(null);
+        setOverlayInitialData(undefined);
       }
     }
     window.addEventListener("popstate", handlePopState);
@@ -268,10 +479,7 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   useEffect(() => {
     let cancelled = false;
     void hydrateWalletFromServer().then((result) => {
-      if (!cancelled) {
-        setWalletEntries(result.entries);
-        setWalletSynced(result.synced);
-      }
+      if (!cancelled) setWalletEntries(result.entries);
     });
     return () => {
       cancelled = true;
@@ -279,22 +487,76 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   }, []);
 
   useEffect(() => {
-    let lastFocusSync = 0;
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/profiles/me", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = (await response.json()) as { profile: UserProfileWithCounts };
+        if (!cancelled) setProfile(payload.profile);
+      } catch {
+        // silent — profile shows fallback
+      }
+    }
+    void loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTrending() {
+      try {
+        const response = await fetch("/api/shows/trending", { cache: "no-store" });
+        if (!response.ok) throw new Error("trending");
+        const payload = (await response.json()) as { shows: TrendingShow[] };
+        if (!cancelled) setTrending(payload.shows ?? []);
+      } catch {
+        if (!cancelled) setTrending([]);
+      } finally {
+        if (!cancelled) setTrendingLoading(false);
+      }
+    }
+    void loadTrending();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadFeed() {
+      try {
+        const response = await fetch("/api/feed/following", { cache: "no-store" });
+        if (!response.ok) throw new Error("feed");
+        const payload = (await response.json()) as { items: FollowFeedItem[] };
+        if (!cancelled) setFeedItems(payload.items ?? []);
+      } catch {
+        if (!cancelled) setFeedItems([]);
+      } finally {
+        if (!cancelled) setFeedLoading(false);
+      }
+    }
+    void loadFeed();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let lastFocusSync = 0;
     function syncWalletFromServer() {
       const now = Date.now();
       if (now - lastFocusSync < 2000) return;
       lastFocusSync = now;
       void hydrateWalletFromServer().then((result) => {
         setWalletEntries(result.entries);
-        setWalletSynced(result.synced);
       });
     }
-
     function syncWalletFromLocal() {
       setWalletEntries(getWalletEntries());
     }
-
     window.addEventListener("focus", syncWalletFromServer);
     window.addEventListener("storage", syncWalletFromLocal);
     return () => {
@@ -304,27 +566,28 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
   }, []);
 
   const { futureShows, pastShows } = useMemo(() => splitWallet(walletEntries), [walletEntries]);
-  const walletShows = useMemo(() => [...futureShows, ...pastShows], [futureShows, pastShows]);
-  const hasWalletContent = walletShows.length > 0;
+
+  const allShowsForImages = useMemo(() => {
+    const shows: ShowRecord[] = [];
+    for (const entry of walletEntries) shows.push(entry.show);
+    for (const t of trending) shows.push(t.show);
+    for (const f of feedItems) shows.push(f.show);
+    return shows;
+  }, [walletEntries, trending, feedItems]);
 
   useEffect(() => {
-    if (!walletShows.length) return;
+    if (!allShowsForImages.length) return;
     let cancelled = false;
 
     async function loadArtistImages() {
       const candidates = new Map<
         string,
-        {
-          artistName: string;
-          artistMbid?: string;
-          preloaded?: string;
-        }
+        { artistName: string; artistMbid?: string; preloaded?: string }
       >();
 
-      for (const show of walletShows) {
+      for (const show of allShowsForImages) {
         const key = buildArtistImageKey(show.artist, show.artistMbid);
         if (!key || candidates.has(key)) continue;
-
         candidates.set(key, {
           artistName: show.artist,
           artistMbid: show.artistMbid,
@@ -336,11 +599,11 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
       const resolved = await Promise.all(
         entries.map(async ([key, candidate]) => {
           if (candidate.preloaded) return [key, candidate.preloaded] as const;
-          const imagePayload = await fetchArtistImageClient({
+          const payload = await fetchArtistImageClient({
             artistName: candidate.artistName,
             artistMbid: candidate.artistMbid
           });
-          return [key, imagePayload.imageUrl] as const;
+          return [key, payload.imageUrl] as const;
         })
       );
 
@@ -360,22 +623,27 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
     return () => {
       cancelled = true;
     };
-  }, [walletShows]);
+  }, [allShowsForImages]);
 
-  function resolveShowImageUrl(show: ShowRecord) {
-    if (show.artistImageUrl) return show.artistImageUrl;
-    const key = buildArtistImageKey(show.artist, show.artistMbid);
-    if (!key) return undefined;
-    return artistImageMap[key];
-  }
+  const resolveShowImageUrl = useCallback(
+    (show: ShowRecord) => {
+      if (show.artistImageUrl) return show.artistImageUrl;
+      const key = buildArtistImageKey(show.artist, show.artistMbid);
+      if (!key) return undefined;
+      return artistImageMap[key];
+    },
+    [artistImageMap]
+  );
+
+  const followsAnyone = (profile?.followingCount ?? 0) > 0;
 
   return (
-    <main className="page">
-      <BrandHeader viewer={viewer} />
+    <main className="page pageSocial">
+      <TopBarSocial onOpenDrawer={() => setDrawerOpen(true)} />
 
       <Link
         href="/search"
-        className="search searchButton searchNavButton"
+        className="search searchButton searchNavButton searchNavSocial"
         onClick={() => {
           trackEvent("search_entry_click", { source: "home_top_search" });
         }}
@@ -384,67 +652,46 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
         <span>Encontre shows incríveis</span>
       </Link>
 
-      {hasWalletContent ? (
-        <>
-          {futureShows.length ? (
-            <section className="section" aria-labelledby="shows-futuros">
-              <h2 id="shows-futuros" className="sectionTitle">
-                Eu vou!
-              </h2>
-              <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
-                {futureShows.map((show) => (
-                  <button
-                    key={show.id}
-                    type="button"
-                    className="cardLink cardButtonReset"
-                    onClick={() => {
-                      trackEvent("show_detail_open", { source: "home_future_slider", show_id: show.id });
-                      openShowOverlay(show.id);
-                    }}
-                  >
-                    <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
+      <ProfileHeader profile={profile} fallbackName={viewer.name} fallbackAvatarUrl={viewer.avatarUrl} />
 
-          <section className="section" aria-labelledby="shows-passados">
-            <h2 id="shows-passados" className="sectionTitle">
-              Eu fui!
-            </h2>
-            {pastShows.length ? (
-              <div className="ticketList">
-                {pastShows.map((show) => (
-                  <TicketRow
-                    key={show.id}
-                    show={show}
-                    imageUrl={resolveShowImageUrl(show)}
-                    onOpenDetail={(showId) => {
-                      trackEvent("show_detail_open", { source: "home_past_list", show_id: showId });
-                      openShowOverlay(showId);
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="muted">Nenhum show passado guardado ainda.</p>
-            )}
-          </section>
+      <TabsBar active={activeTab} onChange={setActiveTab} />
 
-          {!futureShows.length ? <FutureShowsOnboarding /> : null}
-        </>
-      ) : (
-        <EmptyWalletOnboarding />
-      )}
+      <div key={activeTab} className="tabPanel">
+        {activeTab === "novidades" ? (
+          <>
+            <TrendingShowsPanel
+              trending={trending}
+              loading={trendingLoading}
+              resolveShowImageUrl={resolveShowImageUrl}
+              onOpenShow={openShowOverlay}
+            />
+            <FollowingFeedPanel
+              items={feedItems}
+              loading={feedLoading}
+              followsAnyone={followsAnyone}
+              resolveShowImageUrl={resolveShowImageUrl}
+              onOpenShow={openShowOverlay}
+              onOpenFriendsDrawer={() => setDrawerOpen(true)}
+            />
+            {!trendingLoading && !trending.length && !feedLoading && !followsAnyone ? (
+              <section className="section">
+                <p className="emptyBox">
+                  Por enquanto está calmo por aqui. Salva uns shows na carteira e segue amigos pra ver novidades.
+                </p>
+              </section>
+            ) : null}
+          </>
+        ) : (
+          <MyShowsPanel
+            futureShows={futureShows}
+            pastShows={pastShows}
+            resolveShowImageUrl={resolveShowImageUrl}
+            onOpenShow={openShowOverlay}
+          />
+        )}
+      </div>
 
-      <p className={`footerHint ${hasWalletContent && walletSynced === false ? "footerHintOffline" : ""}`}>
-        {!hasWalletContent
-          ? "Sua carteira começa na busca. Encontre um show e marque como Eu fui ou Eu vou para guardar a memória."
-          : walletSynced === false
-            ? "Seus shows estão salvos aqui. A sincronização volta assim que a conexão retornar."
-            : "Tudo sincronizado. Suas memórias estão disponíveis em qualquer dispositivo."}
-      </p>
+      <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="home" />
 
       {selectedShowId ? (
         <ShowDetailClient
@@ -453,6 +700,11 @@ export function HomeClient({ viewer }: { viewer: ViewerProfile }) {
           onClose={closeShowOverlay}
           isAuthenticated
           viewer={{ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer}
+          initialData={
+            overlayInitialData
+              ? { ...overlayInitialData, songNames: [], setlistSections: [] }
+              : undefined
+          }
         />
       ) : null}
     </main>
