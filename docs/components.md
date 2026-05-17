@@ -9,13 +9,23 @@ RootLayout (app/layout.tsx) — Server
   ├── GoogleAnalytics (app/layout.tsx, inline)
   ├── app/page.tsx — Server
   │     └── HomeClient (app/ui/home-client.tsx) — Client
+  │           ├── ProfileHeader (app/ui/profile-header.tsx) — Client
+  │           ├── SocialDrawer (app/ui/social-drawer.tsx) — Client
   │           └── ShowDetailClient (overlay) — Client
   │                 ├── ShowFeedClient — Client
   │                 └── (inline SVG icons)
   ├── app/search/page.tsx — Server
   │     └── SearchPageClient (app/ui/search-page-client.tsx) — Client
+  │           ├── SocialDrawer — Client
+  │           ├── FollowButton (app/ui/profile-header.tsx) — Client
   │           └── ShowDetailClient (overlay) — Client
   │                 └── ShowFeedClient — Client
+  ├── app/u/[userId]/page.tsx — Server
+  │     └── ProfileUserClient (app/ui/profile-user-client.tsx) — Client
+  │           ├── ProfileHeader — Client
+  │           ├── FollowButton — Client
+  │           ├── SocialDrawer — Client
+  │           └── ShowDetailClient (overlay) — Client
   ├── app/show/[id]/page.tsx — Server
   │     └── ShowDetailClient — Client
   │           └── ShowFeedClient — Client
@@ -52,45 +62,58 @@ Página de busca. Sem dados iniciais do servidor — busca é feita client-side.
 
 ### `HomeClient` — `app/ui/home-client.tsx`
 
-Página principal. Exibe wallet do usuário com tabs "Próximos" / "Histórico".
+Página principal da release social. Header com hambúrguer + drawer, barra de busca, bloco de perfil (avatar 96px + nome + contadores), abas `Novidades` / `Meus shows`.
 
 **Props:**
 ```ts
-{ wallet: WalletPayload, viewer: Viewer }
+{ viewer: ViewerProfile; initialTab?: "novidades" | "meus-shows" }
 ```
 
 **Estado:**
-- `walletItems` — lista de shows salvos (sincronizada com servidor)
-- `activeTab` — `"upcoming" | "history"`
-- `overlayShow` — `ShowDetailRecord | null` (show aberto no overlay)
-- `overlayLoading` — estado de carregamento do overlay
+- `walletEntries` — wallet sincronizada (localStorage + servidor)
+- `selectedShowId` — show aberto no overlay
+- `artistImageMap` — cache local de imagens de artistas resolvidas
+- `activeTab` — aba ativa, sincronizada com `?tab=` no URL
+- `drawerOpen` — visibilidade do `SocialDrawer`
+- `profile` — `UserProfileWithCounts | null` (consome `/api/profiles/me`)
+- `trending` — `TrendingShow[]` (consome `/api/shows/trending`)
+- `feedItems` — `FollowFeedItem[]` (consome `/api/feed/following`)
 
 **Comportamento:**
 - Hidrata wallet do servidor ao montar
-- Sincroniza pendentes offline ao ganhar foco
-- Abre `ShowDetailClient` em modo overlay ao clicar num card
-- Propaga `viewer` para o overlay
+- Aba Novidades: renderiza `Shows em alta` (carrossel) + `Seguindo` (feed)
+- Aba Meus shows: `Eu vou!` (carrossel) + tickets agrupados por ano com `groupShowsByYearDesc`
+- Abre `ShowDetailClient` em overlay ao clicar; o detail faz fetch via API (sem `initialData`)
+- Skeletons enquanto trending/feed carregam
 
 ---
 
 ### `SearchPageClient` — `app/ui/search-page-client.tsx`
 
-Busca de shows. Input com debounce, paginação, abertura de overlay.
+Busca dupla com abas `Shows` / `Amigos`. Mantém o pipeline de busca de shows existente; adiciona busca de usuários.
 
 **Props:**
 ```ts
-{ viewer: Viewer | null }
+{
+  viewer: ViewerProfile | null;
+  isAuthenticated?: boolean;
+  initialQuery?: string;
+  initialTab?: "shows" | "amigos";
+}
 ```
 
 **Estado:**
-- `searchTerm`, `results`, `loading`, `error`
-- `page` — paginação
-- `overlayShow` — show aberto no overlay
+- `query`, `deferredQuery` — texto da busca + valor diferido (rendering otimizado)
+- `activeTab` — `"shows" | "amigos"`, sincronizada com `?tab=` no URL
+- `drawerOpen` — abre `SocialDrawer`
+- Shows: `searchResults`, `searchLoading`, `searchLoadingMore`, `searchError`, `searchMeta` (`pageLoaded`, `hasMore`, `total`)
+- Amigos: `friendResults` (`UserProfileSummary[]` com `isViewerFollowing`), `friendLoading`, `friendError`
+- `selectedShow` — show aberto no overlay (mantém `initialData` quando vem da lista)
 
 **Comportamento:**
-- Debounce de 300ms no input
-- Busca via `/api/setlists/search`
-- Abre detalhe em overlay; propaga `viewer`
+- Tab `Shows`: debounce 700ms → `/api/setlists/search` + scroll infinito por sentinel; placeholder "Encontre shows incríveis"
+- Tab `Amigos`: debounce 350ms → `/api/profiles/search`; placeholder "Encontre amigos pelo nome"; render `FriendResultRow` com `FollowButton` inline
+- `SocialDrawer` controlado pelo hambúrguer (apenas autenticado)
 
 ---
 
@@ -158,6 +181,78 @@ Feed social de um show específico. Posts, likes, fotos, delete.
 
 ---
 
+### `ProfileHeader` + `FollowButton` — `app/ui/profile-header.tsx`
+
+Bloco de perfil reutilizado por `HomeClient` (próprio usuário) e `ProfileUserClient` (perfil de outro).
+
+**`ProfileHeader` Props:**
+```ts
+{
+  profile: UserProfileWithCounts | null;
+  fallbackName: string;
+  fallbackAvatarUrl: string | null;
+  primaryAction?: ReactNode;
+}
+```
+
+Renderiza avatar circular 96px, nome (22px / 700) e duas colunas de contadores com `font-variant-numeric: tabular-nums` e separador pt-BR (`9.999.999`). Zero é renderizado como `—`.
+
+**`FollowButton` Props:**
+```ts
+{
+  targetUserId: string;
+  initialFollowing: boolean;
+  onChange?: (following: boolean, followerCount: number) => void;
+  source: string;
+}
+```
+
+Toggle otimístico contra `/api/follows/[userId]` (POST/DELETE). Reverte estado local em caso de falha. Classes: `.ctaMain.followBtn` (não seguindo) / `.ctaMain.followBtn.isFollowing` (seguindo).
+
+---
+
+### `SocialDrawer` — `app/ui/social-drawer.tsx`
+
+Drawer lateral direito com itens de navegação. Usado em `HomeClient`, `SearchPageClient` e `ProfileUserClient`.
+
+**Props:**
+```ts
+{ open: boolean; onClose: () => void; source: string }
+```
+
+**Comportamento:**
+- Slide-in de 320ms (cubic-bezier 0.22, 1, 0.36, 1) + backdrop com `blur(8px) saturate(140%)`
+- ESC, clique no backdrop ou em item navegacional fecham
+- Itens entram em cascade com `animation-delay` incrementando 40ms
+- Bloco superior (font 28-34px / weight 400): Meus shows, Buscar shows, Buscar amigos
+- Bloco inferior (font 22px / weight 400 / text-secondary): Termos de uso, Privacidade, **Sair** (botão que chama `/api/auth/signout`)
+- Itens topo direcionam para `/?tab=...` ou `/search?tab=...`
+
+---
+
+### `ProfileUserClient` — `app/ui/profile-user-client.tsx`
+
+Página de perfil de outro usuário (`/u/[userId]`). Server component carrega `profile` + `wallet` em paralelo (`fetchJson` repassando cookies).
+
+**Props:**
+```ts
+{
+  profile: UserProfileWithCounts;
+  wallet: PublicWalletEntry[];
+  viewer: ViewerProfile | null;
+  isAuthenticated: boolean;
+}
+```
+
+**Comportamento:**
+- Header `topBarSocial` com hambúrguer (só para autenticados)
+- Link "Voltar à busca" → `/search?tab=amigos`
+- `ProfileHeader` com CTA: `FollowButton` (não-self autenticado), "Entrar para seguir" (anônimo) ou `null` (próprio usuário)
+- Section "Vai!" como carrossel quando há futuros + `groupShowsByYearDesc` para passados
+- Estado vazio: "X ainda não guardou shows por aqui."
+
+---
+
 ### `LoginClient` — `app/ui/login-client.tsx`
 
 Tela de login. Botão "Entrar com Google" → `supabase.auth.signInWithOAuth`.
@@ -191,6 +286,35 @@ Helpers de formatação sem efeitos colaterais:
 - `formatDate(isoDate)` — `"2025-12-31"` → `"31 de dezembro de 2025"`
 - `formatPostDate(isoTimestamp)` — `"2025-12-31T..."` → `"31 dez 2025"`
 - `deriveWalletStatus(isoDate)` — compara com hoje → `"going" | "went"`
+- `yearFromEventDateIso(isoDate)` — devolve o YYYY (`"2025"`)
+- `groupShowsByYearDesc(items)` — agrupa por ano (mais novo primeiro) e ordena cada grupo decrescente
+
+### `lib/social-types.ts`
+
+Tipos compartilhados do mundo social:
+
+- `UserProfileSummary` — `{ userId, displayName, avatarUrl }`
+- `UserProfileWithCounts` — soma `followingCount`, `followerCount`, `isViewerFollowing`, `isSelf`
+- `FollowFeedItem` — `{ id, actor, action, occurredAtIso, show }`
+- `TrendingShow` — `{ show, attendingCount }`
+- `PublicWalletEntry` — `{ show, action, savedAtIso }`
+- `formatPtBrNumber(value)` — separador pt-BR com `—` para 0/inválido
+
+### `lib/social-utils.ts`
+
+- `deriveActionFromShow(show)` — `"going" | "went"` baseado no `eventDateIso`
+- `normalizeNameForSearch(input)` — lowercase + sem diacríticos + sem pontuação, usado na entrada do `/api/profiles/search` para casar com `display_name_normalized`
+
+### `lib/supabase/social-helpers.ts`
+
+Helpers server-only para rotas sociais:
+
+- `loadAuthContext()` — `{ supabase, userId, configError }`
+- `configErrorResponse()` / `unauthorizedResponse()` — atalhos de erro padronizado
+- `fetchProfileSummary(supabase, userId)` — lê `profiles`
+- `fetchProfileCounts(supabase, userId)` — duas queries `count: "exact", head: true` em paralelo
+- `isViewerFollowing(supabase, viewerId, targetId)` — `false` quando viewerId === targetId
+- `ensureCurrentProfile(supabase, userId, fallback)` — auto-cria profile se faltar
 
 ### `lib/auth.ts`
 

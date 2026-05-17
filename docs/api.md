@@ -199,6 +199,160 @@ Alterna curtida (toggle). Insere ou remove de `post_likes`.
 
 ---
 
+## Endpoints sociais (release social)
+
+### `GET /api/profiles/me`
+
+Retorna o perfil do viewer autenticado com contadores SEGUINDO/SEGUIDORES. Faz auto-upsert em `profiles` caso o usuário não tenha registro ainda (defensa contra trigger de sync que tenha falhado).
+
+**Auth:** Obrigatória.
+
+**Response 200:**
+```json
+{
+  "profile": {
+    "userId": "uuid",
+    "displayName": "Nome",
+    "avatarUrl": "https://..." | null,
+    "followingCount": 12,
+    "followerCount": 5,
+    "isViewerFollowing": false,
+    "isSelf": true
+  }
+}
+```
+
+---
+
+### `GET /api/profiles/[userId]`
+
+Perfil público de outro usuário. `isViewerFollowing` reflete se o viewer atual segue o alvo (`false` quando anônimo).
+
+**Auth:** Opcional.
+
+**Response 200:** mesmo shape de `/api/profiles/me`, com `isSelf` calculado.
+
+**Erros:** `404` quando não existe profile com esse `userId`.
+
+---
+
+### `GET /api/profiles/[userId]/wallet`
+
+Wallet pública do usuário-alvo (shows que ele guardou). Usado pela página `/u/[userId]`.
+
+**Auth:** Não.
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "show": { /* ShowRecord */ },
+      "action": "went" | "going",
+      "savedAtIso": "2026-05-14T12:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/profiles/search?q={query}`
+
+Busca usuários pelo nome (ILIKE em `display_name_normalized`, prefix + contains). Limite de 20 resultados. Exclui o próprio viewer.
+
+**Auth:** Opcional. Quando autenticado, popula `isViewerFollowing` por resultado.
+
+**Query params:** `q` — mínimo 2 chars após normalização. Menos que isso → lista vazia.
+
+**Response 200:**
+```json
+{
+  "profiles": [
+    {
+      "userId": "uuid",
+      "displayName": "Nome",
+      "avatarUrl": "https://..." | null,
+      "isViewerFollowing": false
+    }
+  ]
+}
+```
+
+---
+
+### `POST /api/follows/[userId]`
+
+Segue o usuário-alvo. Upsert em `user_follows` — idempotente.
+
+**Auth:** Obrigatória. Não é possível seguir a si mesmo (`400`).
+
+**Response 200:**
+```json
+{ "following": true, "targetUserId": "uuid", "followerCount": 6 }
+```
+
+---
+
+### `DELETE /api/follows/[userId]`
+
+Deixa de seguir. Idempotente.
+
+**Auth:** Obrigatória.
+
+**Response 200:**
+```json
+{ "following": false, "targetUserId": "uuid", "followerCount": 5 }
+```
+
+---
+
+### `GET /api/feed/following`
+
+Atividades recentes dos usuários que o viewer segue. Lê `wallet_entries.updated_at` desc, junta com `profiles` para nome e avatar. Limite 30.
+
+**Auth:** Obrigatória.
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "id": "{userId}:{setlist_id}",
+      "actor": {
+        "userId": "uuid",
+        "displayName": "Nome",
+        "avatarUrl": "https://..." | null
+      },
+      "action": "went" | "going",
+      "occurredAtIso": "2026-05-14T12:00:00Z",
+      "show": { /* ShowRecord */ }
+    }
+  ]
+}
+```
+
+Quando o viewer não segue ninguém → `{ "items": [] }`.
+
+---
+
+### `GET /api/shows/trending`
+
+Shows em alta: agrupa `wallet_entries` futuros (`status = "going"`) por `setlist_id` e ordena por contagem decrescente. Limite 12.
+
+**Auth:** Não. Tabela tem SELECT público.
+
+**Response 200:**
+```json
+{
+  "shows": [
+    { "show": { /* ShowRecord */ }, "attendingCount": 8 }
+  ]
+}
+```
+
+---
+
 ## `/api/auth/signout`
 
 ### `POST /api/auth/signout`

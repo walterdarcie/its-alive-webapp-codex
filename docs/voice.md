@@ -130,6 +130,38 @@ Fórmula: **[o que não deu certo] + [o que fazer agora]**
 | recolher | esconder / colapsar |
 | tenta de novo | recarregue a página |
 | carteira | perfil / biblioteca |
+| Seguir / Seguindo | Follow / Following |
+| Foi / Vai (verbos no feed) | Foi a / Vai a / Compareceu / Atendeu |
+| Buscar amigos | Pesquisar usuários / Encontrar pessoas |
+| Novidades | Feed / Timeline |
+| Shows em alta | Trending / Em destaque |
+
+---
+
+## Decisões de tom para a release social
+
+### Contadores
+
+Zero é renderizado como `—`, não `0`. O traço dispensa o usuário de encarar uma estatística constrangedora e mantém a tabela legível visualmente.
+
+### "Foi" e "Vai" no feed
+
+Verbos curtos. Mantêm a primeira pessoa do passado/futuro do produto (`Eu fui!`/`Eu vou!`) e cabem ao lado do nome do amigo na mesma linha. Cromáticamente diferenciados: `Foi` em pink-light (memória cálida), `Vai` em blue-glow (antecipação fria). Sem rótulo "compareceu" ou "vai comparecer" — é jargão de evento corporativo.
+
+### "Buscar amigos" (não "Encontrar pessoas")
+
+"Amigos" reforça o tom de comunidade próxima — o produto não é uma rede de descoberta de estranhos. Reservar "pessoas" para contextos neutros (ex.: contagem de "X seguidores" não vira "amigos" porque pode incluir estranhos).
+
+### "Sair" e itens do drawer
+
+Drawer tem `Sair` como ação destrutiva — mesmo padrão de toda a navegação do produto. Termos de uso e Privacidade ficam embaixo, alinhados à direita, fonte menor — leitura "esses links existem se você precisar".
+
+### Estados vazios sociais
+
+Sempre convidando, nunca instruindo:
+- Sem ninguém seguido: "Comece a seguir gente que também guarda memórias de shows."
+- Feed quieto (segue mas ninguém marcou): "Ninguém que você segue marcou show por aqui ainda. Logo aparece algo."
+- Busca de amigos sem resultado: "Ninguém encontrado com esse nome ainda. Tenta um apelido ou parte do nome."
 
 ---
 
