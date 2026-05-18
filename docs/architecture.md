@@ -34,19 +34,20 @@ Browser
   │     └─ app/login, signin    → redirect se já autenticado
   │
   ├─► API Routes (Next.js Route Handlers)
-  │     ├─ /api/wallet              ← localStorage sync + Supabase
-  │     ├─ /api/setlists/search     ← Setlist.fm + Ticketmaster (mergeados)
-  │     ├─ /api/setlists/[id]       ← Setlist.fm detalhe (tm-* retorna 404 imediato)
-  │     ├─ /api/artist-image        ← MusicBrainz + Wikipedia
-  │     ├─ /api/posts/*             ← Supabase show_posts + post_likes
-  │     ├─ /api/profiles/me         ← perfil do viewer + ensure
-  │     ├─ /api/profiles/[id]       ← perfil público + contadores
-  │     ├─ /api/profiles/[id]/wallet← wallet pública de outro usuário
-  │     ├─ /api/profiles/search     ← busca de amigos por nome
-  │     ├─ /api/follows/[id]        ← POST seguir / DELETE deixar de seguir
-  │     ├─ /api/feed/following      ← atividade dos seguidos
-  │     ├─ /api/shows/trending      ← shows futuros com mais "Vai"
-  │     └─ /api/auth/signout        ← Supabase signOut
+  │     ├─ /api/wallet               ← localStorage sync + Supabase
+  │     ├─ /api/setlists/search      ← Setlist.fm + Ticketmaster (mergeados)
+  │     ├─ /api/setlists/[id]        ← Setlist.fm detalhe (tm-* retorna 404 imediato)
+  │     ├─ /api/artist-image         ← MusicBrainz + Wikipedia
+  │     ├─ /api/posts/*              ← Supabase show_posts + post_likes
+  │     ├─ /api/profiles/me          ← perfil do viewer + ensure
+  │     ├─ /api/profiles/[id]        ← perfil público + contadores
+  │     ├─ /api/profiles/[id]/wallet ← wallet pública de outro usuário
+  │     ├─ /api/profiles/[id]/follows← listagem de seguindo/seguidores
+  │     ├─ /api/profiles/search      ← busca de amigos por nome
+  │     ├─ /api/follows/[id]         ← POST seguir / DELETE deixar de seguir
+  │     ├─ /api/feed/following       ← atividade dos seguidos
+  │     ├─ /api/shows/trending       ← shows futuros com mais "Vai"
+  │     └─ /api/auth/signout         ← Supabase signOut
   │
   └─► Supabase
         ├─ Auth (Google OAuth)
@@ -127,14 +128,17 @@ Excluir:
 
 ```
 app/
-  globals.css           ← TODOS os estilos aqui, sem exceção
-  layout.tsx            ← Root layout, fonte Work Sans, GA
-  page.tsx              ← Server Component → chama HomeClient
-  u/[userId]/page.tsx   ← Página de perfil de outro usuário (rede social)
+  globals.css                       ← TODOS os estilos aqui, sem exceção
+  layout.tsx                        ← Root layout, fonte Work Sans, GA
+  page.tsx                          ← Server Component → chama HomeClient
+  u/[userId]/page.tsx               ← Página de perfil de outro usuário
+  u/[userId]/seguindo/page.tsx      ← Listagem de quem o user segue
+  u/[userId]/seguidores/page.tsx    ← Listagem de quem segue o user
   ui/
-    *-client.tsx        ← Client Components ("use client")
-    profile-header.tsx  ← Reuso entre home e perfil de outro
-    social-drawer.tsx   ← Drawer lateral (home, search, perfil)
+    *-client.tsx                    ← Client Components ("use client")
+    profile-header.tsx              ← Reuso entre home e perfil de outro
+    social-drawer.tsx               ← Drawer lateral (home, search, perfil)
+    follow-list-client.tsx          ← Listagem de seguindo/seguidores
   api/
     [recurso]/route.ts  ← Route Handlers Next.js
   [rota]/page.tsx       ← Server Components

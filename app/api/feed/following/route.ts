@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { FollowFeedItem } from "@/lib/social-types";
 import type { ShowRecord } from "@/lib/show-types";
+import { isFutureOrTodayShow } from "@/lib/show-utils";
 import {
   configErrorResponse,
   loadAuthContext,
@@ -67,6 +68,11 @@ export async function GET() {
 
   const items: FollowFeedItem[] = (entries ?? []).map((row) => {
     const actor = actorMap.get(row.user_id as string) ?? { displayName: "Alguém", avatarUrl: null };
+    const show = row.show_data as ShowRecord;
+    // O status armazenado é "congelado" no momento do save; aqui derivamos
+    // novamente pela data do show para que shows antigos virem "Foi"
+    // automaticamente no feed conforme o tempo passa.
+    const action = isFutureOrTodayShow(show.eventDateIso) ? "going" : "went";
     return {
       id: `${row.user_id}:${row.setlist_id}`,
       actor: {
@@ -74,9 +80,9 @@ export async function GET() {
         displayName: actor.displayName,
         avatarUrl: actor.avatarUrl
       },
-      action: row.status === "went" ? "went" : "going",
+      action,
       occurredAtIso: row.updated_at as string,
-      show: row.show_data as ShowRecord
+      show
     };
   });
 

@@ -9,6 +9,8 @@ type ProfileHeaderProps = {
   profile: UserProfileWithCounts | null;
   fallbackName: string;
   fallbackAvatarUrl: string | null;
+  showsThisYear: number;
+  showsTotal: number;
   primaryAction?: ReactNode;
 };
 
@@ -19,11 +21,27 @@ function buildAvatarStyle(avatarUrl: string): CSSProperties {
   };
 }
 
-export function ProfileHeader({ profile, fallbackName, fallbackAvatarUrl, primaryAction }: ProfileHeaderProps) {
+function formatShowCount(value: number) {
+  if (!Number.isFinite(value) || value < 0) return "0";
+  return new Intl.NumberFormat("pt-BR").format(value);
+}
+
+export function ProfileHeader({
+  profile,
+  fallbackName,
+  fallbackAvatarUrl,
+  showsThisYear,
+  showsTotal,
+  primaryAction
+}: ProfileHeaderProps) {
   const displayName = profile?.displayName ?? fallbackName;
   const avatarUrl = profile?.avatarUrl ?? fallbackAvatarUrl;
   const followingCount = profile?.followingCount ?? 0;
   const followerCount = profile?.followerCount ?? 0;
+  const userId = profile?.userId ?? null;
+  const followingHref = userId ? `/u/${encodeURIComponent(userId)}/seguindo` : "#";
+  const followersHref = userId ? `/u/${encodeURIComponent(userId)}/seguidores` : "#";
+  const currentYear = new Date().getFullYear();
 
   return (
     <section className="profileBlock" aria-label={`Perfil de ${displayName}`}>
@@ -36,13 +54,29 @@ export function ProfileHeader({ profile, fallbackName, fallbackAvatarUrl, primar
       </div>
       <div className="profileIdentity">
         <h1 className="profileName">{displayName}</h1>
-        <div className="profileStats">
+
+        <div className="profileShowStats" aria-label="Shows que essa pessoa foi">
+          <div className="profileShowStat">
+            <span className="profileShowStatNumber">{formatShowCount(showsThisYear)}</span>
+            <span className="profileShowStatLabel">em {currentYear}</span>
+          </div>
+          <span className="profileShowStatDivider" aria-hidden />
+          <div className="profileShowStat">
+            <span className="profileShowStatNumber">{formatShowCount(showsTotal)}</span>
+            <span className="profileShowStatLabel">no total</span>
+          </div>
+        </div>
+
+        <div className="profileStats profileStatsSecondary">
           <Link
-            href={profile?.isSelf === false ? "#" : "/?tab=following-list"}
+            href={followingHref}
             className="profileStat profileStatLink"
-            aria-label={`${followingCount} pessoas que ${displayName} segue`}
+            aria-label={`Pessoas que ${displayName} segue`}
             onClick={(event) => {
-              if (profile?.isSelf === false) event.preventDefault();
+              if (!userId) {
+                event.preventDefault();
+                return;
+              }
               trackEvent("profile_stat_click", { stat: "following" });
             }}
           >
@@ -50,11 +84,14 @@ export function ProfileHeader({ profile, fallbackName, fallbackAvatarUrl, primar
             <span className="profileStatLabel">Seguindo</span>
           </Link>
           <Link
-            href={profile?.isSelf === false ? "#" : "/?tab=followers-list"}
+            href={followersHref}
             className="profileStat profileStatLink"
-            aria-label={`${followerCount} seguidores de ${displayName}`}
+            aria-label={`Seguidores de ${displayName}`}
             onClick={(event) => {
-              if (profile?.isSelf === false) event.preventDefault();
+              if (!userId) {
+                event.preventDefault();
+                return;
+              }
               trackEvent("profile_stat_click", { stat: "followers" });
             }}
           >
@@ -62,6 +99,7 @@ export function ProfileHeader({ profile, fallbackName, fallbackAvatarUrl, primar
             <span className="profileStatLabel">Seguidores</span>
           </Link>
         </div>
+
         {primaryAction ? <div className="profileAction">{primaryAction}</div> : null}
       </div>
     </section>

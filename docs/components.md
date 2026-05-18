@@ -26,6 +26,12 @@ RootLayout (app/layout.tsx) — Server
   │           ├── FollowButton — Client
   │           ├── SocialDrawer — Client
   │           └── ShowDetailClient (overlay) — Client
+  ├── app/u/[userId]/seguindo/page.tsx — Server
+  │     └── FollowListClient (app/ui/follow-list-client.tsx) — Client
+  │           ├── FollowButton — Client
+  │           └── SocialDrawer — Client
+  ├── app/u/[userId]/seguidores/page.tsx — Server
+  │     └── FollowListClient — mesmo componente, com `type="followers"`
   ├── app/show/[id]/page.tsx — Server
   │     └── ShowDetailClient — Client
   │           └── ShowFeedClient — Client
@@ -191,11 +197,18 @@ Bloco de perfil reutilizado por `HomeClient` (próprio usuário) e `ProfileUserC
   profile: UserProfileWithCounts | null;
   fallbackName: string;
   fallbackAvatarUrl: string | null;
+  showsThisYear: number;
+  showsTotal: number;
   primaryAction?: ReactNode;
 }
 ```
 
-Renderiza avatar circular 96px, nome (22px / 700) e duas colunas de contadores com `font-variant-numeric: tabular-nums` e separador pt-BR (`9.999.999`). Zero é renderizado como `—`.
+Renderiza:
+- Avatar circular 88px (72px em telas ≤ 480px)
+- Nome em 18px / 700, letter-spacing apertado
+- **Primário (`profileShowStats`):** dois números grandes em gradiente `pink → coral` (`--gradient-a` → `--gradient-b`) — "X em {ano atual}" + "Y no total". Apenas shows passados (`!isFutureOrTodayShow`); "este ano" filtra ainda por ano corrente. Os valores vêm do parent (`countAttendedShows` em `lib/social-utils.ts`).
+- **Secundário (`profileStats.profileStatsSecondary`):** SEGUINDO e SEGUIDORES em texto pequeno (10–11px), uppercase, com letter-spacing largo. Zero é renderizado como `—`. Cada link aponta para `/u/{userId}/seguindo` ou `/u/{userId}/seguidores`.
+- `font-variant-numeric: tabular-nums` para estabilidade visual quando os números atualizam.
 
 **`FollowButton` Props:**
 ```ts
@@ -247,9 +260,39 @@ Página de perfil de outro usuário (`/u/[userId]`). Server component carrega `p
 **Comportamento:**
 - Header `topBarSocial` com hambúrguer (só para autenticados)
 - Link "Voltar à busca" → `/search?tab=amigos`
-- `ProfileHeader` com CTA: `FollowButton` (não-self autenticado), "Entrar para seguir" (anônimo) ou `null` (próprio usuário)
-- Section "Vai!" como carrossel quando há futuros + `groupShowsByYearDesc` para passados
+- `ProfileHeader` (com `showsThisYear` + `showsTotal` calculados via `countAttendedShows`) com CTA: `FollowButton` (não-self autenticado), "Entrar para seguir" (anônimo) ou `null` (próprio usuário)
+- Section "Vai!" como carrossel quando há futuros + `groupShowsByYearDesc` para passados — mesmo formato da aba "Meus shows" da home
 - Estado vazio: "X ainda não guardou shows por aqui."
+
+---
+
+### `FollowListClient` — `app/ui/follow-list-client.tsx`
+
+Listagem de pessoas para `/u/[userId]/seguindo` e `/u/[userId]/seguidores`.
+
+**Props:**
+```ts
+{
+  ownerUserId: string;
+  ownerDisplayName: string;
+  ownerIsViewer: boolean;
+  type: "following" | "followers";
+  items: FollowListItem[];
+  viewer: ViewerProfile | null;
+  isAuthenticated: boolean;
+}
+```
+
+`FollowListItem` é `UserProfileSummary & { isViewerFollowing: boolean; isSelf: boolean }`.
+
+**Comportamento:**
+- `topBarSocial` com hambúrguer (só para autenticados)
+- Link "Voltar para o perfil de X" ou "Voltar para a home" (se o owner é o próprio viewer)
+- Cabeçalho `followListHeader` com título grande + subtítulo contextual
+- Switch `followListSwitch` (pill com 2 botões) entre Seguindo e Seguidores
+- Lista usando `friendResultRow` (mesmo layout do search/amigos): avatar + nome (linkam para `/u/[userId]`) + `FollowButton` na direita
+- Para o próprio item do viewer, omite o botão. Anônimo vê botão "Entrar"
+- Estados vazios contextuais (varia por `type` e `ownerIsViewer`)
 
 ---
 
@@ -304,6 +347,7 @@ Tipos compartilhados do mundo social:
 
 - `deriveActionFromShow(show)` — `"going" | "went"` baseado no `eventDateIso`
 - `normalizeNameForSearch(input)` — lowercase + sem diacríticos + sem pontuação, usado na entrada do `/api/profiles/search` para casar com `display_name_normalized`
+- `countAttendedShows(shows)` → `{ totalAttended, attendedThisYear }` — conta apenas shows passados (`!isFutureOrTodayShow`); `attendedThisYear` filtra por `yearFromEventDateIso === ano corrente`. Usado pelo `ProfileHeader` para o destaque de contagem de shows.
 
 ### `lib/supabase/social-helpers.ts`
 

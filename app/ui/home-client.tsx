@@ -23,6 +23,7 @@ import type {
   TrendingShow,
   UserProfileWithCounts
 } from "@/lib/social-types";
+import { countAttendedShows } from "@/lib/social-utils";
 import { trackEvent } from "@/lib/analytics";
 
 type HomeTab = "novidades" | "meus-shows";
@@ -188,6 +189,8 @@ type TrendingPanelProps = {
   onOpenShow: (show: ShowRecord) => void;
 };
 
+const TRENDING_SLIDER_LIMIT = 3;
+
 function TrendingShowsPanel({ trending, loading, resolveShowImageUrl, onOpenShow }: TrendingPanelProps) {
   if (loading) {
     return (
@@ -203,13 +206,16 @@ function TrendingShowsPanel({ trending, loading, resolveShowImageUrl, onOpenShow
 
   if (!trending.length) return null;
 
+  const sliderItems = trending.slice(0, TRENDING_SLIDER_LIMIT);
+  const listItems = trending.slice(TRENDING_SLIDER_LIMIT);
+
   return (
     <section className="section" aria-labelledby="shows-em-alta">
       <h2 id="shows-em-alta" className="sectionTitle">
         Shows em alta
       </h2>
-      <div className={`slider ${trending.length > 1 ? "sliderPeek" : ""}`}>
-        {trending.map(({ show }) => (
+      <div className={`slider ${sliderItems.length > 1 ? "sliderPeek" : ""}`}>
+        {sliderItems.map(({ show }) => (
           <button
             key={show.id}
             type="button"
@@ -223,6 +229,24 @@ function TrendingShowsPanel({ trending, loading, resolveShowImageUrl, onOpenShow
           </button>
         ))}
       </div>
+      {listItems.length ? (
+        <div className="trendingListWrap">
+          <h3 className="trendingListTitle">Mais em alta</h3>
+          <div className="ticketList">
+            {listItems.map(({ show }) => (
+              <TicketRow
+                key={show.id}
+                show={show}
+                imageUrl={resolveShowImageUrl(show)}
+                onOpenDetail={(showId) => {
+                  trackEvent("show_detail_open", { source: "home_trending_list", show_id: showId });
+                  onOpenShow(show);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -563,6 +587,11 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
 
   const { futureShows, pastShows } = useMemo(() => splitWallet(walletEntries), [walletEntries]);
 
+  const { totalAttended, attendedThisYear } = useMemo(
+    () => countAttendedShows(walletEntries.map((entry) => entry.show)),
+    [walletEntries]
+  );
+
   const allShowsForImages = useMemo(() => {
     const shows: ShowRecord[] = [];
     for (const entry of walletEntries) shows.push(entry.show);
@@ -648,7 +677,13 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
         <span>Encontre shows incríveis</span>
       </Link>
 
-      <ProfileHeader profile={profile} fallbackName={viewer.name} fallbackAvatarUrl={viewer.avatarUrl} />
+      <ProfileHeader
+        profile={profile}
+        fallbackName={viewer.name}
+        fallbackAvatarUrl={viewer.avatarUrl}
+        showsThisYear={attendedThisYear}
+        showsTotal={totalAttended}
+      />
 
       <TabsBar
         active={activeTab}

@@ -441,7 +441,7 @@ input {
   min-width: 0;
   min-height: 112px;
   padding: 14px 30px 14px 16px;
-  border-left: 3px dashed rgba(2, 11, 31, 0.55);
+  border-left: 3px dashed var(--bg-primary);
 }
 
 .ticketDate {
@@ -916,7 +916,7 @@ input {
   margin-top: 0;
   border-radius: 0 0 18px 18px;
   background: var(--surface-2);
-  border-top: 2px dashed rgba(4, 14, 36, 0.6);
+  border-top: 2px dashed var(--bg-primary);
 }
 
 .ticketSideCut {
@@ -950,7 +950,7 @@ input {
 .setlistPanel {
   padding-top: 12px;
   padding-bottom: 8px;
-  border-top: 2px dashed rgba(4, 14, 36, 0.55);
+  border-top: 2px dashed var(--bg-primary);
 }
 
 .setlistTitle {
@@ -1080,7 +1080,7 @@ input {
   background:
     radial-gradient(circle at 20% 12%, rgba(255, 255, 255, 0.08), transparent 42%),
     linear-gradient(180deg, rgba(31, 3, 34, 0.96), rgba(20, 0, 22, 0.96));
-  border-right: 3px dashed rgba(2, 11, 31, 0.58);
+  border-right: 3px dashed var(--bg-primary);
   color: var(--text-primary);
 }
 
@@ -2284,15 +2284,15 @@ input {
 
 .profileBlock {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 88px 1fr;
   gap: var(--space-2);
   align-items: center;
-  margin: 12px 0 20px;
+  margin: 6px 0 16px;
 }
 
 .profileAvatarWrap {
-  width: 96px;
-  height: 96px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   position: relative;
   overflow: hidden;
@@ -2324,34 +2324,89 @@ input {
 
 .profileIdentity {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
 }
 
 .profileName {
-  margin: 0;
-  font-size: 22px;
+  margin: 0 0 2px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
   word-break: break-word;
+  line-height: 1.15;
+}
+
+.profileShowStats {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profileShowStat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.profileShowStatNumber {
+  font-size: clamp(26px, 5.5vw, 32px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.profileShowStatLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.profileShowStatDivider {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  align-self: center;
 }
 
 .profileStats {
   display: flex;
-  gap: var(--space-3);
+  gap: 14px;
   flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.profileStatsSecondary {
+  align-items: baseline;
 }
 
 .profileStat {
-  display: grid;
+  display: inline-flex;
+  align-items: baseline;
   gap: 4px;
   text-decoration: none;
   color: inherit;
 }
 
 .profileStatLink {
-  cursor: default;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.profileStatLink:hover .profileStatNumber,
+.profileStatLink:hover .profileStatLabel {
+  color: var(--text-primary);
 }
 
 .profileStatLink:focus-visible {
@@ -2361,24 +2416,24 @@ input {
 }
 
 .profileStatNumber {
-  font-size: 26px;
+  font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
   color: var(--text-primary);
   line-height: 1;
 }
 
 .profileStatLabel {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .profileAction {
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 /* Tabs */
@@ -2881,8 +2936,19 @@ input {
 
 /* Profile page (/u/[userId]) */
 .profilePage {
-  display: grid;
-  gap: 12px;
+  display: block;
+}
+
+.profilePage .topBarSocial {
+  margin-bottom: 8px;
+}
+
+.profilePage .profileBlock {
+  margin: 4px 0 12px;
+}
+
+.profilePage .section {
+  margin-top: 18px;
 }
 
 .profilePageBack {
@@ -2890,13 +2956,113 @@ input {
   align-items: center;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-decoration: none;
-  margin-bottom: 4px;
+  margin: 0 0 6px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  transition: color 160ms ease, background-color 160ms ease;
 }
 
-.profilePageBack:hover {
+.profilePageBack:hover,
+.profilePageBack:focus-visible {
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+
+/* Trending list (below slider) */
+.trendingListWrap {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.trendingListTitle {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Follow list page (/u/[id]/seguindo|seguidores) */
+.followListPage {
+  display: block;
+}
+
+.followListPage .topBarSocial {
+  margin-bottom: 8px;
+}
+
+.followListHeader {
+  margin: 4px 0 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.followListHeaderTitle {
+  margin: 0;
+  font-size: clamp(24px, 5.5vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+.followListHeaderSubtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.followListSwitch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+
+.followListSwitchItem {
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.followListSwitchItem.isActive {
+  background: linear-gradient(135deg, rgba(180, 165, 255, 0.18), rgba(110, 168, 255, 0.14));
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px rgba(180, 165, 255, 0.22);
+}
+
+.followListSwitchItem:hover:not(.isActive) {
+  color: var(--text-secondary);
+}
+
+.followListBody {
+  display: grid;
+  gap: 10px;
+}
+
+.followListEmpty {
+  margin: 0;
+  padding: 18px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2916,21 +3082,32 @@ input {
 
 @media (max-width: 480px) {
   .profileBlock {
-    grid-template-columns: 80px 1fr;
-    gap: 14px;
+    grid-template-columns: 72px 1fr;
+    gap: 12px;
+    margin: 4px 0 12px;
   }
   .profileAvatarWrap {
-    width: 80px;
-    height: 80px;
+    width: 72px;
+    height: 72px;
   }
   .profileName {
-    font-size: 19px;
+    font-size: 16px;
   }
-  .profileStatNumber {
-    font-size: 22px;
+  .profileShowStatNumber {
+    font-size: 24px;
+  }
+  .profileShowStatLabel {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  .profileShowStats {
+    gap: 10px;
+  }
+  .profileShowStatDivider {
+    height: 14px;
   }
   .profileStats {
-    gap: 20px;
+    gap: 12px;
   }
 }
 
