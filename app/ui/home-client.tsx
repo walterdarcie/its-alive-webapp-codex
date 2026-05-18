@@ -30,13 +30,11 @@ type HomeTab = "novidades" | "meus-shows";
 type TrendingFiltersState = {
   country: string;
   city: string;
-  genre: string;
 };
 
 const DEFAULT_TRENDING_FILTERS: TrendingFiltersState = {
   country: "BR",
-  city: "",
-  genre: ""
+  city: ""
 };
 
 const TRENDING_COUNTRY_OPTIONS: Array<{ code: string; label: string }> = [
@@ -47,20 +45,6 @@ const TRENDING_COUNTRY_OPTIONS: Array<{ code: string; label: string }> = [
   { code: "US", label: "Estados Unidos" },
   { code: "GB", label: "Reino Unido" },
   { code: "PT", label: "Portugal" }
-];
-
-const TRENDING_GENRE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "", label: "Todos os gêneros" },
-  { value: "Rock", label: "Rock" },
-  { value: "Pop", label: "Pop" },
-  { value: "Hip-Hop/Rap", label: "Hip-Hop / Rap" },
-  { value: "Dance/Electronic", label: "Eletrônica" },
-  { value: "Latin", label: "Latina / Sertanejo" },
-  { value: "Country", label: "Country" },
-  { value: "R&B", label: "R&B / Soul" },
-  { value: "Alternative", label: "Alternativo / Indie" },
-  { value: "Metal", label: "Metal" },
-  { value: "Jazz", label: "Jazz" }
 ];
 
 function HamburgerIcon() {
@@ -236,8 +220,7 @@ function TrendingFiltersBar({
 }) {
   const hasActive =
     filters.country !== DEFAULT_TRENDING_FILTERS.country ||
-    filters.city.trim() !== "" ||
-    filters.genre !== "";
+    filters.city.trim() !== "";
 
   return (
     <div className="trendingFiltersBar" role="group" aria-label="Filtros de shows em alta">
@@ -274,24 +257,6 @@ function TrendingFiltersBar({
             if (value) trackEvent("trending_filter_change", { kind: "city", value });
           }}
         />
-      </label>
-      <label className="trendingFilter">
-        <span className="trendingFilterLabel">Gênero</span>
-        <select
-          className="trendingFilterSelect"
-          value={filters.genre}
-          onChange={(event) => {
-            const next = { ...filters, genre: event.target.value };
-            trackEvent("trending_filter_change", { kind: "genre", value: next.genre || "all" });
-            onFiltersChange(next);
-          }}
-        >
-          {TRENDING_GENRE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
       </label>
       {hasActive ? (
         <button
@@ -648,7 +613,6 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
     if (trendingFilters.country) params.set("country", trendingFilters.country);
     const trimmedCity = trendingFilters.city.trim();
     if (trimmedCity) params.set("city", trimmedCity);
-    if (trendingFilters.genre) params.set("genre", trendingFilters.genre);
     const queryString = params.toString();
 
     setTrendingLoading(true);
@@ -670,7 +634,7 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [trendingFilters.country, trendingFilters.city, trendingFilters.genre]);
+  }, [trendingFilters.country, trendingFilters.city]);
 
   useEffect(() => {
     let cancelled = false;

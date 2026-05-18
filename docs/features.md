@@ -59,8 +59,8 @@
 **Botão SETLIST.FM:** suprimido para shows com `id.startsWith("tm-")` pois não há setlist externo.
 
 **Resolução de imagem do artista:**
-- Busca no MusicBrainz por `artistMbid` ou nome
-- Fallback: Wikipedia → Wikimedia
+- Cascata: MusicBrainz (quando tem `artistMbid`) → **Deezer** (primeira tentativa por nome — 1000×1000 quadrada) → Wikipedia/Wikidata (fallback com filtros de contexto musical e checagem de título)
+- Sem fallback permissivo: se nada bate com confiança, devolve `source: "none"` em vez de adivinhar (evita Lenin pelo Lenine, Chico Xavier pelo Chico Chico)
 - Cache HTTP 7 dias na CDN Vercel
 
 **Ticket visual:**
@@ -183,15 +183,16 @@ Lê `/api/shows/trending`. Duas fontes mescladas:
 
 Limite 24. Dedup em duas passadas: (1) por `id` com prioridade pra plataforma, (2) **por artista** (cada artista aparece no máximo uma vez na lista). Cache de 1h no Ticketmaster (chave inclui filtros). Quando vazio (sem TM key, sem dados, sem internet, ou filtros muito restritivos), a seção renderiza um estado vazio "Nenhum show por aqui com esses filtros".
 
-**Filtros (UI: `TrendingFiltersBar`)** — aplicam-se à seção inteira:
+**Filtros (UI: `TrendingFiltersBar`)** — aplicam-se à seção inteira, todos numa única linha compacta:
 
 | Filtro | Tipo | Default | Onde aplica |
 |---|---|---|---|
 | País | dropdown | `BR` | Ticketmaster (`countryCode`) + wallet (fuzzy match em `show.country`) |
 | Cidade | input livre | _(vazio)_ | Ticketmaster (`city=`) + wallet (substring case-insensitive em `show.city`) |
-| Gênero | dropdown | _(vazio)_ | Ticketmaster (`classificationName`); a wallet é desligada quando definido (sem gênero armazenado) |
 
-Mudança em filtro → debounce 300ms → refetch `/api/shows/trending?country=…&city=…&genre=…`. Botão "Limpar" aparece quando qualquer filtro estiver fora do default e zera tudo. Cada interação gera evento `trending_filter_change` (`kind`, `value`).
+> O filtro de **gênero** foi removido da UI por ocupar muito espaço sem trazer recorte útil para esta fase. O backend ainda aceita `?genre=` em `/api/shows/trending` (sem uso pelo cliente).
+
+Mudança em filtro → debounce 300ms → refetch `/api/shows/trending?country=…&city=…`. Botão "Limpar" aparece quando qualquer filtro estiver fora do default e zera tudo. Cada interação gera evento `trending_filter_change` (`kind`, `value`).
 
 **Renderização na home:**
 - Os 3 primeiros entram em um carrossel horizontal usando `EventCard` (com a badge "Faltam X dias!").

@@ -334,7 +334,7 @@ Tipos compartilhados:
 
 Helpers de formatação sem efeitos colaterais:
 
-- `formatDate(isoDate)` — `"2025-12-31"` → `"31 de dezembro de 2025"`
+- `formatDatePtBrLong(isoDate)` — `"2026-03-10"` → `"10 MAR 2026"` (curto, sem "de")
 - `formatPostDate(isoTimestamp)` — `"2025-12-31T..."` → `"31 dez 2025"`
 - `deriveWalletStatus(isoDate)` — compara com hoje → `"going" | "went"`
 - `yearFromEventDateIso(isoDate)` — devolve o YYYY (`"2025"`)
@@ -401,9 +401,10 @@ Cache in-memory (server-only):
 
 ### `lib/artist-image.ts` / `lib/artist-image-client.ts`
 
-Resolução de imagem do artista via MusicBrainz + Wikipedia/Wikimedia.
+Resolução de imagem do artista em cascata: **MusicBrainz** (quando tem MBID) → **Deezer** (1ª opção por nome, cobertura ampla + imagem quadrada 1000×1000) → **Wikipedia/Wikidata** (fallback para clássicos/nicho, com filtro de contexto musical e checagem de título).
 
-- `resolveArtistImage({ artistName, artistMbid })` — retorna `{ imageUrl, pageUrl, source }`
+- `resolveArtistImage({ artistName, artistMbid })` — retorna `{ imageUrl, pageUrl, source }` (source ∈ `"wikipedia" | "wikimedia" | "deezer" | "none"`)
+- Quando nenhuma fonte bate, devolve `source: "none"` em vez de retornar imagem errada.
 
 ### `lib/supabase/server.ts`
 

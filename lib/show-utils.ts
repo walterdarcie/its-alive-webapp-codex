@@ -1,5 +1,7 @@
 import type { ShowRecord, WalletStatus } from "@/lib/show-types";
 
+const MONTHS_PT_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
 export function parseIsoDateAtLocalMidnight(isoDate: string) {
   return new Date(`${isoDate}T00:00:00`);
 }
@@ -16,14 +18,11 @@ export function deriveWalletStatus(eventDateIso: string): WalletStatus {
 }
 
 export function formatDatePtBrLong(eventDateIso: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  })
-    .format(parseIsoDateAtLocalMidnight(eventDateIso))
-    .replace(".", "")
-    .toUpperCase();
+  const date = parseIsoDateAtLocalMidnight(eventDateIso);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = MONTHS_PT_SHORT[date.getMonth()] ?? "";
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`.toUpperCase();
 }
 
 export function formatVenueLine(show: Pick<ShowRecord, "venue" | "city" | "country">) {
@@ -35,8 +34,6 @@ export function daysUntilShow(eventDateIso: string) {
   const target = parseIsoDateAtLocalMidnight(eventDateIso);
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
-
-const MONTHS_PT_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 export function formatPostDate(isoTimestamp: string): string {
   const date = new Date(isoTimestamp);

@@ -20,7 +20,7 @@ export type ShowRecord = {
   ticketUrl?: string;
   artistImageUrl?: string;
   artistImagePageUrl?: string;
-  artistImageSource?: "wikipedia" | "wikimedia";
+  artistImageSource?: "wikipedia" | "wikimedia" | "deezer";
 };
 
 export type ShowDetailRecord = ShowRecord & {
