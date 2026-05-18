@@ -840,16 +840,31 @@ input {
 }
 
 .searchInputScreen {
+  flex: 1;
+  min-width: 0;
+  width: auto;
   background: transparent;
   border: none;
+  outline: none;
+  color: var(--text-primary);
+  font: inherit;
   padding: 14px 0;
+  margin: 0;
+  border-radius: 0;
   box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.searchInputScreen::placeholder {
+  color: var(--text-muted);
 }
 
 .searchInputScreen:focus,
 .searchInputScreen:focus-visible {
   box-shadow: none;
   border-color: transparent;
+  outline: none;
 }
 
 .searchMetaBar {
@@ -3230,23 +3245,25 @@ input {
 
 .trendingFiltersBar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
   margin: -4px 0 18px;
 }
 
 .trendingFilter {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px 6px 14px;
+  gap: 5px;
+  padding: 4px 10px 4px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   backdrop-filter: blur(14px) saturate(140%);
   transition: border-color 160ms ease, background-color 160ms ease;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .trendingFilter:focus-within {
@@ -3255,11 +3272,12 @@ input {
 }
 
 .trendingFilterLabel {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
+  flex: 0 0 auto;
 }
 
 .trendingFilterSelect,
@@ -3269,17 +3287,18 @@ input {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: -0.005em;
-  padding: 4px 0;
-  min-width: 60px;
+  padding: 3px 0;
+  min-width: 0;
+  width: 100%;
   appearance: none;
   -webkit-appearance: none;
 }
 
 .trendingFilterInput {
-  min-width: 110px;
+  min-width: 0;
 }
 
 .trendingFilterInput::placeholder {
@@ -3294,17 +3313,18 @@ input {
 
 .trendingFilterClear {
   font: inherit;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 122, 92, 0.4);
   background: rgba(255, 47, 146, 0.1);
   color: #ffd4e8;
   cursor: pointer;
   transition: background-color 160ms ease, color 160ms ease;
+  flex: 0 0 auto;
 }
 
 .trendingFilterClear:hover,
@@ -3324,7 +3344,15 @@ input {
 .profilePageBackBtn {
   font: inherit;
   border: none;
+  background: transparent;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.profilePageBackBtn:hover,
+.profilePageBackBtn:focus-visible {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 /* ------------------------------------------------------------------ */

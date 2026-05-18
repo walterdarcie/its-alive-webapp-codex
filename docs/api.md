@@ -104,7 +104,13 @@ IDs com prefixo `tm-` (Ticketmaster) retornam `404` imediatamente — shows futu
 
 ### `GET /api/artist-image?artist={nome}&mbid={mbid}`
 
-Resolve imagem do artista via MusicBrainz → Wikipedia/Wikimedia.
+Resolve imagem do artista numa cascata:
+
+1. **MusicBrainz** (só com `mbid`) — caminho autoritativo via página oficial Wikipedia/Wikidata.
+2. **Deezer** (`https://api.deezer.com/search/artist`) — cobertura ampla, imagem quadrada 1000×1000, ideal para artistas contemporâneos. Match exato no nome tem prioridade sobre fuzzy.
+3. **Wikipedia / Wikidata** — fallback. Wikidata é consultado primeiro (`wbsearchentities`) filtrando entidades por descrição musical; Wikipedia search com termos musicais (`"<artista>" cantor OR banda OR músico`) valida o `description`/`extract` antes de aceitar e também checa se o título lembra o nome do artista (corta hits como "Prêmio Multishow 2022" pra busca "Gilsons").
+
+Quando nada bate, devolve `source: "none"` em vez de adivinhar — preferimos sem imagem a uma imagem errada (ex.: Lenin pelo Lenine).
 
 **Auth:** Não.
 
@@ -115,7 +121,7 @@ Resolve imagem do artista via MusicBrainz → Wikipedia/Wikimedia.
 {
   "imageUrl": "https://...",
   "pageUrl": "https://...",
-  "source": "wikipedia" | "wikimedia"
+  "source": "wikipedia" | "wikimedia" | "deezer" | "none"
 }
 ```
 

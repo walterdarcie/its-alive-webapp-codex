@@ -12,7 +12,7 @@
 | Banco | Supabase (PostgreSQL) | RLS ativado em todas as tabelas |
 | Auth | Supabase Auth (Google OAuth) | Cookies SSR via `@supabase/ssr` |
 | Storage | Supabase Storage | Bucket `post-photos` para fotos de posts |
-| Imagens | Wikipedia / Wikimedia via MusicBrainz | Fallback automático para artistas |
+| Imagens | Deezer (principal) + MusicBrainz / Wikipedia / Wikidata (fallback) | Cascata com filtro de contexto musical |
 | Setlists | Setlist.fm API | Cache in-memory 6h (search) / 24h (detail) |
 | Shows futuros | Ticketmaster Discovery API v2 | Cache in-memory 1h; exige `TICKETMASTER_API_KEY` |
 | Analytics | Google Analytics 4 (`G-LDQLEFB0DR`) | `trackEvent()` manual + page tracker |
@@ -37,7 +37,7 @@ Browser
   │     ├─ /api/wallet               ← localStorage sync + Supabase
   │     ├─ /api/setlists/search      ← Setlist.fm + Ticketmaster (mergeados)
   │     ├─ /api/setlists/[id]        ← Setlist.fm detalhe (tm-* retorna 404 imediato)
-  │     ├─ /api/artist-image         ← MusicBrainz + Wikipedia
+  │     ├─ /api/artist-image         ← MusicBrainz → Deezer → Wikipedia/Wikidata
   │     ├─ /api/posts/*              ← Supabase show_posts + post_likes
   │     ├─ /api/profiles/me          ← perfil do viewer + ensure
   │     ├─ /api/profiles/[id]        ← perfil público + contadores

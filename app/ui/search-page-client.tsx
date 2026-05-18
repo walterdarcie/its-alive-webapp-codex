@@ -223,9 +223,22 @@ export function SearchPageClient({
   }, []);
 
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const activeQueryRef = useRef("");
   const noResultLoggedRef = useRef<string>("");
   const trackedSearchQueryRef = useRef<string>("");
+
+  useEffect(() => {
+    const input = searchInputRef.current;
+    if (!input) return;
+    // Mobile Safari ignora autoFocus em alguns casos — clique programático após mount
+    // garante teclado aberto e cursor pronto no campo.
+    const raf = window.requestAnimationFrame(() => {
+      input.focus({ preventScroll: true });
+      input.click();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
 
   const normalizedQuery = deferredQuery.trim();
 
@@ -414,7 +427,8 @@ export function SearchPageClient({
           <div className="searchFieldWrap">
             <SearchIcon />
             <input
-              className="search searchInputScreen"
+              ref={searchInputRef}
+              className="searchInputScreen"
               placeholder={placeholder}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
