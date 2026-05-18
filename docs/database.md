@@ -180,6 +180,7 @@ Ver `docs/search.md` para instruções de importação.
 | `20260515000000_known_artists.sql` | Cria `known_artists`, extensão `pg_trgm`, índices B-tree e trigrama, RLS pública, seed com 23 artistas |
 | `20260517000000_social_profiles_follows.sql` | Cria `profiles` (com trigger de sync a `auth.users` + backfill) e `user_follows` (com check `follower_id <> following_id`), `normalize_display_name(text)` SQL function, índices B-tree e trigrama em `display_name_normalized`, RLS públicas para SELECT |
 | `20260518120000_wallet_entries_public_select.sql` | Substitui a policy `wallet select own` por `wallet select public` (`using (true)`) e concede `select` a `anon`. Necessário para o feed social, trending e perfis públicos lerem a carteirinha de quem o viewer não é dono. INSERT/UPDATE/DELETE seguem restritos ao próprio dono. |
+| `20260518150000_wallet_reset_artist_image.sql` | Limpa `artistImageUrl`/`artistImagePageUrl`/`artistImageSource` do JSONB `show_data` das linhas com fonte antiga (não-Deezer). **Desabilita o trigger de `updated_at`** durante o UPDATE para preservar a ordem do feed "Seguindo". A UI re-resolve as imagens via `/api/artist-image` (cascata MusicBrainz → Deezer → Wikipedia) no próximo load. |
 
 As migrations são idempotentes (`create table if not exists`, `drop trigger if exists`, `drop policy if exists`).
 
