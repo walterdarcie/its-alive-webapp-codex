@@ -186,29 +186,56 @@ input {
 
 .search {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: var(--surface-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(140deg, rgba(255, 47, 146, 0.06), rgba(47, 107, 255, 0.04) 60%, rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
   color: var(--text-primary);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 14px 16px;
   outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 28px rgba(0, 0, 0, 0.32);
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 220ms ease;
 }
 
 .search::placeholder {
   color: var(--text-muted);
 }
 
+.search:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.search:focus,
+.search:focus-visible {
+  border-color: rgba(255, 122, 92, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 4px rgba(255, 47, 146, 0.14),
+    0 14px 36px rgba(255, 47, 146, 0.18);
+}
+
 .searchButton {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-align: left;
   cursor: pointer;
   margin-bottom: 8px;
 }
 
+.searchButton:hover {
+  transform: translateY(-1px);
+}
+
 .searchButton span {
   color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.005em;
 }
 
 .searchButton .iconSvg {
@@ -305,14 +332,42 @@ input {
     linear-gradient(180deg, #263b6a 0%, #132247 100%);
   display: grid;
   place-items: center;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 14px;
+  color: transparent;
+  font-size: 0;
   text-align: center;
   padding: 16px;
+  overflow: hidden;
+}
+
+.cardImage:not(.hasPhoto)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/brand/logo-vertical.svg");
+  background-position: center 42%;
+  background-repeat: no-repeat;
+  background-size: min(58%, 220px) auto;
+  opacity: 0.32;
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+
+.cardImage:not(.hasPhoto)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 42%, transparent 30%, rgba(20, 0, 22, 0.18) 75%);
+  pointer-events: none;
 }
 
 .cardImage.hasPhoto {
   color: transparent;
+}
+
+.cardImage.hasPhoto::before,
+.cardImage.hasPhoto::after {
+  content: none;
 }
 
 .cardBody {
@@ -418,12 +473,29 @@ input {
     linear-gradient(145deg, #425f99, #1a2f5e);
   display: grid;
   place-items: center;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  color: transparent;
+  font-size: 0;
+}
+
+.ticketThumb:not(.hasPhoto)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/brand/logo-icon.svg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 52% auto;
+  opacity: 0.36;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+  pointer-events: none;
 }
 
 .ticketThumb.hasPhoto {
   color: transparent;
+}
+
+.ticketThumb.hasPhoto::before {
+  content: none;
 }
 
 .ticketThumb.hasPhoto::after {
@@ -739,11 +811,27 @@ input {
 .searchFieldWrap {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--surface-card);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 0 12px;
+  gap: 10px;
+  background:
+    linear-gradient(140deg, rgba(255, 47, 146, 0.08), rgba(47, 107, 255, 0.05) 55%, rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 0 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 28px rgba(0, 0, 0, 0.32);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.searchFieldWrap:focus-within {
+  border-color: rgba(255, 122, 92, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 4px rgba(255, 47, 146, 0.14),
+    0 14px 36px rgba(255, 47, 146, 0.18);
 }
 
 .searchFieldWrap .iconSvg {
@@ -755,6 +843,13 @@ input {
   background: transparent;
   border: none;
   padding: 14px 0;
+  box-shadow: none;
+}
+
+.searchInputScreen:focus,
+.searchInputScreen:focus-visible {
+  box-shadow: none;
+  border-color: transparent;
 }
 
 .searchMetaBar {
@@ -2750,6 +2845,7 @@ input {
   top: 0;
   right: 0;
   height: 100vh;
+  height: 100dvh;
   width: clamp(280px, 72vw, 380px);
   background:
     linear-gradient(180deg, rgba(42, 7, 48, 0.985), rgba(31, 3, 34, 0.985)),
@@ -2757,11 +2853,23 @@ input {
   box-shadow:
     -28px 0 60px rgba(0, 0, 0, 0.45),
     inset 1px 0 0 rgba(255, 255, 255, 0.04);
-  padding: 80px 24px 36px;
+  padding: 80px 24px calc(28px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: drawerSlideIn 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drawer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.drawer::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 
 @keyframes drawerSlideIn {
@@ -2809,6 +2917,11 @@ input {
   margin-top: auto;
   padding-top: 24px;
   gap: 4px;
+  flex-shrink: 0;
+}
+
+.drawerSectionPrimary {
+  flex-shrink: 0;
 }
 
 .drawerItem {
@@ -3111,3 +3224,257 @@ input {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Trending filters (Shows em alta)                                   */
+/* ------------------------------------------------------------------ */
+
+.trendingFiltersBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin: -4px 0 18px;
+}
+
+.trendingFilter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.trendingFilter:focus-within {
+  border-color: rgba(255, 122, 92, 0.42);
+  background: rgba(255, 47, 146, 0.08);
+}
+
+.trendingFilterLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trendingFilterSelect,
+.trendingFilterInput {
+  font: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 4px 0;
+  min-width: 60px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.trendingFilterInput {
+  min-width: 110px;
+}
+
+.trendingFilterInput::placeholder {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.trendingFilterSelect option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.trendingFilterClear {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 122, 92, 0.4);
+  background: rgba(255, 47, 146, 0.1);
+  color: #ffd4e8;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.trendingFilterClear:hover,
+.trendingFilterClear:focus-visible {
+  background: rgba(255, 47, 146, 0.18);
+  outline: none;
+}
+
+.trendingEmpty {
+  margin-top: 4px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Profile back button (button variant)                               */
+/* ------------------------------------------------------------------ */
+
+.profilePageBackBtn {
+  font: inherit;
+  border: none;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Rock'n'roll like burst                                             */
+/* ------------------------------------------------------------------ */
+
+.feedPostLikeBtn {
+  position: relative;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+}
+
+.rockBurstWrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  isolation: isolate;
+}
+
+.rockOnIcon {
+  transform-origin: 50% 70%;
+  transition: color 160ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feedPostLikeBtn:hover .rockOnIcon {
+  transform: rotate(-6deg) scale(1.06);
+}
+
+.feedPostLikeBtn.isLiked .rockOnIcon {
+  color: var(--gradient-a);
+  filter: drop-shadow(0 0 6px rgba(255, 47, 146, 0.45));
+}
+
+.feedPostLikeBtn.isBursting .rockOnIcon {
+  animation: rockHornsBurst 540ms cubic-bezier(0.28, 1.5, 0.4, 1);
+}
+
+.feedPostLikeCount {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: inherit;
+}
+
+.feedPostLikeBtn.isLiked .feedPostLikeCount {
+  color: var(--gradient-a);
+}
+
+.rockBurstSpark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gradient-a), var(--gradient-b));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rockBurstSpark1 { --burst-angle: 0deg; }
+.rockBurstSpark2 { --burst-angle: 60deg; }
+.rockBurstSpark3 { --burst-angle: 120deg; }
+.rockBurstSpark4 { --burst-angle: 180deg; }
+.rockBurstSpark5 { --burst-angle: 240deg; }
+.rockBurstSpark6 { --burst-angle: 300deg; }
+
+.feedPostLikeBtn.isBursting .rockBurstSpark {
+  animation: rockSparkFly 560ms cubic-bezier(0.22, 0.9, 0.36, 1) both;
+}
+
+@keyframes rockHornsBurst {
+  0% { transform: scale(1) rotate(0deg); }
+  18% { transform: scale(0.78) rotate(-6deg); }
+  42% { transform: scale(1.32) rotate(6deg); }
+  62% { transform: scale(0.92) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes rockSparkFly {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--burst-angle)) translateX(0) scale(0.4);
+  }
+  18% {
+    opacity: 1;
+    transform: rotate(var(--burst-angle)) translateX(6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--burst-angle)) translateX(22px) scale(0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedPostLikeBtn.isBursting .rockOnIcon,
+  .feedPostLikeBtn.isBursting .rockBurstSpark {
+    animation: none !important;
+  }
+  .rockOnIcon {
+    transition: color 160ms ease;
+  }
+  .feedPostLikeBtn:hover .rockOnIcon {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Share chip (show detail)                                           */
+/* ------------------------------------------------------------------ */
+
+.shareChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.08em;
+  transition: background-color 160ms ease, color 160ms ease, transform 200ms ease;
+}
+
+.shareChip:hover,
+.shareChip:focus-visible {
+  background: rgba(47, 107, 255, 0.2);
+  color: var(--text-primary);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.shareChip .iconSvg {
+  flex: 0 0 auto;
+}
+
+.shareChip.isCopied {
+  background: linear-gradient(135deg, rgba(255, 47, 146, 0.22), rgba(110, 168, 255, 0.18));
+  color: #ffd4e8;
+  border-color: rgba(255, 122, 92, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shareChip {
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+  .shareChip:hover,
+  .shareChip:focus-visible {
+    transform: none;
+  }
+}

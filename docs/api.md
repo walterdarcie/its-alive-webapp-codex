@@ -376,7 +376,7 @@ Quando o viewer não segue ninguém → `{ "items": [] }`.
 Shows em alta — combina duas fontes:
 
 1. **Plataforma**: agrupa `wallet_entries` futuros (`status = "going"`) por `setlist_id` e ordena por contagem decrescente. É o sinal primário (quanto mais usuários marcaram "Eu vou", mais alto fica).
-2. **Ticketmaster Discovery API**: preenche os slots restantes com shows futuros classificados como música em `countryCode=BR`, ordenados por data ascendente. Cache in-memory de 1h.
+2. **Ticketmaster Discovery API**: preenche os slots restantes com shows futuros classificados como música, ordenados por data ascendente. Cache in-memory de 1h.
 
 Limite final: 24 shows. Dedup primeiro por `id` (shows da plataforma com mesmo `setlist_id` têm prioridade sobre os do Ticketmaster) e depois **por artista** (cada artista aparece no máximo uma vez na lista). Shows do Ticketmaster têm `id` com prefixo `tm-` e `attendingCount: 0`.
 
@@ -384,18 +384,30 @@ Limite final: 24 shows. Dedup primeiro por `id` (shows da plataforma com mesmo `
 
 **Auth:** Não. Tabela `wallet_entries` tem SELECT público.
 
+**Query params (opcionais — todos podem ser combinados):**
+
+| Param | Default | Notas |
+|---|---|---|
+| `country` | `BR` | ISO-3166 alpha-2. Passado como `countryCode` ao Ticketmaster e usado como filtro fuzzy no `show.country` da wallet. Suporte explícito a `BR, AR, CL, MX, US, GB, PT`. |
+| `city` | _(vazio)_ | Substring case-insensitive. Filtra Ticketmaster via `city=` e a wallet por `show.city`. |
+| `genre` | _(vazio)_ | Passa como `classificationName` extra ao Ticketmaster (ex.: `Rock`, `Pop`, `Hip-Hop/Rap`, `Dance/Electronic`, `Latin`, `Country`, `R&B`, `Alternative`, `Metal`, `Jazz`). Quando definido, a fonte da wallet é **desligada** (não há gênero armazenado), e a lista vem só do Ticketmaster. |
+
+Cache do Ticketmaster é chaveado por `(country, size, city, genre)` — variações independentes não invalidam cache umas das outras.
+
 **Response 200:**
 ```json
 {
   "shows": [
     { "show": { /* ShowRecord */ }, "attendingCount": 8 }
   ],
-  "source": "mixed" | "ticketmaster"
+  "source": "mixed" | "ticketmaster",
+  "filters": { "country": "BR", "city": "", "genre": "" }
 }
 ```
 
 - `source: "mixed"` — pelo menos um show veio da plataforma
-- `source: "ticketmaster"` — todos os shows são do TM (plataforma sem registros)
+- `source: "ticketmaster"` — todos os shows são do TM (plataforma sem registros ou gênero definido)
+- `filters` — eco dos filtros aplicados (útil para debug client-side)
 
 ---
 

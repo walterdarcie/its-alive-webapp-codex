@@ -114,16 +114,23 @@ function trendingEventToShowRecord(event: TicketmasterEvent): ShowRecord | null 
   };
 }
 
-export async function searchTrendingUpcoming(
-  opts: { countryCode?: string; size?: number } = {}
-): Promise<ShowRecord[]> {
+export type TrendingFilters = {
+  countryCode?: string;
+  size?: number;
+  city?: string;
+  genre?: string;
+};
+
+export async function searchTrendingUpcoming(opts: TrendingFilters = {}): Promise<ShowRecord[]> {
   const countryCode = opts.countryCode ?? "BR";
   const size = opts.size ?? 20;
+  const city = opts.city?.trim() ?? "";
+  const genre = opts.genre?.trim() ?? "";
 
   const apiKey = getApiKey();
   if (!apiKey) return [];
 
-  const cacheKey = `tm:trending:${countryCode}:${size}`;
+  const cacheKey = `tm:trending:${countryCode}:${size}:${city.toLowerCase()}:${genre.toLowerCase()}`;
   const cached = getCacheValue<ShowRecord[]>(cacheKey);
   if (cached) return cached;
 
@@ -131,12 +138,17 @@ export async function searchTrendingUpcoming(
 
   const params = new URLSearchParams({
     apikey: apiKey,
-    classificationName: "music",
+    classificationName: genre || "music",
     countryCode,
     sort: "date,asc",
     size: String(size),
     startDateTime
   });
+  if (city) params.set("city", city);
+  // When genre is set, classificationName above carries it; we still ensure the
+  // segment stays musical by adding it as a second classification keyword. The
+  // Ticketmaster API accepts repeated classificationName params and ANDs them.
+  if (genre) params.append("classificationName", "music");
 
   let response: Response;
   try {

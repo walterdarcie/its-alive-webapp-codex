@@ -107,13 +107,18 @@
 5. Nome e avatar do autor são desnormalizados na tabela (`user_display_name`, `user_avatar_url`)
 6. Post aparece no topo do feed imediatamente
 
-### Curtir Post
+### Curtir Post ("Mandar um rock'n'roll")
 
-1. Clique no coração → atualização otimística imediata no estado local
-2. POST `/api/posts/{showId}/{postId}/like`
-3. Toggle: insere ou remove de `post_likes`
-4. Trigger PostgreSQL mantém `like_count` em `show_posts`
-5. Se erro: reverte estado local
+A única ação interativa de um post é o "rock'n'roll" — substituiu o coração tradicional para ficar no idioma do produto.
+
+1. Clique no ícone de horns (mão fazendo 🤘 — `RockOnIcon`) → atualização otimística imediata no estado local
+2. POST `/api/posts/{showId}/{postId}/like` (rota e tabela seguem `post_likes` / `like_count` como antes — só a UI muda)
+3. Toggle: insere ou remove de `post_likes`. Trigger PostgreSQL mantém `like_count`.
+4. Se a ação foi um **like novo** (não unlike), dispara `isBursting` por 620ms: o ícone bounce (`rockHornsBurst`) + 6 partículas que voam em 60° de espaçamento (`rockSparkFly`).
+5. Contador (`feedPostLikeCount`) aparece à direita do ícone quando `likeCount > 0`. No estado liked, ícone e contador ganham gradiente pink → coral.
+6. Se erro de rede: reverte estado local (mantém o feedback otimístico até a resposta vir).
+
+Os antigos botões **Comentar** e **Compartilhar** foram removidos dos posts — comentário não estava implementado de verdade (só dava foco no textarea) e o compartilhar agora vive no detalhe do show, onde tem mais contexto.
 
 ### Excluir Post
 
@@ -123,11 +128,12 @@
 4. Post removido otimisticamente do estado local antes da resposta
 5. Segurança dupla: query `.eq("user_id")` + RLS PostgreSQL
 
-### Compartilhar Post
+### Compartilhar Show (no detalhe)
 
-1. Clique no ícone de compartilhar
-2. Tenta `navigator.share` (Web Share API — suporte mobile)
-3. Fallback: `navigator.clipboard.writeText(window.location.href)`
+1. Botão `COMPARTILHAR` (`shareChip`) na barra de ações do `ShowDetailClient`, ao lado do "EU VOU/FUI!" e do botão de ingressos.
+2. Tenta `navigator.share` ({title, text, url}) — suporte mobile/iOS/Android.
+3. Fallback: `navigator.clipboard.writeText(url)`. Quando cai no fallback, o botão muda para "LINK COPIADO" por 1.8s.
+4. Evento de analytics: `show_share_click` com `{ show_id }`.
 
 ---
 
@@ -162,22 +168,35 @@ Acionado pelo botão hambúrguer (substituiu o avatar com menu antigo). Itens to
 
 ### Feed "Seguindo"
 
-Lê `/api/feed/following`. Cada item: avatar + nome em bold + verbo `Foi` (memória, `pink-light`) ou `Vai` (antecipação, `blue-glow`) + data, seguido do ticket do show. Estado vazio convida a buscar amigos.
+Lê `/api/feed/following`. Cada item: avatar + nome em bold + verbo `Foi` (memória, `pink-light`) ou `Vai` (antecipação, `blue-glow`), seguido do ticket do show. Estado vazio convida a buscar amigos.
 
 > O verbo é **derivado da data do show** (`isFutureOrTodayShow → "Vai"`, senão `"Foi"`), não da coluna `status` armazenada. Garante que shows passados marcados originalmente como "Vai" virem `"Foi"` automaticamente com o tempo.
+
+> A data do post (`occurredAtIso`) não é exibida no cabeçalho do item — a referência temporal é a data do show, mostrada no ticket logo abaixo. Isso evita duplicidade visual ("hoje" vs. "20 jun 2026") quando o usuário acabou de marcar um show futuro.
 
 ### Carrossel "Shows em alta" + lista "Mais em alta"
 
 Lê `/api/shows/trending`. Duas fontes mescladas:
 
 1. **Sinal da plataforma**: `wallet_entries` futuros (`status = "going"`) agrupados por `setlist_id` ordenados por contagem desc — quanto mais usuários marcam "Eu vou", mais alto.
-2. **Fonte de descoberta**: Ticketmaster Discovery API (`classificationName=music`, `countryCode=BR`, `sort=date,asc`) preenche os slots restantes quando a plataforma ainda não tem volume.
+2. **Fonte de descoberta**: Ticketmaster Discovery API (`classificationName=music`, `sort=date,asc`) preenche os slots restantes quando a plataforma ainda não tem volume.
 
-Limite 24. Dedup em duas passadas: (1) por `id` com prioridade pra plataforma, (2) **por artista** (cada artista aparece no máximo uma vez na lista). Cache de 1h no Ticketmaster. Quando vazio (sem TM key, sem dados, sem internet), a seção não renderiza.
+Limite 24. Dedup em duas passadas: (1) por `id` com prioridade pra plataforma, (2) **por artista** (cada artista aparece no máximo uma vez na lista). Cache de 1h no Ticketmaster (chave inclui filtros). Quando vazio (sem TM key, sem dados, sem internet, ou filtros muito restritivos), a seção renderiza um estado vazio "Nenhum show por aqui com esses filtros".
+
+**Filtros (UI: `TrendingFiltersBar`)** — aplicam-se à seção inteira:
+
+| Filtro | Tipo | Default | Onde aplica |
+|---|---|---|---|
+| País | dropdown | `BR` | Ticketmaster (`countryCode`) + wallet (fuzzy match em `show.country`) |
+| Cidade | input livre | _(vazio)_ | Ticketmaster (`city=`) + wallet (substring case-insensitive em `show.city`) |
+| Gênero | dropdown | _(vazio)_ | Ticketmaster (`classificationName`); a wallet é desligada quando definido (sem gênero armazenado) |
+
+Mudança em filtro → debounce 300ms → refetch `/api/shows/trending?country=…&city=…&genre=…`. Botão "Limpar" aparece quando qualquer filtro estiver fora do default e zera tudo. Cada interação gera evento `trending_filter_change` (`kind`, `value`).
 
 **Renderização na home:**
 - Os 3 primeiros entram em um carrossel horizontal usando `EventCard` (com a badge "Faltam X dias!").
 - Os demais (até 21) aparecem em uma lista compacta abaixo, com header pequeno "Mais em alta" e cada item em `TicketRow`.
+- Clicar em qualquer card abre o `ShowDetailClient` em overlay com `initialData` pré-populado — o detalhe não precisa fazer fetch (vital para shows `tm-*`, já que `/api/setlists/tm-*` retorna 404).
 
 ### Busca dupla (`/search?tab=...`)
 

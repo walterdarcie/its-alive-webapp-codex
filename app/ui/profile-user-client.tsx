@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ShowRecord, Viewer } from "@/lib/show-types";
 import type { ViewerProfile } from "@/lib/auth";
@@ -103,10 +104,20 @@ type ProfileUserClientProps = {
 };
 
 export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isAuthenticated }: ProfileUserClientProps) {
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfileWithCounts>(initialProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
   const [selectedShow, setSelectedShow] = useState<ShowRecord | null>(null);
+
+  function handleBack() {
+    trackEvent("profile_page_back_click", {});
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  }
 
   const { futureShows, pastShows, totalAttended, attendedThisYear } = useMemo(() => {
     const shows = wallet.map((entry) => entry.show);
@@ -240,14 +251,10 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
         ) : null}
       </header>
 
-      <Link
-        href="/search?tab=amigos"
-        className="profilePageBack"
-        onClick={() => trackEvent("profile_page_back_click", {})}
-      >
+      <button type="button" className="profilePageBack profilePageBackBtn" onClick={handleBack} aria-label="Voltar para a página anterior">
         <BackIcon />
-        Voltar à busca
-      </Link>
+        Voltar
+      </button>
 
       <ProfileHeader
         profile={profile}
