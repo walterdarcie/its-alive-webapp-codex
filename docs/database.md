@@ -26,7 +26,9 @@ Guarda os shows salvos de cada usuário (wallet/carteirinha).
 **Triggers:**
 - `wallet_entries_set_updated_at_trigger` — atualiza `updated_at` em todo UPDATE
 
-**RLS:** SELECT / INSERT / UPDATE / DELETE apenas pelo próprio `user_id`.
+**RLS:**
+- SELECT: público (anon + authenticated) — necessário para o feed social "Seguindo", trending da plataforma e página `/u/[userId]`. Wallet entries são consideradas dados de "diário público de shows".
+- INSERT / UPDATE / DELETE: apenas pelo próprio `user_id`.
 
 ---
 
@@ -177,6 +179,7 @@ Ver `docs/search.md` para instruções de importação.
 | `20260514120000_show_posts.sql` | Cria `show_posts`, `post_likes`, trigger de `like_count`, RLS, bucket `post-photos` |
 | `20260515000000_known_artists.sql` | Cria `known_artists`, extensão `pg_trgm`, índices B-tree e trigrama, RLS pública, seed com 23 artistas |
 | `20260517000000_social_profiles_follows.sql` | Cria `profiles` (com trigger de sync a `auth.users` + backfill) e `user_follows` (com check `follower_id <> following_id`), `normalize_display_name(text)` SQL function, índices B-tree e trigrama em `display_name_normalized`, RLS públicas para SELECT |
+| `20260518120000_wallet_entries_public_select.sql` | Substitui a policy `wallet select own` por `wallet select public` (`using (true)`) e concede `select` a `anon`. Necessário para o feed social, trending e perfis públicos lerem a carteirinha de quem o viewer não é dono. INSERT/UPDATE/DELETE seguem restritos ao próprio dono. |
 
 As migrations são idempotentes (`create table if not exists`, `drop trigger if exists`, `drop policy if exists`).
 

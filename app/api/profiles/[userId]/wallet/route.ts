@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { ShowRecord } from "@/lib/show-types";
 import type { PublicWalletEntry } from "@/lib/social-types";
+import { isFutureOrTodayShow } from "@/lib/show-utils";
 import { configErrorResponse, loadAuthContext } from "@/lib/supabase/social-helpers";
 
 export async function GET(_request: Request, { params }: { params: { userId: string } }) {
@@ -23,11 +24,15 @@ export async function GET(_request: Request, { params }: { params: { userId: str
     return NextResponse.json({ error: "Failed to load wallet" }, { status: 500 });
   }
 
-  const items: PublicWalletEntry[] = (data ?? []).map((row) => ({
-    show: row.show_data as ShowRecord,
-    action: row.status === "went" ? "went" : "going",
-    savedAtIso: row.updated_at as string
-  }));
+  const items: PublicWalletEntry[] = (data ?? []).map((row) => {
+    const show = row.show_data as ShowRecord;
+    const action = isFutureOrTodayShow(show.eventDateIso) ? "going" : "went";
+    return {
+      show,
+      action,
+      savedAtIso: row.updated_at as string
+    };
+  });
 
   return NextResponse.json({ items });
 }

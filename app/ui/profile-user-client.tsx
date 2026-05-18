@@ -17,6 +17,7 @@ import {
   isFutureOrTodayShow
 } from "@/lib/show-utils";
 import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-client";
+import { countAttendedShows } from "@/lib/social-utils";
 import { trackEvent } from "@/lib/analytics";
 
 function HamburgerIcon() {
@@ -107,11 +108,16 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
   const [selectedShow, setSelectedShow] = useState<ShowRecord | null>(null);
 
-  const { futureShows, pastShows } = useMemo(() => {
+  const { futureShows, pastShows, totalAttended, attendedThisYear } = useMemo(() => {
     const shows = wallet.map((entry) => entry.show);
+    const future = shows.filter((show) => isFutureOrTodayShow(show.eventDateIso));
+    const past = shows.filter((show) => !isFutureOrTodayShow(show.eventDateIso));
+    const counts = countAttendedShows(shows);
     return {
-      futureShows: shows.filter((show) => isFutureOrTodayShow(show.eventDateIso)),
-      pastShows: shows.filter((show) => !isFutureOrTodayShow(show.eventDateIso))
+      futureShows: future,
+      pastShows: past,
+      totalAttended: counts.totalAttended,
+      attendedThisYear: counts.attendedThisYear
     };
   }, [wallet]);
 
@@ -247,6 +253,8 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
         profile={profile}
         fallbackName={profile.displayName}
         fallbackAvatarUrl={profile.avatarUrl}
+        showsThisYear={attendedThisYear}
+        showsTotal={totalAttended}
         primaryAction={cta}
       />
 

@@ -242,6 +242,8 @@ Wallet pública do usuário-alvo (shows que ele guardou). Usado pela página `/u
 
 **Auth:** Não.
 
+**Importante:** o campo `action` é derivado em runtime a partir de `show.eventDateIso` (`isFutureOrTodayShow → "going"`, senão `"went"`), não da coluna `status` da tabela. Isso garante que shows antigos virem `"went"` automaticamente conforme o tempo passa, mesmo sem job de reescrita.
+
 **Response 200:**
 ```json
 {
@@ -254,6 +256,37 @@ Wallet pública do usuário-alvo (shows que ele guardou). Usado pela página `/u
   ]
 }
 ```
+
+---
+
+### `GET /api/profiles/[userId]/follows?type={following|followers}`
+
+Lista de pessoas que o usuário-alvo segue (`type=following`) ou que o seguem (`type=followers`). Usado pelas páginas `/u/[userId]/seguindo` e `/u/[userId]/seguidores`.
+
+**Auth:** Opcional. Quando autenticado, `isViewerFollowing` reflete o estado do viewer em relação a cada item da lista.
+
+**Query params:**
+- `type` — obrigatório, `"following"` (default) ou `"followers"`.
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "userId": "uuid",
+      "displayName": "Nome",
+      "avatarUrl": "https://..." | null,
+      "isViewerFollowing": false,
+      "isSelf": false
+    }
+  ],
+  "type": "following" | "followers"
+}
+```
+
+Limite 200, ordenado por `created_at` da relação (mais recente primeiro).
+
+**Erros:** `400` quando `type` é inválido.
 
 ---
 
@@ -313,6 +346,8 @@ Atividades recentes dos usuários que o viewer segue. Lê `wallet_entries.update
 
 **Auth:** Obrigatória.
 
+**Importante:** o campo `action` é derivado de `show.eventDateIso` (`isFutureOrTodayShow → "going"`, senão `"went"`), não da coluna `status` armazenada. Assim, shows passados aparecem no feed como `"Foi"` mesmo que a entrada original tenha sido criada como `"going"`.
+
 **Response 200:**
 ```json
 {
@@ -343,7 +378,9 @@ Shows em alta — combina duas fontes:
 1. **Plataforma**: agrupa `wallet_entries` futuros (`status = "going"`) por `setlist_id` e ordena por contagem decrescente. É o sinal primário (quanto mais usuários marcaram "Eu vou", mais alto fica).
 2. **Ticketmaster Discovery API**: preenche os slots restantes com shows futuros classificados como música em `countryCode=BR`, ordenados por data ascendente. Cache in-memory de 1h.
 
-Limite final: 12 shows. Dedup por `id` (shows da plataforma com mesmo `setlist_id` têm prioridade sobre os do Ticketmaster). Shows do Ticketmaster têm `id` com prefixo `tm-` e `attendingCount: 0`.
+Limite final: 24 shows. Dedup primeiro por `id` (shows da plataforma com mesmo `setlist_id` têm prioridade sobre os do Ticketmaster) e depois **por artista** (cada artista aparece no máximo uma vez na lista). Shows do Ticketmaster têm `id` com prefixo `tm-` e `attendingCount: 0`.
+
+> A UI da home consome essa lista assim: os 3 primeiros entram no carrossel "Shows em alta"; os demais (até 21) aparecem em uma lista compacta "Mais em alta" logo abaixo, no formato `TicketRow`.
 
 **Auth:** Não. Tabela `wallet_entries` tem SELECT público.
 

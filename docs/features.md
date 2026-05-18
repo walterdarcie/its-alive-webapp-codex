@@ -146,9 +146,14 @@ O parâmetro `?tab=meus-shows` deep-linka a aba (usado pelo drawer e por testes)
 
 ### Perfil próprio (cabeçalho)
 
-- Avatar 96px, nome (22px / 700)
-- Dois contadores: `SEGUINDO` e `SEGUIDORES`
-- Formatação pt-BR com separador (`9.999.999`); zero exibido como `—`
+- Avatar 88px (72px em telas ≤ 480px), nome (18px / 700)
+- **Primário (em destaque, gradiente pink → coral):** contagem de shows que a pessoa foi
+  - `X em {ano atual}` (apenas shows passados do ano corrente)
+  - `Y no total` (apenas shows passados, total)
+- **Secundário (texto pequeno, uppercase):** `SEGUINDO` e `SEGUIDORES`
+- Formatação pt-BR com separador (`9.999.999`); zero em `SEGUINDO/SEGUIDORES` exibido como `—`
+- Contagem de shows usa `countAttendedShows()` em `lib/social-utils.ts` — só inclui shows com `eventDateIso` no passado (i.e., `!isFutureOrTodayShow`)
+- Clicar em `SEGUINDO` → `/u/{userId}/seguindo`; clicar em `SEGUIDORES` → `/u/{userId}/seguidores`
 - `font-variant-numeric: tabular-nums` para estabilidade visual quando o número atualiza
 
 ### Drawer lateral (menu)
@@ -159,14 +164,20 @@ Acionado pelo botão hambúrguer (substituiu o avatar com menu antigo). Itens to
 
 Lê `/api/feed/following`. Cada item: avatar + nome em bold + verbo `Foi` (memória, `pink-light`) ou `Vai` (antecipação, `blue-glow`) + data, seguido do ticket do show. Estado vazio convida a buscar amigos.
 
-### Carrossel "Shows em alta"
+> O verbo é **derivado da data do show** (`isFutureOrTodayShow → "Vai"`, senão `"Foi"`), não da coluna `status` armazenada. Garante que shows passados marcados originalmente como "Vai" virem `"Foi"` automaticamente com o tempo.
+
+### Carrossel "Shows em alta" + lista "Mais em alta"
 
 Lê `/api/shows/trending`. Duas fontes mescladas:
 
 1. **Sinal da plataforma**: `wallet_entries` futuros (`status = "going"`) agrupados por `setlist_id` ordenados por contagem desc — quanto mais usuários marcam "Eu vou", mais alto.
 2. **Fonte de descoberta**: Ticketmaster Discovery API (`classificationName=music`, `countryCode=BR`, `sort=date,asc`) preenche os slots restantes quando a plataforma ainda não tem volume.
 
-Limite 12. Dedup por `id` com prioridade pra plataforma. Cache de 1h no Ticketmaster. Renderiza com o mesmo `EventCard` da wallet (badge "Faltam X dias!"). Quando vazio (sem TM key, sem dados, sem internet), a seção não renderiza.
+Limite 24. Dedup em duas passadas: (1) por `id` com prioridade pra plataforma, (2) **por artista** (cada artista aparece no máximo uma vez na lista). Cache de 1h no Ticketmaster. Quando vazio (sem TM key, sem dados, sem internet), a seção não renderiza.
+
+**Renderização na home:**
+- Os 3 primeiros entram em um carrossel horizontal usando `EventCard` (com a badge "Faltam X dias!").
+- Os demais (até 21) aparecem em uma lista compacta abaixo, com header pequeno "Mais em alta" e cada item em `TicketRow`.
 
 ### Busca dupla (`/search?tab=...`)
 
@@ -177,13 +188,27 @@ Limite 12. Dedup por `id` com prioridade pra plataforma. Cache de 1h no Ticketma
 
 Server component faz `fetch` interno em `/api/profiles/[userId]` + `/api/profiles/[userId]/wallet` repassando o cookie da request. Client renderiza:
 
-- `ProfileHeader` com CTA `Seguir`/`Seguindo` (`FollowButton` otimístico) ou link de login.
-- Carrossel "Vai!" para shows futuros + tickets passados agrupados por ano.
+- `ProfileHeader` com contadores de shows (este ano + total) em destaque + SEGUINDO/SEGUIDORES secundários + CTA `Seguir`/`Seguindo` (`FollowButton` otimístico) ou link de login.
+- Carrossel "Vai!" para shows futuros + tickets passados agrupados por ano — mesmo formato da aba "Meus shows" da home.
 - Estado vazio: `"X ainda não guardou shows por aqui."`.
+
+> Antes da release 2026-05-18 a wallet de outro usuário aparecia vazia por causa da RLS `wallet select own`. A migration `20260518120000_wallet_entries_public_select.sql` flexibilizou a policy para SELECT público (escrita continua só do dono).
 
 ### Seguir/Deixar de seguir
 
 `POST /api/follows/[userId]` (upsert idempotente em `user_follows`) e `DELETE` (idempotente). A UI usa `FollowButton` que faz atualização otimística e reverte em caso de erro. Self-follow → `400`.
+
+### Páginas `/u/[userId]/seguindo` e `/u/[userId]/seguidores`
+
+Listam pessoas que o usuário-alvo segue ou que o seguem. Server components consomem `/api/profiles/[userId]/follows?type={following|followers}`.
+
+- Cabeçalho com título grande + subtítulo descritivo (`"Pessoas que você está acompanhando."`, etc.)
+- Botão `Voltar para o perfil de X` (ou `Voltar para a home`, se for o próprio viewer)
+- Switch entre as duas abas (`Seguindo` / `Seguidores`) no estilo pill, com `aria-current="page"` na ativa
+- Cada item usa `friendResultRow` (mesmo do search/amigos): avatar + nome (linkam para `/u/[userId]`) + `FollowButton` à direita
+- Para o próprio viewer, o botão de follow é omitido
+- Anônimo vê o botão `Entrar` no lugar do `FollowButton`
+- Estados vazios contextuais (`"Você ainda não segue ninguém..."`, etc.)
 
 ### Grafo social e contadores
 
@@ -220,4 +245,8 @@ Contadores derivam direto de `user_follows` (via `COUNT(*)` headless). Não há 
 | Contadores zero | Renderizados como `—` em vez de `0` (escolha de tom — ver `docs/voice.md`) |
 | Verbos do feed | `Foi` em `pink-light` (memória), `Vai` em `blue-glow` (antecipação) — diferenciação cromática deliberada |
 | Agrupamento por ano | Ano renderizado só como número (`2025`, não `ANO 2025`); ordem decrescente dentro de cada ano |
-| Trending shows | Agrupa `wallet_entries` com `status = "going"` e `event_date >= today`; ordena por contagem desc |
+| Trending shows | Agrupa `wallet_entries` com `status = "going"` e `event_date >= today`; ordena por contagem desc. Dedup por `id` e por nome de artista (normalizado). Limite 24. |
+| Trending split | UI da home usa os 3 primeiros no carrossel "Shows em alta" e o resto na lista "Mais em alta" |
+| Contagem de shows no perfil | Soma apenas shows passados (`!isFutureOrTodayShow`). "Este ano" filtra ainda por `yearFromEventDateIso === ano atual` |
+| Verbo no feed (Foi/Vai) | Derivado em runtime da data do show, não da coluna `status` armazenada |
+| Bordas dashed em tickets | Pintadas com `var(--bg-primary)` para criarem efeito de transparência sobre o fundo da página |

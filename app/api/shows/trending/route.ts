@@ -4,9 +4,17 @@ import type { TrendingShow } from "@/lib/social-types";
 import { searchTrendingUpcoming } from "@/lib/ticketmaster-api";
 import { configErrorResponse, loadAuthContext } from "@/lib/supabase/social-helpers";
 
-const TRENDING_LIMIT = 12;
+const TRENDING_LIMIT = 24;
 const WALLET_SCAN_LIMIT = 200;
 const DEFAULT_COUNTRY_CODE = "BR";
+
+function normalizeArtistKey(artist: string): string {
+  return artist
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
 
 export async function GET() {
   const { supabase, configError } = await loadAuthContext();
@@ -61,7 +69,17 @@ export async function GET() {
     .filter((show) => !seenIds.has(show.id))
     .map((show) => ({ show, attendingCount: 0 }));
 
-  const trending = [...fromWallet, ...fromTicketmaster].slice(0, TRENDING_LIMIT);
+  // 3. Deduplica por artista: garante que cada artista aparece no máximo uma vez,
+  //    preservando a ordem (plataforma > ticketmaster) e o show mais relevante.
+  const seenArtists = new Set<string>();
+  const trending: TrendingShow[] = [];
+  for (const entry of [...fromWallet, ...fromTicketmaster]) {
+    const key = normalizeArtistKey(entry.show.artist);
+    if (!key || seenArtists.has(key)) continue;
+    seenArtists.add(key);
+    trending.push(entry);
+    if (trending.length >= TRENDING_LIMIT) break;
+  }
 
   return NextResponse.json({
     shows: trending,
