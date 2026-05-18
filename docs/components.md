@@ -77,19 +77,20 @@ Página principal da release social. Header com hambúrguer + drawer, barra de b
 
 **Estado:**
 - `walletEntries` — wallet sincronizada (localStorage + servidor)
-- `selectedShowId` — show aberto no overlay
+- `selectedShow` — `{ id, initialData? }` do show aberto no overlay. Carrega `initialData` quando o show é clicado na home (trending, feed ou wallet) para evitar fetch no detail — crítico para shows `tm-*`, cujo `/api/setlists/tm-*` retorna 404.
 - `artistImageMap` — cache local de imagens de artistas resolvidas
 - `activeTab` — aba ativa, sincronizada com `?tab=` no URL
 - `drawerOpen` — visibilidade do `SocialDrawer`
 - `profile` — `UserProfileWithCounts | null` (consome `/api/profiles/me`)
 - `trending` — `TrendingShow[]` (consome `/api/shows/trending`)
+- `trendingFilters` — `{ country, city, genre }`. Default `{ country: "BR", city: "", genre: "" }`. Mudança → debounce 300ms → refetch.
 - `feedItems` — `FollowFeedItem[]` (consome `/api/feed/following`)
 
 **Comportamento:**
 - Hidrata wallet do servidor ao montar
-- Aba Novidades: renderiza `Shows em alta` (carrossel) + `Seguindo` (feed)
+- Aba Novidades: renderiza `TrendingShowsPanel` (filtros + carrossel + lista "Mais em alta") + `FollowingFeedPanel`
 - Aba Meus shows: `Eu vou!` (carrossel) + tickets agrupados por ano com `groupShowsByYearDesc`
-- Abre `ShowDetailClient` em overlay ao clicar; o detail faz fetch via API (sem `initialData`)
+- Abre `ShowDetailClient` em overlay ao clicar, passando `initialData` (do trending/feed/wallet). Popstate restaura apenas o `id`.
 - Skeletons enquanto trending/feed carregam
 
 ---
@@ -146,6 +147,7 @@ Detalhe completo de um show: header com imagem do artista, setlist, feed social.
 
 **Comportamento:**
 - Botão de salvar/remover da wallet (otimístico)
+- Botão `COMPARTILHAR` (`shareChip`) entre as ações: tenta `navigator.share`; quando cai no fallback `navigator.clipboard.writeText(url)`, troca o label para "LINK COPIADO" por 1.8s. Evento de analytics: `show_share_click`.
 - Carrega imagem do artista via `/api/artist-image`
 - Renderiza `ShowFeedClient` abaixo do ticket de setlist
 - Em overlay: fundo clicável fecha; `isClosing` dispara animação CSS
@@ -171,19 +173,24 @@ Feed social de um show específico. Posts, likes, fotos, delete.
 - `submitError: string | null` — erro de envio
 - `confirmDeleteId: string | null` — ID do post aguardando confirmação de exclusão
 
+**Estado adicional:**
+- `burstingId: string | null` — id do post cujo botão de like está rodando a animação `isBursting`. Setado por 620ms após um like novo (não rola em unlike). Usado para condicionar `.isBursting` na classe do botão.
+
 **Comportamento:**
 - Carrega posts ao montar (cancela fetch se desmontado)
 - Upload de foto: direto ao Supabase Storage via `getSupabaseBrowserClient()`
   - Caminho: `post-photos/{viewer.id}/{timestamp}-{random}.{ext}`
   - Limite: 10 MB, apenas imagens
 - Envio de post: POST `/api/posts/{showId}` com `body` + `photoUrl?`
-- Like toggle: POST `/api/posts/{showId}/{postId}/like` — atualização otimística imediata
+- **Curtir** (rock'n'roll): POST `/api/posts/{showId}/{postId}/like` — atualização otimística. Ícone é `RockOnIcon` (mão fazendo horns); estado liked vira gradiente pink → coral; like novo dispara burst (`rockHornsBurst` no ícone + 6 `rockBurstSpark` em 60° de espaçamento, `rockSparkFly`).
+- Contador aparece à direita do ícone só quando `likeCount > 0`. Em estado liked, ícone e contador compartilham o gradiente pink.
 - Delete: ícone visível no hover do próprio post → confirmação inline → DELETE `/api/posts/{showId}/{postId}`
-- Compartilhar: Web Share API com fallback `navigator.clipboard`
-- Usuário não autenticado vê o feed mas não pode postar
+- **Compartilhar foi removido** do post — agora vive só no `ShowDetailClient` (mais contexto).
+- **Comentar foi removido** — antes só dava foco no textarea de novo post, comportamento confuso.
+- Usuário não autenticado vê o feed mas não pode postar nem curtir (redireciona para `/signin?next=...`)
 
 **Ícones internos (SVG inline):**
-`HeartIcon`, `HeartFilledIcon`, `CommentIcon`, `ShareIcon`, `CameraIcon`, `CloseSmIcon`, `TrashIcon`
+`RockOnIcon` (filled + outline), `CameraIcon`, `CloseSmIcon`, `TrashIcon`
 
 ---
 
@@ -240,6 +247,7 @@ Drawer lateral direito com itens de navegação. Usado em `HomeClient`, `SearchP
 - Bloco superior (font 28-34px / weight 400): Meus shows, Buscar shows, Buscar amigos
 - Bloco inferior (font 22px / weight 400 / text-secondary): Termos de uso, Privacidade, **Sair** (botão que chama `/api/auth/signout`)
 - Itens topo direcionam para `/?tab=...` ou `/search?tab=...`
+- O drawer usa `height: 100dvh` + `overflow-y: auto` + `padding-bottom: calc(28px + env(safe-area-inset-bottom))` para garantir que o botão **Sair** sempre fique acessível mesmo em viewports baixos / browsers mobile com barra de navegação variável.
 
 ---
 
@@ -259,7 +267,7 @@ Página de perfil de outro usuário (`/u/[userId]`). Server component carrega `p
 
 **Comportamento:**
 - Header `topBarSocial` com hambúrguer (só para autenticados)
-- Link "Voltar à busca" → `/search?tab=amigos`
+- Botão `Voltar` (`profilePageBack profilePageBackBtn`) → `router.back()` se há histórico (`window.history.length > 1`); fallback `/`. Não assume a rota anterior (antes apontava só para `/search?tab=amigos`).
 - `ProfileHeader` (com `showsThisYear` + `showsTotal` calculados via `countAttendedShows`) com CTA: `FollowButton` (não-self autenticado), "Entrar para seguir" (anônimo) ou `null` (próprio usuário)
 - Section "Vai!" como carrossel quando há futuros + `groupShowsByYearDesc` para passados — mesmo formato da aba "Meus shows" da home
 - Estado vazio: "X ainda não guardou shows por aqui."

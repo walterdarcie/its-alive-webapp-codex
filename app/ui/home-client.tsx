@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { ShowRecord, Viewer } from "@/lib/show-types";
+import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import { SocialDrawer } from "@/app/ui/social-drawer";
 import { ProfileHeader } from "@/app/ui/profile-header";
@@ -12,7 +12,6 @@ import { getWalletEntries, hydrateWalletFromServer, type WalletEntry } from "@/l
 import {
   daysUntilShow,
   formatDatePtBrLong,
-  formatPostDate,
   formatVenueLine,
   groupShowsByYearDesc,
   isFutureOrTodayShow
@@ -27,6 +26,42 @@ import { countAttendedShows } from "@/lib/social-utils";
 import { trackEvent } from "@/lib/analytics";
 
 type HomeTab = "novidades" | "meus-shows";
+
+type TrendingFiltersState = {
+  country: string;
+  city: string;
+  genre: string;
+};
+
+const DEFAULT_TRENDING_FILTERS: TrendingFiltersState = {
+  country: "BR",
+  city: "",
+  genre: ""
+};
+
+const TRENDING_COUNTRY_OPTIONS: Array<{ code: string; label: string }> = [
+  { code: "BR", label: "Brasil" },
+  { code: "AR", label: "Argentina" },
+  { code: "CL", label: "Chile" },
+  { code: "MX", label: "México" },
+  { code: "US", label: "Estados Unidos" },
+  { code: "GB", label: "Reino Unido" },
+  { code: "PT", label: "Portugal" }
+];
+
+const TRENDING_GENRE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "Todos os gêneros" },
+  { value: "Rock", label: "Rock" },
+  { value: "Pop", label: "Pop" },
+  { value: "Hip-Hop/Rap", label: "Hip-Hop / Rap" },
+  { value: "Dance/Electronic", label: "Eletrônica" },
+  { value: "Latin", label: "Latina / Sertanejo" },
+  { value: "Country", label: "Country" },
+  { value: "R&B", label: "R&B / Soul" },
+  { value: "Alternative", label: "Alternativo / Indie" },
+  { value: "Metal", label: "Metal" },
+  { value: "Jazz", label: "Jazz" }
+];
 
 function HamburgerIcon() {
   return (
@@ -174,7 +209,6 @@ function FeedActivityItem({ item, imageUrl, onOpenDetail }: FeedTicketProps) {
             </Link>
             <span className={`activityVerb ${verbClass}`}>{verbLabel}</span>
           </p>
-          <p className="activityDate">{formatPostDate(item.occurredAtIso)}</p>
         </div>
       </header>
       <TicketRow show={item.show} imageUrl={imageUrl} onOpenDetail={onOpenDetail} />
@@ -185,27 +219,98 @@ function FeedActivityItem({ item, imageUrl, onOpenDetail }: FeedTicketProps) {
 type TrendingPanelProps = {
   trending: TrendingShow[];
   loading: boolean;
+  filters: TrendingFiltersState;
+  onFiltersChange: (next: TrendingFiltersState) => void;
   resolveShowImageUrl: (show: ShowRecord) => string | undefined;
   onOpenShow: (show: ShowRecord) => void;
 };
 
 const TRENDING_SLIDER_LIMIT = 3;
 
-function TrendingShowsPanel({ trending, loading, resolveShowImageUrl, onOpenShow }: TrendingPanelProps) {
-  if (loading) {
-    return (
-      <section className="section" aria-label="Carregando shows em alta">
-        <h2 className="sectionTitle">Shows em alta</h2>
-        <div className="slider sliderPeek skeletonSlider" aria-hidden>
-          <div className="skeletonCard" />
-          <div className="skeletonCard" />
-        </div>
-      </section>
-    );
-  }
+function TrendingFiltersBar({
+  filters,
+  onFiltersChange
+}: {
+  filters: TrendingFiltersState;
+  onFiltersChange: (next: TrendingFiltersState) => void;
+}) {
+  const hasActive =
+    filters.country !== DEFAULT_TRENDING_FILTERS.country ||
+    filters.city.trim() !== "" ||
+    filters.genre !== "";
 
-  if (!trending.length) return null;
+  return (
+    <div className="trendingFiltersBar" role="group" aria-label="Filtros de shows em alta">
+      <label className="trendingFilter">
+        <span className="trendingFilterLabel">País</span>
+        <select
+          className="trendingFilterSelect"
+          value={filters.country}
+          onChange={(event) => {
+            const next = { ...filters, country: event.target.value };
+            trackEvent("trending_filter_change", { kind: "country", value: next.country });
+            onFiltersChange(next);
+          }}
+        >
+          {TRENDING_COUNTRY_OPTIONS.map((option) => (
+            <option key={option.code} value={option.code}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="trendingFilter">
+        <span className="trendingFilterLabel">Cidade</span>
+        <input
+          className="trendingFilterInput"
+          type="text"
+          value={filters.city}
+          placeholder="Todas"
+          onChange={(event) => {
+            onFiltersChange({ ...filters, city: event.target.value });
+          }}
+          onBlur={(event) => {
+            const value = event.target.value.trim();
+            if (value) trackEvent("trending_filter_change", { kind: "city", value });
+          }}
+        />
+      </label>
+      <label className="trendingFilter">
+        <span className="trendingFilterLabel">Gênero</span>
+        <select
+          className="trendingFilterSelect"
+          value={filters.genre}
+          onChange={(event) => {
+            const next = { ...filters, genre: event.target.value };
+            trackEvent("trending_filter_change", { kind: "genre", value: next.genre || "all" });
+            onFiltersChange(next);
+          }}
+        >
+          {TRENDING_GENRE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {hasActive ? (
+        <button
+          type="button"
+          className="trendingFilterClear"
+          onClick={() => {
+            trackEvent("trending_filter_clear", {});
+            onFiltersChange({ ...DEFAULT_TRENDING_FILTERS });
+          }}
+          aria-label="Limpar filtros"
+        >
+          Limpar
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
+function TrendingShowsPanel({ trending, loading, filters, onFiltersChange, resolveShowImageUrl, onOpenShow }: TrendingPanelProps) {
   const sliderItems = trending.slice(0, TRENDING_SLIDER_LIMIT);
   const listItems = trending.slice(TRENDING_SLIDER_LIMIT);
 
@@ -214,39 +319,51 @@ function TrendingShowsPanel({ trending, loading, resolveShowImageUrl, onOpenShow
       <h2 id="shows-em-alta" className="sectionTitle">
         Shows em alta
       </h2>
-      <div className={`slider ${sliderItems.length > 1 ? "sliderPeek" : ""}`}>
-        {sliderItems.map(({ show }) => (
-          <button
-            key={show.id}
-            type="button"
-            className="cardLink cardButtonReset"
-            onClick={() => {
-              trackEvent("show_detail_open", { source: "home_trending", show_id: show.id });
-              onOpenShow(show);
-            }}
-          >
-            <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
-          </button>
-        ))}
-      </div>
-      {listItems.length ? (
-        <div className="trendingListWrap">
-          <h3 className="trendingListTitle">Mais em alta</h3>
-          <div className="ticketList">
-            {listItems.map(({ show }) => (
-              <TicketRow
+      <TrendingFiltersBar filters={filters} onFiltersChange={onFiltersChange} />
+      {loading ? (
+        <div className="slider sliderPeek skeletonSlider" aria-hidden>
+          <div className="skeletonCard" />
+          <div className="skeletonCard" />
+        </div>
+      ) : trending.length ? (
+        <>
+          <div className={`slider ${sliderItems.length > 1 ? "sliderPeek" : ""}`}>
+            {sliderItems.map(({ show }) => (
+              <button
                 key={show.id}
-                show={show}
-                imageUrl={resolveShowImageUrl(show)}
-                onOpenDetail={(showId) => {
-                  trackEvent("show_detail_open", { source: "home_trending_list", show_id: showId });
+                type="button"
+                className="cardLink cardButtonReset"
+                onClick={() => {
+                  trackEvent("show_detail_open", { source: "home_trending", show_id: show.id });
                   onOpenShow(show);
                 }}
-              />
+              >
+                <EventCard show={show} imageUrl={resolveShowImageUrl(show)} />
+              </button>
             ))}
           </div>
-        </div>
-      ) : null}
+          {listItems.length ? (
+            <div className="trendingListWrap">
+              <h3 className="trendingListTitle">Mais em alta</h3>
+              <div className="ticketList">
+                {listItems.map(({ show }) => (
+                  <TicketRow
+                    key={show.id}
+                    show={show}
+                    imageUrl={resolveShowImageUrl(show)}
+                    onOpenDetail={(showId) => {
+                      trackEvent("show_detail_open", { source: "home_trending_list", show_id: showId });
+                      onOpenShow(show);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="emptyBox trendingEmpty">Nenhum show por aqui com esses filtros. Tente outro recorte.</p>
+      )}
     </section>
   );
 }
@@ -462,7 +579,7 @@ function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTa
 
 export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: ViewerProfile; initialTab?: HomeTab }) {
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
-  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const [selectedShow, setSelectedShow] = useState<{ id: string; initialData?: ShowRecord } | null>(null);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<HomeTab>(initialTab);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -470,16 +587,17 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
   const [profile, setProfile] = useState<UserProfileWithCounts | null>(null);
   const [trending, setTrending] = useState<TrendingShow[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingFilters, setTrendingFilters] = useState<TrendingFiltersState>(DEFAULT_TRENDING_FILTERS);
   const [feedItems, setFeedItems] = useState<FollowFeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
   const openShowOverlay = useCallback((show: ShowRecord) => {
-    setSelectedShowId(show.id);
+    setSelectedShow({ id: show.id, initialData: show });
     window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
   }, []);
 
   const closeShowOverlay = useCallback(() => {
-    setSelectedShowId(null);
+    setSelectedShow(null);
     window.history.pushState({}, "", "/");
   }, []);
 
@@ -487,9 +605,9 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
     function handlePopState(event: PopStateEvent) {
       const state = event.state as { showOverlay?: string } | null;
       if (state?.showOverlay) {
-        setSelectedShowId(state.showOverlay);
+        setSelectedShow({ id: state.showOverlay });
       } else {
-        setSelectedShowId(null);
+        setSelectedShow(null);
       }
     }
     window.addEventListener("popstate", handlePopState);
@@ -526,9 +644,19 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
 
   useEffect(() => {
     let cancelled = false;
-    async function loadTrending() {
+    const params = new URLSearchParams();
+    if (trendingFilters.country) params.set("country", trendingFilters.country);
+    const trimmedCity = trendingFilters.city.trim();
+    if (trimmedCity) params.set("city", trimmedCity);
+    if (trendingFilters.genre) params.set("genre", trendingFilters.genre);
+    const queryString = params.toString();
+
+    setTrendingLoading(true);
+    const timer = window.setTimeout(async () => {
       try {
-        const response = await fetch("/api/shows/trending", { cache: "no-store" });
+        const response = await fetch(`/api/shows/trending${queryString ? `?${queryString}` : ""}`, {
+          cache: "no-store"
+        });
         if (!response.ok) throw new Error("trending");
         const payload = (await response.json()) as { shows: TrendingShow[] };
         if (!cancelled) setTrending(payload.shows ?? []);
@@ -537,12 +665,12 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
       } finally {
         if (!cancelled) setTrendingLoading(false);
       }
-    }
-    void loadTrending();
+    }, 300);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, []);
+  }, [trendingFilters.country, trendingFilters.city, trendingFilters.genre]);
 
   useEffect(() => {
     let cancelled = false;
@@ -702,6 +830,8 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
             <TrendingShowsPanel
               trending={trending}
               loading={trendingLoading}
+              filters={trendingFilters}
+              onFiltersChange={setTrendingFilters}
               resolveShowImageUrl={resolveShowImageUrl}
               onOpenShow={openShowOverlay}
             />
@@ -733,13 +863,18 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
 
       <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="home" />
 
-      {selectedShowId ? (
+      {selectedShow ? (
         <ShowDetailClient
-          id={selectedShowId}
+          id={selectedShow.id}
           mode="overlay"
           onClose={closeShowOverlay}
           isAuthenticated
           viewer={{ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer}
+          initialData={
+            selectedShow.initialData
+              ? ({ ...selectedShow.initialData, songNames: [], setlistSections: [] } satisfies ShowDetailRecord)
+              : undefined
+          }
         />
       ) : null}
     </main>

@@ -31,6 +31,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
   const [savingWallet, setSavingWallet] = useState(false);
   const [lastSyncFailed, setLastSyncFailed] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [shareConfirm, setShareConfirm] = useState<"idle" | "copied">("idle");
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef<number | null>(null);
@@ -193,6 +194,27 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
     }
   }
 
+  async function handleShare() {
+    if (!show) return;
+    const url = `${window.location.origin}/show/${encodeURIComponent(show.id)}`;
+    const title = `${show.artist} — ${formatDatePtBrLong(show.eventDateIso)}`;
+    const text = `${show.artist} no ${show.venue || show.city || "show"} — guarda essa memória com a gente no it's alive.`;
+    trackEvent("show_share_click", { show_id: show.id });
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title, text, url });
+        return;
+      }
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        setShareConfirm("copied");
+        window.setTimeout(() => setShareConfirm("idle"), 1800);
+      }
+    } catch {
+      /* user cancelled / not allowed */
+    }
+  }
+
   function requestClose() {
     if (isOverlay && onClose) {
       setIsClosing(true);
@@ -341,6 +363,17 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
               INGRESSOS
             </a>
           ) : null}
+          <button
+            type="button"
+            className={`chip chipGhost shareChip${shareConfirm === "copied" ? " isCopied" : ""}`}
+            onClick={() => {
+              void handleShare();
+            }}
+            aria-label="Compartilhar show"
+          >
+            <ShareIcon />
+            {shareConfirm === "copied" ? "LINK COPIADO" : "COMPARTILHAR"}
+          </button>
           {show.setlistUrl && !show.id.startsWith("tm-") ? (
             <a
               className="chip chipGhost"
@@ -444,6 +477,17 @@ function CloseIcon() {
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" className="iconSvg">
       <path
         d="m18.3 5.71-1.41-1.42L12 9.17 7.11 4.29 5.7 5.71 10.59 10.6 5.7 15.49l1.41 1.41L12 12l4.89 4.9 1.41-1.41-4.89-4.89 4.89-4.89Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" className="iconSvg">
+      <path
+        d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"
         fill="currentColor"
       />
     </svg>

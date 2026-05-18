@@ -32,6 +32,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [burstingId, setBurstingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -112,6 +113,13 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
       window.location.href = `/signin?next=${encodeURIComponent(`/show/${showId}`)}`;
       return;
     }
+    const wasLiked = posts.find((p) => p.id === postId)?.viewerLiked ?? false;
+    if (!wasLiked) {
+      setBurstingId(postId);
+      window.setTimeout(() => {
+        setBurstingId((current) => (current === postId ? null : current));
+      }, 620);
+    }
     setPosts((prev) =>
       prev.map((p) => {
         if (p.id !== postId) return p;
@@ -134,11 +142,6 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
     }
   }
 
-  function focusNewPost() {
-    textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    textareaRef.current?.focus();
-  }
-
   async function deletePost(postId: string) {
     setPosts((prev) => prev.filter((p) => p.id !== postId));
     setConfirmDeleteId(null);
@@ -146,19 +149,6 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
       await fetch(`/api/posts/${encodeURIComponent(showId)}/${postId}`, { method: "DELETE" });
     } catch {
       /* deletion already happened optimistically; silently ignore network errors */
-    }
-  }
-
-  async function sharePost(post: Post) {
-    const url = `${window.location.origin}/show/${encodeURIComponent(showId)}`;
-    try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({ text: post.body, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-      }
-    } catch {
-      /* user cancelled */
     }
   }
 
@@ -291,21 +281,21 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
               <div className="feedPostActions">
                 <button
                   type="button"
-                  className={`feedPostAction${post.viewerLiked ? " isLiked" : ""}`}
+                  className={`feedPostAction feedPostLikeBtn${post.viewerLiked ? " isLiked" : ""}${burstingId === post.id ? " isBursting" : ""}`}
                   onClick={() => void toggleLike(post.id)}
                   aria-pressed={post.viewerLiked}
-                  aria-label={post.viewerLiked ? "Descurtir" : "Curtir"}
+                  aria-label={post.viewerLiked ? "Tirar o rock'n'roll" : "Mandar um rock'n'roll"}
                 >
-                  <HeartIcon filled={post.viewerLiked} />
-                  {post.likeCount > 0 ? `Curtir ${post.likeCount}` : "Curtir"}
-                </button>
-                <button type="button" className="feedPostAction" onClick={focusNewPost} aria-label="Comentar">
-                  <CommentIcon />
-                  Comentar
-                </button>
-                <button type="button" className="feedPostAction" onClick={() => void sharePost(post)} aria-label="Compartilhar">
-                  <ShareIcon />
-                  Compartilhar
+                  <span className="rockBurstWrap">
+                    <RockOnIcon filled={post.viewerLiked} />
+                    <span className="rockBurstSpark rockBurstSpark1" aria-hidden />
+                    <span className="rockBurstSpark rockBurstSpark2" aria-hidden />
+                    <span className="rockBurstSpark rockBurstSpark3" aria-hidden />
+                    <span className="rockBurstSpark rockBurstSpark4" aria-hidden />
+                    <span className="rockBurstSpark rockBurstSpark5" aria-hidden />
+                    <span className="rockBurstSpark rockBurstSpark6" aria-hidden />
+                  </span>
+                  {post.likeCount > 0 ? <span className="feedPostLikeCount">{post.likeCount}</span> : null}
                 </button>
               </div>
             </li>
@@ -316,40 +306,21 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
   );
 }
 
-function HeartIcon({ filled }: { filled?: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="iconSvg">
-      {filled ? (
+function RockOnIcon({ filled }: { filled?: boolean }) {
+  if (filled) {
+    return (
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" className="iconSvg rockOnIcon">
         <path
-          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+          d="M8 2.6a2 2 0 0 0-4 0v9.3a2 2 0 0 0-2.5 1.8c0 .54.21 1.04.56 1.4l3.5 3.6A6.6 6.6 0 0 0 10.3 21H14a6 6 0 0 0 6-6V5.5a2 2 0 0 0-4 0v6.1h-.8V5.6c0-.05 0-.1-.01-.16V5.4a1.7 1.7 0 0 0-3.39 0v6.2h-.8V8.2a1.7 1.7 0 0 0-3.4 0v3.4H8V2.6Z"
           fill="currentColor"
         />
-      ) : (
-        <path
-          d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"
-          fill="currentColor"
-        />
-      )}
-    </svg>
-  );
-}
-
-function CommentIcon() {
+      </svg>
+    );
+  }
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="iconSvg">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" className="iconSvg rockOnIcon">
       <path
-        d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="iconSvg">
-      <path
-        d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"
+        d="M6 2.6a2 2 0 0 1 4 0V11h.6V8.2a1.7 1.7 0 0 1 3.4 0V11h.6V5.4a1.7 1.7 0 0 1 3.4 0V11h.6V5.5a2 2 0 0 1 4 0V15a6 6 0 0 1-6 6h-3.7a6.6 6.6 0 0 1-4.74-2.3l-3.5-3.6A2 2 0 0 1 1.5 13.7 2 2 0 0 1 4 11.9V2.6Zm1.4 9.6V2.6a.6.6 0 0 1 1.2 0v9.6H7.4Zm4 0V8.2a.3.3 0 0 1 .6 0v4H11.4Zm4 0v-6.8a.3.3 0 0 1 .6 0v6.8h-.6Zm4 0V5.5a.6.6 0 0 1 1.2 0V15a4.6 4.6 0 0 1-4.6 4.6h-3.7a5.2 5.2 0 0 1-3.74-1.85l-3.5-3.6a.6.6 0 0 1 .9-.8l3.05 3.13a.7.7 0 0 0 1.1-.16.7.7 0 0 0-.1-.84l-.06-.06H19.4Z"
         fill="currentColor"
       />
     </svg>
