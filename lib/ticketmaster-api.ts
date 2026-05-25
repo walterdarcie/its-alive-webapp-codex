@@ -1,9 +1,10 @@
-import type { ShowRecord } from "@/lib/show-types";
+import type { ShowDetailRecord, ShowRecord } from "@/lib/show-types";
 import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
 
 const BASE_URL = "https://app.ticketmaster.com/discovery/v2";
 const UPCOMING_TTL_MS = 1000 * 60 * 60; // 1h
 const TRENDING_TTL_MS = 1000 * 60 * 60; // 1h
+const DETAIL_TTL_MS = 1000 * 60 * 60; // 1h
 
 type TicketmasterVenue = {
   name?: string;
@@ -231,4 +232,67 @@ export async function searchUpcomingByArtist(artistName: string): Promise<ShowRe
 
   setCacheValue(cacheKey, shows, UPCOMING_TTL_MS);
   return shows;
+}
+
+export async function getTicketmasterEventById(id: string): Promise<ShowDetailRecord | null> {
+  const rawId = id.startsWith("tm-") ? id.slice(3) : id;
+  if (!rawId) return null;
+
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
+  const cacheKey = `tm:detail:${rawId}`;
+  const cached = getCacheValue<ShowDetailRecord>(cacheKey);
+  if (cached) return cached;
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${BASE_URL}/events/${encodeURIComponent(rawId)}.json?apikey=${apiKey}`,
+      { headers: { Accept: "application/json" }, next: { revalidate: 3600 } }
+    );
+  } catch {
+    return null;
+  }
+
+  if (!response.ok) return null;
+
+  let event: TicketmasterEvent;
+  try {
+    event = (await response.json()) as TicketmasterEvent;
+  } catch {
+    return null;
+  }
+
+  if (!event.id || !event.dates?.start?.localDate) return null;
+
+  const dateIso = event.dates.start.localDate;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) return null;
+
+  const venue = event._embedded?.venues?.[0];
+  const city = [venue?.city?.name, venue?.state?.stateCode ?? venue?.state?.name]
+    .filter(Boolean)
+    .join(", ");
+
+  const attraction = event._embedded?.attractions?.[0];
+  const artistName = attraction?.name ?? event.name ?? "Artista";
+  const eventName = event.name ?? "";
+  const tourName = eventName && eventName !== artistName ? eventName : undefined;
+  const ticketUrl = event.dates?.status?.code === "onsale" ? event.url : undefined;
+
+  const record: ShowDetailRecord = {
+    id: `tm-${event.id}`,
+    artist: artistName,
+    venue: venue?.name ?? "",
+    city,
+    country: venue?.country?.name ?? "",
+    eventDateIso: dateIso,
+    ticketUrl,
+    tourName,
+    songNames: [],
+    setlistSections: []
+  };
+
+  setCacheValue(cacheKey, record, DETAIL_TTL_MS);
+  return record;
 }

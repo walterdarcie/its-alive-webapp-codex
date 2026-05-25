@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
 import { getSetlistById } from "@/lib/setlist-api";
+import { getTicketmasterEventById } from "@/lib/ticketmaster-api";
 
 const DETAIL_TTL_WITH_SETLIST_MS = 1000 * 60 * 60 * 24;
 const DETAIL_TTL_EMPTY_SETLIST_MS = 1000 * 60 * 5;
@@ -25,12 +26,14 @@ export async function GET(_: Request, context: { params: { id: string } }) {
     return NextResponse.json({ error: "Missing setlist id" }, { status: 400 });
   }
 
-  // Ticketmaster upcoming shows have no setlist on setlist.fm
   if (id.startsWith("tm-")) {
-    return NextResponse.json(
-      { error: "Upcoming show", message: "Este show ainda não aconteceu — a setlist aparece depois." },
-      { status: 404 }
-    );
+    const show = await getTicketmasterEventById(id);
+    if (!show) {
+      return NextResponse.json({ error: "Show not found" }, { status: 404 });
+    }
+    return NextResponse.json(show, {
+      headers: { "Cache-Control": "public, max-age=60, s-maxage=3600" }
+    });
   }
 
   const cacheKey = `detail:${id}`;

@@ -5,12 +5,17 @@ import { getCacheValue, setCacheValue } from "@/lib/setlist-cache";
 import { formatDatePtBrLong, formatVenueLine } from "@/lib/show-utils";
 import type { ShowDetailRecord, Viewer } from "@/lib/show-types";
 import { extractViewerProfile, getServerUser } from "@/lib/auth";
+import { getTicketmasterEventById } from "@/lib/ticketmaster-api";
 
 const DETAIL_TTL_WITH_SETLIST_MS = 1000 * 60 * 60 * 24;
 const DETAIL_TTL_EMPTY_SETLIST_MS = 1000 * 60 * 5;
 const SITE_URL = "https://itsalive.fans";
 
 async function fetchShowData(id: string): Promise<ShowDetailRecord | null> {
+  if (id.startsWith("tm-")) {
+    return getTicketmasterEventById(id);
+  }
+
   const cacheKey = `detail:${id}`;
   const cached = getCacheValue<ShowDetailRecord>(cacheKey);
   if (cached) return cached;
