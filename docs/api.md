@@ -107,8 +107,9 @@ IDs com prefixo `tm-` (Ticketmaster) retornam `404` imediatamente — shows futu
 Resolve imagem do artista numa cascata:
 
 1. **MusicBrainz** (só com `mbid`) — caminho autoritativo via página oficial Wikipedia/Wikidata.
-2. **Deezer** (`https://api.deezer.com/search/artist`) — cobertura ampla, imagem quadrada 1000×1000, ideal para artistas contemporâneos. Match exato no nome tem prioridade sobre fuzzy.
+2. **Deezer** (`https://api.deezer.com/search/artist`) — cobertura ampla, imagem quadrada 1000×1000, ideal para artistas contemporâneos. Match exato no nome tem prioridade sobre fuzzy. Apóstrofes são ignoradas na comparação ("Marky Ramone's Blitzkrieg" casa com "Marky Ramones Blitzkrieg", como o Deezer cataloga).
 3. **Wikipedia / Wikidata** — fallback. Wikidata é consultado primeiro (`wbsearchentities`) filtrando entidades por descrição musical; Wikipedia search com termos musicais (`"<artista>" cantor OR banda OR músico`) valida o `description`/`extract` antes de aceitar e também checa se o título lembra o nome do artista (corta hits como "Prêmio Multishow 2022" pra busca "Gilsons").
+4. **Headliner do show composto** — se o nome tem múltiplos artistas (separadores `&`, `+`, `,`, `feat`, `ft`), tenta Deezer + Wikipedia com o primeiro nome isolado. Cobre shows como "João Gomes & Mestrinho & Jota.Pê", que não existem como entrada única em nenhuma fonte.
 
 Quando nada bate, devolve `source: "none"` em vez de adivinhar — preferimos sem imagem a uma imagem errada (ex.: Lenin pelo Lenine).
 
@@ -348,7 +349,7 @@ Deixa de seguir. Idempotente.
 
 ### `GET /api/feed/following`
 
-Atividades recentes dos usuários que o viewer segue. Lê `wallet_entries.updated_at` desc, junta com `profiles` para nome e avatar. Limite 30.
+Atividades dos usuários que o viewer segue. Lê `wallet_entries` (até 200 entradas mais recentes por `updated_at`) e junta com `profiles` para nome e avatar. Ordena por data do show (`show.eventDateIso`): **futuros primeiro em ordem ascendente** (mais próximo de hoje no topo), depois **passados em ordem decrescente**. Corta em 30 itens.
 
 **Auth:** Obrigatória.
 
