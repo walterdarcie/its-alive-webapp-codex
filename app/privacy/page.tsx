@@ -1,15 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { useLocale } from "@/lib/i18n-context";
 
 export default function PrivacyPage() {
+  const { t } = useLocale();
   return (
     <main className="page legalPage">
-      <h1 className="sectionTitle">Privacidade</h1>
-      <p className="muted">
-        Seu acesso é feito via Google OAuth. Nesta fase, os dados salvos são usados apenas para manter sua carteira de shows sincronizada entre dispositivos.
-      </p>
-      <p className="muted">Não compartilhamos dados pessoais com terceiros fora dos serviços essenciais de autenticação e infraestrutura.</p>
+      <h1 className="sectionTitle">{t.privacy.title}</h1>
+      <p className="muted">{t.privacy.body1}</p>
+      <p className="muted">{t.privacy.body2}</p>
       <Link href="/login" className="chip chipGhost">
-        Voltar
+        {t.privacy.back}
       </Link>
     </main>
   );

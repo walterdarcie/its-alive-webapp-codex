@@ -104,7 +104,13 @@ IDs com prefixo `tm-` (Ticketmaster) retornam `404` imediatamente — shows futu
 
 ### `GET /api/artist-image?artist={nome}&mbid={mbid}`
 
-Resolve imagem do artista via MusicBrainz → Wikipedia/Wikimedia.
+Resolve imagem do artista numa cascata:
+
+1. **MusicBrainz** (só com `mbid`) — caminho autoritativo via página oficial Wikipedia/Wikidata.
+2. **Deezer** (`https://api.deezer.com/search/artist`) — cobertura ampla, imagem quadrada 1000×1000, ideal para artistas contemporâneos. Match exato no nome tem prioridade sobre fuzzy.
+3. **Wikipedia / Wikidata** — fallback. Wikidata é consultado primeiro (`wbsearchentities`) filtrando entidades por descrição musical; Wikipedia search com termos musicais (`"<artista>" cantor OR banda OR músico`) valida o `description`/`extract` antes de aceitar e também checa se o título lembra o nome do artista (corta hits como "Prêmio Multishow 2022" pra busca "Gilsons").
+
+Quando nada bate, devolve `source: "none"` em vez de adivinhar — preferimos sem imagem a uma imagem errada (ex.: Lenin pelo Lenine).
 
 **Auth:** Não.
 
@@ -115,7 +121,7 @@ Resolve imagem do artista via MusicBrainz → Wikipedia/Wikimedia.
 {
   "imageUrl": "https://...",
   "pageUrl": "https://...",
-  "source": "wikipedia" | "wikimedia"
+  "source": "wikipedia" | "wikimedia" | "deezer" | "none"
 }
 ```
 
@@ -196,6 +202,218 @@ Alterna curtida (toggle). Insere ou remove de `post_likes`.
 ```json
 { "liked": true, "likeCount": 4 }
 ```
+
+---
+
+## Endpoints sociais (release social)
+
+### `GET /api/profiles/me`
+
+Retorna o perfil do viewer autenticado com contadores SEGUINDO/SEGUIDORES. Faz auto-upsert em `profiles` caso o usuário não tenha registro ainda (defensa contra trigger de sync que tenha falhado).
+
+**Auth:** Obrigatória.
+
+**Response 200:**
+```json
+{
+  "profile": {
+    "userId": "uuid",
+    "displayName": "Nome",
+    "avatarUrl": "https://..." | null,
+    "followingCount": 12,
+    "followerCount": 5,
+    "isViewerFollowing": false,
+    "isSelf": true
+  }
+}
+```
+
+---
+
+### `GET /api/profiles/[userId]`
+
+Perfil público de outro usuário. `isViewerFollowing` reflete se o viewer atual segue o alvo (`false` quando anônimo).
+
+**Auth:** Opcional.
+
+**Response 200:** mesmo shape de `/api/profiles/me`, com `isSelf` calculado.
+
+**Erros:** `404` quando não existe profile com esse `userId`.
+
+---
+
+### `GET /api/profiles/[userId]/wallet`
+
+Wallet pública do usuário-alvo (shows que ele guardou). Usado pela página `/u/[userId]`.
+
+**Auth:** Não.
+
+**Importante:** o campo `action` é derivado em runtime a partir de `show.eventDateIso` (`isFutureOrTodayShow → "going"`, senão `"went"`), não da coluna `status` da tabela. Isso garante que shows antigos virem `"went"` automaticamente conforme o tempo passa, mesmo sem job de reescrita.
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "show": { /* ShowRecord */ },
+      "action": "went" | "going",
+      "savedAtIso": "2026-05-14T12:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/profiles/[userId]/follows?type={following|followers}`
+
+Lista de pessoas que o usuário-alvo segue (`type=following`) ou que o seguem (`type=followers`). Usado pelas páginas `/u/[userId]/seguindo` e `/u/[userId]/seguidores`.
+
+**Auth:** Opcional. Quando autenticado, `isViewerFollowing` reflete o estado do viewer em relação a cada item da lista.
+
+**Query params:**
+- `type` — obrigatório, `"following"` (default) ou `"followers"`.
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "userId": "uuid",
+      "displayName": "Nome",
+      "avatarUrl": "https://..." | null,
+      "isViewerFollowing": false,
+      "isSelf": false
+    }
+  ],
+  "type": "following" | "followers"
+}
+```
+
+Limite 200, ordenado por `created_at` da relação (mais recente primeiro).
+
+**Erros:** `400` quando `type` é inválido.
+
+---
+
+### `GET /api/profiles/search?q={query}`
+
+Busca usuários pelo nome (ILIKE em `display_name_normalized`, prefix + contains). Limite de 20 resultados. Exclui o próprio viewer.
+
+**Auth:** Opcional. Quando autenticado, popula `isViewerFollowing` por resultado.
+
+**Query params:** `q` — mínimo 2 chars após normalização. Menos que isso → lista vazia.
+
+**Response 200:**
+```json
+{
+  "profiles": [
+    {
+      "userId": "uuid",
+      "displayName": "Nome",
+      "avatarUrl": "https://..." | null,
+      "isViewerFollowing": false
+    }
+  ]
+}
+```
+
+---
+
+### `POST /api/follows/[userId]`
+
+Segue o usuário-alvo. Upsert em `user_follows` — idempotente.
+
+**Auth:** Obrigatória. Não é possível seguir a si mesmo (`400`).
+
+**Response 200:**
+```json
+{ "following": true, "targetUserId": "uuid", "followerCount": 6 }
+```
+
+---
+
+### `DELETE /api/follows/[userId]`
+
+Deixa de seguir. Idempotente.
+
+**Auth:** Obrigatória.
+
+**Response 200:**
+```json
+{ "following": false, "targetUserId": "uuid", "followerCount": 5 }
+```
+
+---
+
+### `GET /api/feed/following`
+
+Atividades recentes dos usuários que o viewer segue. Lê `wallet_entries.updated_at` desc, junta com `profiles` para nome e avatar. Limite 30.
+
+**Auth:** Obrigatória.
+
+**Importante:** o campo `action` é derivado de `show.eventDateIso` (`isFutureOrTodayShow → "going"`, senão `"went"`), não da coluna `status` armazenada. Assim, shows passados aparecem no feed como `"Foi"` mesmo que a entrada original tenha sido criada como `"going"`.
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "id": "{userId}:{setlist_id}",
+      "actor": {
+        "userId": "uuid",
+        "displayName": "Nome",
+        "avatarUrl": "https://..." | null
+      },
+      "action": "went" | "going",
+      "occurredAtIso": "2026-05-14T12:00:00Z",
+      "show": { /* ShowRecord */ }
+    }
+  ]
+}
+```
+
+Quando o viewer não segue ninguém → `{ "items": [] }`.
+
+---
+
+### `GET /api/shows/trending`
+
+Shows em alta — combina duas fontes:
+
+1. **Plataforma**: agrupa `wallet_entries` futuros (`status = "going"`) por `setlist_id` e ordena por contagem decrescente. É o sinal primário (quanto mais usuários marcaram "Eu vou", mais alto fica).
+2. **Ticketmaster Discovery API**: preenche os slots restantes com shows futuros classificados como música, ordenados por data ascendente. Cache in-memory de 1h.
+
+Limite final: 24 shows. Dedup primeiro por `id` (shows da plataforma com mesmo `setlist_id` têm prioridade sobre os do Ticketmaster) e depois **por artista** (cada artista aparece no máximo uma vez na lista). Shows do Ticketmaster têm `id` com prefixo `tm-` e `attendingCount: 0`.
+
+> A UI da home consome essa lista assim: os 3 primeiros entram no carrossel "Shows em alta"; os demais (até 21) aparecem em uma lista compacta "Mais em alta" logo abaixo, no formato `TicketRow`.
+
+**Auth:** Não. Tabela `wallet_entries` tem SELECT público.
+
+**Query params (opcionais — todos podem ser combinados):**
+
+| Param | Default | Notas |
+|---|---|---|
+| `country` | `BR` | ISO-3166 alpha-2. Passado como `countryCode` ao Ticketmaster e usado como filtro fuzzy no `show.country` da wallet. Suporte explícito a `BR, AR, CL, MX, US, GB, PT`. |
+| `city` | _(vazio)_ | Substring case-insensitive. Filtra Ticketmaster via `city=` e a wallet por `show.city`. |
+| `genre` | _(vazio)_ | Passa como `classificationName` extra ao Ticketmaster (ex.: `Rock`, `Pop`, `Hip-Hop/Rap`, `Dance/Electronic`, `Latin`, `Country`, `R&B`, `Alternative`, `Metal`, `Jazz`). Quando definido, a fonte da wallet é **desligada** (não há gênero armazenado), e a lista vem só do Ticketmaster. |
+
+Cache do Ticketmaster é chaveado por `(country, size, city, genre)` — variações independentes não invalidam cache umas das outras.
+
+**Response 200:**
+```json
+{
+  "shows": [
+    { "show": { /* ShowRecord */ }, "attendingCount": 8 }
+  ],
+  "source": "mixed" | "ticketmaster",
+  "filters": { "country": "BR", "city": "", "genre": "" }
+}
+```
+
+- `source: "mixed"` — pelo menos um show veio da plataforma
+- `source: "ticketmaster"` — todos os shows são do TM (plataforma sem registros ou gênero definido)
+- `filters` — eco dos filtros aplicados (útil para debug client-side)
 
 ---
 

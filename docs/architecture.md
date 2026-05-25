@@ -12,7 +12,7 @@
 | Banco | Supabase (PostgreSQL) | RLS ativado em todas as tabelas |
 | Auth | Supabase Auth (Google OAuth) | Cookies SSR via `@supabase/ssr` |
 | Storage | Supabase Storage | Bucket `post-photos` para fotos de posts |
-| Imagens | Wikipedia / Wikimedia via MusicBrainz | Fallback automático para artistas |
+| Imagens | Deezer (principal) + MusicBrainz / Wikipedia / Wikidata (fallback) | Cascata com filtro de contexto musical |
 | Setlists | Setlist.fm API | Cache in-memory 6h (search) / 24h (detail) |
 | Shows futuros | Ticketmaster Discovery API v2 | Cache in-memory 1h; exige `TICKETMASTER_API_KEY` |
 | Analytics | Google Analytics 4 (`G-LDQLEFB0DR`) | `trackEvent()` manual + page tracker |
@@ -34,16 +34,24 @@ Browser
   │     └─ app/login, signin    → redirect se já autenticado
   │
   ├─► API Routes (Next.js Route Handlers)
-  │     ├─ /api/wallet          ← localStorage sync + Supabase
-  │     ├─ /api/setlists/search ← Setlist.fm + Ticketmaster (mergeados)
-  │     ├─ /api/setlists/[id]   ← Setlist.fm detalhe (tm-* retorna 404 imediato)
-  │     ├─ /api/artist-image    ← MusicBrainz + Wikipedia
-  │     ├─ /api/posts/*         ← Supabase show_posts + post_likes
-  │     └─ /api/auth/signout    ← Supabase signOut
+  │     ├─ /api/wallet               ← localStorage sync + Supabase
+  │     ├─ /api/setlists/search      ← Setlist.fm + Ticketmaster (mergeados)
+  │     ├─ /api/setlists/[id]        ← Setlist.fm detalhe (tm-* retorna 404 imediato)
+  │     ├─ /api/artist-image         ← MusicBrainz → Deezer → Wikipedia/Wikidata
+  │     ├─ /api/posts/*              ← Supabase show_posts + post_likes
+  │     ├─ /api/profiles/me          ← perfil do viewer + ensure
+  │     ├─ /api/profiles/[id]        ← perfil público + contadores
+  │     ├─ /api/profiles/[id]/wallet ← wallet pública de outro usuário
+  │     ├─ /api/profiles/[id]/follows← listagem de seguindo/seguidores
+  │     ├─ /api/profiles/search      ← busca de amigos por nome
+  │     ├─ /api/follows/[id]         ← POST seguir / DELETE deixar de seguir
+  │     ├─ /api/feed/following       ← atividade dos seguidos
+  │     ├─ /api/shows/trending       ← shows futuros com mais "Vai"
+  │     └─ /api/auth/signout         ← Supabase signOut
   │
   └─► Supabase
         ├─ Auth (Google OAuth)
-        ├─ DB: wallet_entries, show_posts, post_likes
+        ├─ DB: wallet_entries, show_posts, post_likes, profiles, user_follows, known_artists
         └─ Storage: post-photos (público)
 ```
 
@@ -120,11 +128,17 @@ Excluir:
 
 ```
 app/
-  globals.css           ← TODOS os estilos aqui, sem exceção
-  layout.tsx            ← Root layout, fonte Work Sans, GA
-  page.tsx              ← Server Component → chama HomeClient
+  globals.css                       ← TODOS os estilos aqui, sem exceção
+  layout.tsx                        ← Root layout, fonte Work Sans, GA
+  page.tsx                          ← Server Component → chama HomeClient
+  u/[userId]/page.tsx               ← Página de perfil de outro usuário
+  u/[userId]/seguindo/page.tsx      ← Listagem de quem o user segue
+  u/[userId]/seguidores/page.tsx    ← Listagem de quem segue o user
   ui/
-    *-client.tsx        ← Client Components ("use client")
+    *-client.tsx                    ← Client Components ("use client")
+    profile-header.tsx              ← Reuso entre home e perfil de outro
+    social-drawer.tsx               ← Drawer lateral (home, search, perfil)
+    follow-list-client.tsx          ← Listagem de seguindo/seguidores
   api/
     [recurso]/route.ts  ← Route Handlers Next.js
   [rota]/page.tsx       ← Server Components
@@ -132,6 +146,8 @@ app/
 lib/
   show-types.ts         ← Types compartilhados
   show-utils.ts         ← Helpers de formatação (sem efeitos colaterais)
+  social-types.ts       ← Types do mundo social + formatPtBrNumber
+  social-utils.ts       ← Helpers sociais (deriveActionFromShow, normalize…)
   auth.ts               ← Helpers de auth (server-only)
   wallet-storage.ts     ← Lógica de wallet (client + server)
   setlist-api.ts        ← Cliente Setlist.fm (server-only)
@@ -139,10 +155,17 @@ lib/
   setlist-cache.ts      ← Cache in-memory (server-only)
   artist-image.ts       ← Resolução de imagem (server-only)
   artist-image-client.ts← Idem, para client components
+  i18n.ts               ← Tipos Locale, LocaleDict e constantes i18n
+  i18n-context.tsx      ← LocaleProvider + useLocale() hook ("use client")
+  locales/
+    pt.ts               ← Dicionário português (padrão)
+    en.ts               ← Dicionário inglês
+    es.ts               ← Dicionário espanhol
   supabase/
     shared.ts           ← Env helpers
     server.ts           ← SSR client factory
     client.ts           ← Browser client singleton
+    social-helpers.ts   ← Helpers para endpoints sociais (server-only)
 
 supabase/
   migrations/           ← SQL numerado por timestamp YYYYMMDDHHMMSS

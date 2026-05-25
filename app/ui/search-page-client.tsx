@@ -2,12 +2,17 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { startTransition, useDeferredValue, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { startTransition, useDeferredValue, useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
+import { SocialDrawer } from "@/app/ui/social-drawer";
+import { FollowButton } from "@/app/ui/profile-header";
 import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
 import { formatVenueLine } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
+import { useLocale } from "@/lib/i18n-context";
+
+export type SearchTab = "shows" | "amigos";
 
 type SearchResponse = {
   shows: ShowRecord[];
@@ -20,6 +25,13 @@ type SearchStateMeta = {
   pageLoaded: number;
   hasMore: boolean;
   total: number;
+};
+
+type FriendResult = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isViewerFollowing: boolean;
 };
 
 const NO_RESULT_ANALYTICS_KEY = "its-alive.search.no-results.v1";
@@ -46,104 +58,51 @@ function CloseIcon() {
   );
 }
 
-function BrandHeader({ viewer }: { viewer: ViewerProfile | null }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!isMenuOpen) return;
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (menuRef.current?.contains(target)) return;
-      setIsMenuOpen(false);
-    }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsMenuOpen(false);
-    }
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleEscape);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [isMenuOpen]);
-
-  async function signOut() {
-    trackEvent("sign_out_click", { source: "search_header_menu" });
-    try {
-      await fetch("/api/auth/signout", { method: "POST" });
-    } finally {
-      window.location.href = "/login";
-    }
-  }
-
+function HamburgerIcon() {
   return (
-    <header className="topbar">
-      <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" className="iconSvg">
+      <path d="M4 7h16 M4 12h16 M4 17h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
+function TopBarSocial({ onOpenDrawer, isAuthenticated }: { onOpenDrawer: () => void; isAuthenticated: boolean }) {
+  const { t } = useLocale();
+  return (
+    <header className="topBarSocial">
+      <Link href="/" aria-label={t.common.goHome} className="brandLogoLink">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
       </Link>
-      {viewer ? (
-        <div className="profileMenuWrap" ref={menuRef}>
-          <button
-            type="button"
-            className="avatarStub avatarButtonReset"
-            aria-label={`Abrir menu da conta de ${viewer.name}`}
-            aria-expanded={isMenuOpen}
-            onClick={() =>
-              setIsMenuOpen((v) => {
-                const next = !v;
-                if (next) trackEvent("profile_menu_open", { source: "search_header" });
-                return next;
-              })
-            }
-          >
-            {viewer.avatarUrl ? (
-              <span
-                className="avatarPhoto"
-                style={{
-                  backgroundImage: `url("${viewer.avatarUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
-                }}
-                aria-hidden
-              />
-            ) : (
-              <span className="avatarFallbackIcon" aria-hidden />
-            )}
-          </button>
-
-          {isMenuOpen ? (
-            <div className="profileMenu" role="menu" aria-label="Menu da conta">
-              <p className="profileMenuName">{viewer.name}</p>
-              {viewer.email ? <p className="profileMenuEmail">{viewer.email}</p> : null}
-              <p className="profileMenuHint">Seus shows ficam salvos em qualquer dispositivo</p>
-              <button
-                type="button"
-                className="chip chipGhost profileSignOutBtn"
-                role="menuitem"
-                onClick={() => {
-                  void signOut();
-                }}
-              >
-                Sair
-              </button>
-            </div>
-          ) : null}
-        </div>
+      {isAuthenticated ? (
+        <button
+          type="button"
+          className="hamburgerBtn iconBtn"
+          aria-label={t.common.openMenu}
+          onClick={() => {
+            trackEvent("social_drawer_open", { source: "search_topbar" });
+            onOpenDrawer();
+          }}
+        >
+          <HamburgerIcon />
+        </button>
       ) : (
-        <div className="profileMenuWrap">
-          <Link href="/signin" className="avatarStub avatarButtonReset" aria-label="Fazer login" onClick={() => trackEvent("login_click", { source: "search_header" })}>
-            <span className="avatarFallbackIcon" aria-hidden />
-          </Link>
-        </div>
+        <Link
+          href="/signin"
+          className="iconBtn"
+          aria-label={t.common.enter}
+          onClick={() => trackEvent("login_click", { source: "search_topbar" })}
+        >
+          <span className="avatarFallbackIcon" aria-hidden />
+        </Link>
       )}
     </header>
   );
 }
 
 function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (show: ShowRecord) => void }) {
+  const { t } = useLocale();
   const eventDate = new Date(`${show.eventDateIso}T00:00:00`);
-  const ptBrMonthAbbr = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-  const month = ptBrMonthAbbr[eventDate.getMonth()] ?? "";
+  const month = t.months[eventDate.getMonth()] ?? "";
   const day = new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(eventDate);
   const year = new Intl.DateTimeFormat("en-US", { year: "numeric" }).format(eventDate);
 
@@ -167,9 +126,67 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
   );
 }
 
-export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery }: { viewer: ViewerProfile | null; isAuthenticated?: boolean; initialQuery?: string }) {
+function buildAvatarStyle(url: string): CSSProperties {
+  const sanitized = url.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return { backgroundImage: `url("${sanitized}")` };
+}
+
+function FriendResultRow({ result, isAuthenticated }: { result: FriendResult; isAuthenticated: boolean }) {
+  const { t } = useLocale();
+  return (
+    <div className="friendResultRow">
+      <Link
+        href={`/u/${encodeURIComponent(result.userId)}`}
+        className="friendResultAvatarLink"
+        aria-label={t.common.openProfileLabel(result.displayName)}
+        onClick={() => trackEvent("friend_result_avatar_click", { target_user_id: result.userId })}
+      >
+        {result.avatarUrl ? (
+          <span className="friendResultAvatar friendResultAvatarPhoto" style={buildAvatarStyle(result.avatarUrl)} aria-hidden />
+        ) : (
+          <span className="friendResultAvatar friendResultAvatarFallback" aria-hidden />
+        )}
+      </Link>
+      <div className="friendResultIdentity">
+        <h3 className="friendResultName">
+          <Link
+            href={`/u/${encodeURIComponent(result.userId)}`}
+            onClick={() => trackEvent("friend_result_name_click", { target_user_id: result.userId })}
+          >
+            {result.displayName}
+          </Link>
+        </h3>
+        <p className="friendResultHint">{t.search.profileTap}</p>
+      </div>
+      {isAuthenticated ? (
+        <FollowButton
+          targetUserId={result.userId}
+          initialFollowing={result.isViewerFollowing}
+          source="search_friend_result"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+export function SearchPageClient({
+  viewer,
+  isAuthenticated = true,
+  initialQuery,
+  initialTab = "shows"
+}: {
+  viewer: ViewerProfile | null;
+  isAuthenticated?: boolean;
+  initialQuery?: string;
+  initialTab?: SearchTab;
+}) {
+  const { t } = useLocale();
   const [query, setQuery] = useState(initialQuery ?? "");
   const deferredQuery = useDeferredValue(query);
+  const [activeTab, setActiveTab] = useState<SearchTab>(initialTab);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Shows search state
   const [searchResults, setSearchResults] = useState<ShowRecord[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchLoadingMore, setSearchLoadingMore] = useState(false);
@@ -181,6 +198,11 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
   });
   const [selectedShow, setSelectedShow] = useState<{ id: string; initialData?: ShowRecord } | null>(null);
 
+  // Friends search state
+  const [friendResults, setFriendResults] = useState<FriendResult[]>([]);
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [friendError, setFriendError] = useState<string | null>(null);
+
   function openShowOverlay(show: ShowRecord) {
     setSelectedShow({ id: show.id, initialData: show });
     window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
@@ -188,7 +210,7 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
 
   function closeShowOverlay() {
     setSelectedShow(null);
-    window.history.pushState({}, "", "/search");
+    window.history.pushState({}, "", `/search?tab=${activeTab}`);
   }
 
   useEffect(() => {
@@ -205,13 +227,31 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
   }, []);
 
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const activeQueryRef = useRef("");
   const noResultLoggedRef = useRef<string>("");
   const trackedSearchQueryRef = useRef<string>("");
 
+  useEffect(() => {
+    const input = searchInputRef.current;
+    if (!input) return;
+    // Mobile Safari ignora autoFocus em alguns casos — clique programático após mount
+    // garante teclado aberto e cursor pronto no campo.
+    const raf = window.requestAnimationFrame(() => {
+      input.focus({ preventScroll: true });
+      input.click();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+
   const normalizedQuery = deferredQuery.trim();
 
+  // Shows search effect — only when tab is "shows"
   useEffect(() => {
+    if (activeTab !== "shows") {
+      activeQueryRef.current = "";
+      return;
+    }
     const q = normalizedQuery.normalize("NFC");
     activeQueryRef.current = q;
 
@@ -259,7 +299,7 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
         if (isCancelled) return;
         setSearchResults([]);
         setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
-        setSearchError(error instanceof Error ? error.message : "Não conseguimos buscar os shows agora.");
+        setSearchError(error instanceof Error ? error.message : t.search.showError);
       } finally {
         if (!isCancelled) setSearchLoading(false);
       }
@@ -269,9 +309,55 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
       isCancelled = true;
       window.clearTimeout(timer);
     };
-  }, [normalizedQuery]);
+  }, [normalizedQuery, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Friends search effect — only when tab is "amigos"
+  useEffect(() => {
+    if (activeTab !== "amigos") {
+      return;
+    }
+    const q = normalizedQuery.normalize("NFC");
+    if (q.length < 2) {
+      setFriendResults([]);
+      setFriendError(null);
+      setFriendLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+    const timer = window.setTimeout(async () => {
+      setFriendLoading(true);
+      setFriendError(null);
+      trackEvent("friend_search_performed", { query_length: q.length });
+      try {
+        const response = await fetch(`/api/profiles/search?q=${encodeURIComponent(q)}`);
+        const payload = (await response.json()) as { profiles?: FriendResult[]; error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error ?? t.search.friendError);
+        }
+        if (isCancelled) return;
+        setFriendResults(payload.profiles ?? []);
+        trackEvent("friend_search_results_loaded", {
+          query_length: q.length,
+          result_count: (payload.profiles ?? []).length
+        });
+      } catch (error) {
+        if (isCancelled) return;
+        setFriendError(error instanceof Error ? error.message : t.search.friendError);
+        setFriendResults([]);
+      } finally {
+        if (!isCancelled) setFriendLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [normalizedQuery, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (activeTab !== "shows") return;
     if (normalizedQuery.length < 2) return;
     if (!searchMeta.hasMore) return;
     if (!searchSentinelRef.current) return;
@@ -292,7 +378,7 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
 
     observer.observe(searchSentinelRef.current);
     return () => observer.disconnect();
-  }, [normalizedQuery.length, searchLoading, searchLoadingMore, searchMeta]);
+  }, [normalizedQuery.length, searchLoading, searchLoadingMore, searchMeta, activeTab]);
 
   async function loadMoreSearch(queryValue: string, page: number) {
     setSearchLoadingMore(true);
@@ -315,33 +401,46 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
       });
     } catch (error) {
       if (activeQueryRef.current !== queryValue) return;
-      setSearchError(error instanceof Error ? error.message : "Não conseguimos carregar mais shows agora.");
+      setSearchError(error instanceof Error ? error.message : t.search.loadMoreError);
     } finally {
       setSearchLoadingMore(false);
     }
   }
 
+  function changeTab(nextTab: SearchTab) {
+    if (nextTab === activeTab) return;
+    trackEvent("search_tab_change", { tab: nextTab });
+    setActiveTab(nextTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", nextTab);
+    window.history.replaceState({}, "", url.toString());
+  }
+
+  const placeholder = activeTab === "shows" ? t.search.showsPlaceholder : t.search.friendsPlaceholder;
+  const hint = activeTab === "shows" ? t.search.showsHint : t.search.friendsHint;
+
   return (
     <main className="page searchPage">
-      <BrandHeader viewer={viewer} />
+      <TopBarSocial onOpenDrawer={() => setDrawerOpen(true)} isAuthenticated={isAuthenticated} />
 
-      <section className="searchPageContent" aria-label="Tela de busca">
+      <section className="searchPageContent" aria-label={t.search.pageLabel}>
         <div className="searchScreenHeader">
           <div className="searchFieldWrap">
             <SearchIcon />
             <input
-              className="search searchInputScreen"
-              placeholder="Encontre shows incríveis"
+              ref={searchInputRef}
+              className="searchInputScreen"
+              placeholder={placeholder}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              aria-label="Buscar shows"
+              aria-label={activeTab === "shows" ? t.search.showsAriaLabel : t.search.friendsAriaLabel}
               autoFocus
             />
           </div>
           <Link
             href="/"
             className="iconBtn"
-            aria-label="Fechar busca"
+            aria-label={t.search.closeSearch}
             onClick={() => {
               trackEvent("search_close_click", { source: "search_page" });
             }}
@@ -350,46 +449,108 @@ export function SearchPageClient({ viewer, isAuthenticated = true, initialQuery 
           </Link>
         </div>
 
-        <div className="searchMetaBar">
-          <span className="muted">Artista, cidade, ano — escreva como lembrar.</span>
+        <div className="tabsBar searchTabsBar" role="tablist" aria-label={t.search.tabTypeLabel}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "shows"}
+            className={`tab ${activeTab === "shows" ? "isActive" : ""}`}
+            onClick={() => changeTab("shows")}
+          >
+            {t.search.tabShows}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "amigos"}
+            className={`tab ${activeTab === "amigos" ? "isActive" : ""}`}
+            onClick={() => changeTab("amigos")}
+          >
+            {t.search.tabFriends}
+          </button>
         </div>
 
-        {normalizedQuery.length < 2 ? (
-          <p className="emptyBox">
-            Por onde você começa? <br />
-            <strong>guns n&apos; roses</strong> <br />
-            <strong>iron maiden curitiba 2019</strong> <br />
-            <strong>foo fighters lollapalooza</strong> <br />
-            <strong>guns n&apos; roses são paulo 2022</strong>
-          </p>
-        ) : searchLoading ? (
-          <p className="emptyBox">Procurando shows...</p>
-        ) : searchError ? (
-          <p className="emptyBox errorBox">{searchError}</p>
-        ) : searchResults.length ? (
-          <div className="resultList">
-            {searchResults.map((show) => (
-              <SearchResultRow
-                key={show.id}
-                show={show}
-                onOpenDetail={(s) => {
-                  trackEvent("show_detail_open", { source: "search_results", show_id: s.id });
-                  openShowOverlay(s);
-                }}
-              />
-            ))}
-            {searchLoadingMore ? <p className="emptyBox">Carregando mais...</p> : null}
-            {!searchLoadingMore && searchMeta.hasMore ? <div ref={searchSentinelRef} className="searchSentinel" aria-hidden /> : null}
-            {!searchMeta.hasMore && searchResults.length > 0 ? <p className="muted">Isso é tudo — {searchMeta.total} {searchMeta.total === 1 ? "show encontrado" : "shows encontrados"}.</p> : null}
+        <div className="searchMetaBar">
+          <span className="muted">{hint}</span>
+        </div>
+
+        {activeTab === "shows" ? (
+          <div key="tab-shows" className="tabPanel">
+            {normalizedQuery.length < 2 ? (
+              <p className="emptyBox">
+                {t.search.startPrompt} <br />
+                <strong>guns n&apos; roses</strong> <br />
+                <strong>iron maiden curitiba 2019</strong> <br />
+                <strong>foo fighters lollapalooza</strong> <br />
+                <strong>guns n&apos; roses são paulo 2022</strong>
+              </p>
+            ) : searchLoading ? (
+              <p className="emptyBox">{t.search.searchingShows}</p>
+            ) : searchError ? (
+              <p className="emptyBox errorBox">{searchError}</p>
+            ) : searchResults.length ? (
+              <div className="resultList">
+                {searchResults.map((show) => (
+                  <SearchResultRow
+                    key={show.id}
+                    show={show}
+                    onOpenDetail={(s) => {
+                      trackEvent("show_detail_open", { source: "search_results", show_id: s.id });
+                      openShowOverlay(s);
+                    }}
+                  />
+                ))}
+                {searchLoadingMore ? <p className="emptyBox">{t.search.loadingMore}</p> : null}
+                {!searchLoadingMore && searchMeta.hasMore ? <div ref={searchSentinelRef} className="searchSentinel" aria-hidden /> : null}
+                {!searchMeta.hasMore && searchResults.length > 0 ? (
+                  <p className="muted">{t.search.allFound(searchMeta.total)}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="emptyBox">
+                {t.search.noShows}
+                <br />
+                {t.search.noShowsHint}
+              </p>
+            )}
           </div>
         ) : (
-          <p className="emptyBox">
-            Nenhum show encontrado.
-            <br />
-            Tente só o artista (ex.: <strong>iron maiden</strong>) ou acrescente cidade e ano (ex.: <strong>iron maiden curitiba 2019</strong>).
-          </p>
+          <div key="tab-amigos" className="tabPanel">
+            {!isAuthenticated ? (
+              <p className="emptyBox">
+                <Link href="/signin" className="footerLink">
+                  {t.search.loginForFriends}
+                </Link>{" "}
+                {t.search.friendsEmptyHint.split("\n")[0]}
+              </p>
+            ) : normalizedQuery.length < 2 ? (
+              <p className="emptyBox">
+                {t.search.friendsEmptyHint.split("\n")[0]}
+                <br />
+                {t.search.friendsEmptyHint.split("\n")[1]}
+              </p>
+            ) : friendLoading ? (
+              <p className="emptyBox">{t.search.searchingFriends}</p>
+            ) : friendError ? (
+              <p className="emptyBox errorBox">{friendError}</p>
+            ) : friendResults.length ? (
+              <div className="resultList">
+                {friendResults.map((result) => (
+                  <FriendResultRow key={result.userId} result={result} isAuthenticated={isAuthenticated} />
+                ))}
+              </div>
+            ) : (
+              <p className="emptyBox">
+                {t.search.noFriends.split("\n")[0]}
+                <br />
+                {t.search.noFriends.split("\n")[1]}
+              </p>
+            )}
+          </div>
         )}
       </section>
+
+      <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="search" />
 
       {selectedShow ? (
         <ShowDetailClient
@@ -409,7 +570,8 @@ async function fetchSearchPage(queryValue: string, page: number) {
   const response = await fetch(`/api/setlists/search?searchTerm=${encodeURIComponent(queryValue)}&p=${page}`);
   const payload = (await response.json()) as SearchResponse | { error?: string; message?: string };
   if (!response.ok) {
-    throw new Error(payload && "message" in payload ? payload.message ?? payload.error ?? "Não conseguimos buscar os shows agora." : "Não conseguimos buscar os shows agora.");
+    const fallback = "We couldn't search for shows right now.";
+    throw new Error(payload && "message" in payload ? payload.message ?? payload.error ?? fallback : fallback);
   }
   return payload as SearchResponse;
 }
@@ -503,10 +665,8 @@ function rankSearchResults(query: string, shows: ShowRecord[]) {
     const aFuture = a.eventDateIso >= todayIso;
     const bFuture = b.eventDateIso >= todayIso;
 
-    // Future shows before past shows
     if (aFuture !== bFuture) return aFuture ? -1 : 1;
 
-    // Future: nearest first (ascending); past: most recent first (descending)
     if (a.eventDateIso !== b.eventDateIso) {
       return aFuture
         ? a.eventDateIso < b.eventDateIso ? -1 : 1

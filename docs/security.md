@@ -123,3 +123,36 @@ Em `app/auth/callback/route.ts`, o parâmetro `next` é validado com regex `/^\/
 |------|-----------|------------|
 | Rate limiting nas rotas de POST | Baixa | Supabase tem limites de banco, mas sem throttle no nível HTTP. Recomendado pós-lançamento via Vercel Edge ou Upstash. |
 | Limpeza periódica de arquivos órfãos no Storage | Baixa | Mesmo com a nova policy de delete, arquivos podem ficar órfãos se a deleção do post falhar antes da deleção do arquivo. Uma função CRON de limpeza é recomendada no futuro. |
+| Rate limiting em `/api/follows/[userId]` | Média | Endpoint público para usuários autenticados — sem limite por IP/user, vulnerável a ataque de spam de follow/unfollow. Avaliar Upstash Ratelimit nas próximas releases. |
+
+---
+
+## Adendo — Release social (2026-05-17)
+
+### Novos endpoints
+
+| Endpoint | Auth | Comentário de segurança |
+|---|---|---|
+| `GET /api/profiles/me` | obrigatória | Faz upsert defensivo em `profiles` apenas com `auth.uid()`. |
+| `GET /api/profiles/[id]` | opcional | Lê só colunas públicas (`display_name`, `avatar_url`). |
+| `GET /api/profiles/[id]/wallet` | opcional | `wallet_entries` é lido com RLS pública via anon — única coluna sensível seria o `user_id`, que é o próprio parâmetro. |
+| `GET /api/profiles/search` | opcional | `ilike` em `display_name_normalized`. Caracteres `%`/`_` são escapados antes da query para evitar curingas controlados pelo usuário. |
+| `POST/DELETE /api/follows/[id]` | obrigatória | Self-follow bloqueado em duas camadas: `400` no endpoint e `check (follower_id <> following_id)` no DB. RLS garante que `INSERT` use `auth.uid() = follower_id`. |
+| `GET /api/feed/following` | obrigatória | Só retorna atividade de quem o viewer segue (filtrado pelo lookup em `user_follows`). |
+| `GET /api/shows/trending` | opcional | Agregação sobre `wallet_entries` (público para SELECT). Não expõe `user_id`. |
+
+### Decisões RLS para `profiles` e `user_follows`
+
+- **`profiles`**: SELECT público (necessário para busca e listagem de contadores), INSERT/UPDATE restritos ao `auth.uid()`. O trigger `handle_auth_user_profile_sync` usa `security definer` para escrever em nome do usuário recém-criado sem RLS — comportamento esperado e padrão Supabase.
+- **`user_follows`**: SELECT público (contadores são públicos), INSERT/DELETE restritos a `auth.uid() = follower_id`.
+
+### Validação de input
+
+- `display_name_normalized` é sempre derivado server-side (trigger SQL) — usuário não controla.
+- Busca de amigos escapa `%` e `_` (curingas LIKE) na sua entrada antes de enviar para `ilike`.
+- IDs de rotas dinâmicas (`[userId]`) passam por `trim()` e checagem de não-vazio antes de ir para query.
+
+### Pontos não cobertos ainda
+
+- Bloqueio de usuário (`block`) não foi implementado nesta release. Avaliar com produto.
+- Endpoint de listar seguidores/seguidos com paginação ainda não existe (`HomeClient` mostra apenas o contador). Quando criado, deverá usar `range()` para paginar e respeitar RLS pública.

@@ -1,0 +1,209 @@
+export type Locale = "pt" | "en" | "es";
+
+export const LOCALES: readonly Locale[] = ["pt", "en", "es"] as const;
+
+export const LOCALE_LABELS: Record<Locale, string> = {
+  pt: "PT",
+  en: "EN",
+  es: "ES",
+};
+
+export const LOCALE_STORAGE_KEY = "its-alive.locale";
+export const DEFAULT_LOCALE: Locale = "pt";
+
+export type LocaleDict = {
+  months: readonly [string, string, string, string, string, string, string, string, string, string, string, string];
+  common: {
+    goHome: string;
+    openMenu: string;
+    closeMenu: string;
+    back: string;
+    loading: string;
+    or: string;
+    yes: string;
+    no: string;
+    enter: string;
+    close: string;
+    openProfileLabel: (name: string) => string;
+  };
+  home: {
+    searchPlaceholder: string;
+    tabWhatsNew: string;
+    tabMyShows: string;
+    daysLeft: (n: number) => string;
+    today: string;
+    trendingTitle: string;
+    trendingMore: string;
+    trendingEmpty: string;
+    filterCountry: string;
+    filterCity: string;
+    filterAllCities: string;
+    filterClear: string;
+    filterClearLabel: string;
+    filterGroupLabel: string;
+    followingTitle: string;
+    followingLoadingLabel: string;
+    followingEmptyText: string;
+    followingEmptyCta: string;
+    followingQuietText: string;
+    myShowsEmptyIntro: string;
+    myShowsEmptyIWent: string;
+    myShowsEmptyIGo: string;
+    myShowsEmptyCta: string;
+    myShowsFutureTitle: string;
+    homeTabsLabel: string;
+    homeCalmText: string;
+    verbWent: string;
+    verbGoing: string;
+    countries: Record<string, string>;
+  };
+  search: {
+    showsPlaceholder: string;
+    friendsPlaceholder: string;
+    showsHint: string;
+    friendsHint: string;
+    tabShows: string;
+    tabFriends: string;
+    tabTypeLabel: string;
+    pageLabel: string;
+    closeSearch: string;
+    showsAriaLabel: string;
+    friendsAriaLabel: string;
+    searchingShows: string;
+    searchingFriends: string;
+    showFound: (n: number) => string;
+    allFound: (n: number) => string;
+    noShows: string;
+    noShowsHint: string;
+    noFriends: string;
+    loadingMore: string;
+    showError: string;
+    friendError: string;
+    loadMoreError: string;
+    profileTap: string;
+    startPrompt: string;
+    loginForFriends: string;
+    friendsEmptyHint: string;
+  };
+  showDetail: {
+    ctaGoing: string;
+    ctaWent: string;
+    saving: string;
+    closeLabel: string;
+    tickets: string;
+    share: string;
+    linkCopied: string;
+    shareLabel: string;
+    setlistTitle: string;
+    loadingSongs: string;
+    seeAll: string;
+    collapse: string;
+    noSetlist: string;
+    syncHint: string;
+    loading: string;
+    notFound: string;
+    overlayLabel: string;
+    errorLoading: string;
+  };
+  feed: {
+    title: string;
+    textareaPlaceholder: string;
+    textareaAriaLabel: string;
+    photoPreviewAlt: string;
+    removePhotoLabel: string;
+    addPhotoLabel: string;
+    photoBtn: string;
+    saveBtn: string;
+    savingBtn: string;
+    loginPromptLink: string;
+    loginPromptText: string;
+    loadingPosts: string;
+    emptyPosts: string;
+    deleteConfirmLabel: string;
+    deleteYes: string;
+    deleteNo: string;
+    deleteConfirmAriaLabel: string;
+    deleteCancelAriaLabel: string;
+    deleteAriaLabel: string;
+    photoAlt: (name: string) => string;
+    rockOnAriaLabel: string;
+    rockOffAriaLabel: string;
+    photoError: string;
+    saveError: string;
+  };
+  drawer: {
+    menuLabel: string;
+    closeLabel: string;
+    myShows: string;
+    searchShows: string;
+    searchFriends: string;
+    terms: string;
+    privacy: string;
+    signOut: string;
+    navLabel: string;
+    accountLabel: string;
+    languageLabel: string;
+  };
+  profile: {
+    thisYear: (year: number) => string;
+    total: string;
+    following: string;
+    followers: string;
+    followingAriaLabel: (name: string) => string;
+    followersAriaLabel: (name: string) => string;
+    showsAriaLabel: string;
+    profileAriaLabel: (name: string) => string;
+    unfollowAriaLabel: string;
+    followAriaLabel: string;
+    followingBtn: string;
+    followBtn: string;
+    followError: string;
+    updateError: string;
+    loginToFollow: string;
+    goingTitle: string;
+    emptyWallet: (name: string) => string;
+  };
+  followList: {
+    followingTitle: string;
+    followersTitle: string;
+    followingSubSelf: string;
+    followingSubOther: (name: string) => string;
+    followersSubSelf: string;
+    followersSubOther: (name: string) => string;
+    switchLabel: string;
+    emptyFollowingSelf: string;
+    emptyFollowingOther: (name: string) => string;
+    emptyFollowersSelf: string;
+    emptyFollowersOther: (name: string) => string;
+    backToHome: string;
+    backToProfile: (name: string) => string;
+    enterBtn: string;
+  };
+  login: {
+    title: string;
+    subtitle: string;
+    searchCta: string;
+    loginHint: string;
+    connecting: string;
+    loginGoogle: string;
+    terms: string;
+    privacy: string;
+    errorSupa: string;
+    errorOAuth: string;
+    errorGoogle: string;
+    signinTitle: string;
+    signinSubtitle: string;
+  };
+  terms: {
+    title: string;
+    body1: string;
+    body2: string;
+    back: string;
+  };
+  privacy: {
+    title: string;
+    body1: string;
+    body2: string;
+    back: string;
+  };
+};

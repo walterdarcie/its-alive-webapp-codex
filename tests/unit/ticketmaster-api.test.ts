@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { searchUpcomingByArtist } from "@/lib/ticketmaster-api";
+import { searchTrendingUpcoming, searchUpcomingByArtist } from "@/lib/ticketmaster-api";
 
 function buildEvent(overrides: {
   id?: string;
@@ -156,5 +156,79 @@ describe("searchUpcomingByArtist", () => {
 
     const result = await searchUpcomingByArtist(ARTIST);
     expect(result.every((s) => s.id.startsWith("tm-"))).toBe(true);
+  });
+});
+
+describe("searchTrendingUpcoming", () => {
+  beforeEach(() => {
+    vi.stubEnv("TICKETMASTER_API_KEY", "test-tm-key");
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("returns empty array when API key is missing", async () => {
+    vi.stubEnv("TICKETMASTER_API_KEY", "");
+    const result = await searchTrendingUpcoming();
+    expect(result).toEqual([]);
+  });
+
+  it("maps Ticketmaster events into ShowRecord with attraction as artist", async () => {
+    mockFetch(200, {
+      _embedded: {
+        events: [
+          buildEvent({ id: "trend-1", artistName: "Trending One" }),
+          buildEvent({ id: "trend-2", artistName: "Trending Two" })
+        ]
+      }
+    });
+
+    const result = await searchTrendingUpcoming({ countryCode: "BR-A", size: 12 });
+    expect(result).toHaveLength(2);
+    expect(result[0]?.id).toBe("tm-trend-1");
+    expect(result[0]?.artist).toBe("Trending One");
+    expect(result[0]?.country).toBe("Brazil");
+  });
+
+  it("skips events without main attraction (no artist headline)", async () => {
+    const eventWithoutAttraction = {
+      ...buildEvent({ id: "no-attr" }),
+      _embedded: {
+        venues: [{ name: "Some Venue", city: { name: "São Paulo" }, country: { name: "Brazil" } }],
+        attractions: []
+      }
+    };
+    mockFetch(200, {
+      _embedded: {
+        events: [eventWithoutAttraction, buildEvent({ id: "has-attr", artistName: "Real Band" })]
+      }
+    });
+
+    const result = await searchTrendingUpcoming({ countryCode: "BR-B", size: 12 });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("tm-has-attr");
+  });
+
+  it("deduplicates by Ticketmaster event id", async () => {
+    mockFetch(200, {
+      _embedded: {
+        events: [
+          buildEvent({ id: "dup", artistName: "Same" }),
+          buildEvent({ id: "dup", artistName: "Same" }),
+          buildEvent({ id: "other", artistName: "Other" })
+        ]
+      }
+    });
+
+    const result = await searchTrendingUpcoming({ countryCode: "BR-C", size: 12 });
+    expect(result.map((s) => s.id)).toEqual(["tm-dup", "tm-other"]);
+  });
+
+  it("returns empty array on HTTP error", async () => {
+    mockFetch(500, { error: "Internal server error" });
+    const result = await searchTrendingUpcoming({ countryCode: "BR-D", size: 12 });
+    expect(result).toEqual([]);
   });
 });

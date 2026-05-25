@@ -86,7 +86,8 @@ A busca é exploração. O usuário está relembrando ou antecipando. Não há u
 O detalhe do show é o coração do produto. Cada elemento reflete que este show aconteceu (ou vai acontecer) de verdade.
 
 Botão principal: **EU FUI!** / **EU VOU!** — primeira pessoa, exclamação, identidade.
-Setlist: exibe o nome do artista quando não há foto (o artista é o coração, não "Imagem do show").
+Botão secundário: **COMPARTILHAR** — quando o navegador não suporta `navigator.share`, vira **LINK COPIADO** por 1.8s. Sem "Compartilhar o show!" floreado.
+Placeholder visual sem foto: logo do it's alive como marca d'água sobre o gradiente (substituiu o texto do artista — o artista já aparece no título do card/ticket, então o "Imagem do show" fica resolvido como branding).
 
 ### Feed social ("Quem foi")
 **Tom:** comunidade, não comentários. Íntimo, presente, convidativo.
@@ -130,6 +131,52 @@ Fórmula: **[o que não deu certo] + [o que fazer agora]**
 | recolher | esconder / colapsar |
 | tenta de novo | recarregue a página |
 | carteira | perfil / biblioteca |
+| Seguir / Seguindo | Follow / Following |
+| Foi / Vai (verbos no feed) | Foi a / Vai a / Compareceu / Atendeu |
+| Buscar amigos | Pesquisar usuários / Encontrar pessoas |
+| Novidades | Feed / Timeline |
+| Shows em alta | Trending / Em destaque |
+| Mandar um rock'n'roll | Curtir / Like (na ação de like dos posts) |
+| Tirar o rock'n'roll | Descurtir / Unlike |
+| Compartilhar | Share |
+| Link copiado | URL copied / Copiado para área de transferência |
+| Voltar | Voltar para X (preferir o curto quando o destino é "página anterior") |
+
+---
+
+## Decisões de tom para a release social
+
+### Contadores
+
+Zero é renderizado como `—`, não `0`. O traço dispensa o usuário de encarar uma estatística constrangedora e mantém a tabela legível visualmente.
+
+### "Foi" e "Vai" no feed
+
+Verbos curtos. Mantêm a primeira pessoa do passado/futuro do produto (`Eu fui!`/`Eu vou!`) e cabem ao lado do nome do amigo na mesma linha. Cromáticamente diferenciados: `Foi` em pink-light (memória cálida), `Vai` em blue-glow (antecipação fria). Sem rótulo "compareceu" ou "vai comparecer" — é jargão de evento corporativo.
+
+### "Buscar amigos" (não "Encontrar pessoas")
+
+"Amigos" reforça o tom de comunidade próxima — o produto não é uma rede de descoberta de estranhos. Reservar "pessoas" para contextos neutros (ex.: contagem de "X seguidores" não vira "amigos" porque pode incluir estranhos).
+
+### "Sair" e itens do drawer
+
+Drawer tem `Sair` como ação destrutiva — mesmo padrão de toda a navegação do produto. Termos de uso e Privacidade ficam embaixo, alinhados à direita, fonte menor — leitura "esses links existem se você precisar".
+
+### Estados vazios sociais
+
+Sempre convidando, nunca instruindo:
+- Sem ninguém seguido: "Comece a seguir gente que também guarda memórias de shows."
+- Feed quieto (segue mas ninguém marcou): "Ninguém que você segue marcou show por aqui ainda. Logo aparece algo."
+- Busca de amigos sem resultado: "Ninguém encontrado com esse nome ainda. Tenta um apelido ou parte do nome."
+- Trending sem resultado (com filtros): "Nenhum show por aqui com esses filtros. Tente outro recorte."
+
+### Rock'n'roll como verbo de like
+
+A ação de like nos posts é literalizada como "mandar um rock'n'roll" — gesto físico que cabe na cena do produto. O `aria-label` reflete isso: "Mandar um rock'n'roll" (idle) e "Tirar o rock'n'roll" (já liked). Sem "Curtir" no UI visível — só o ícone (mão fazendo 🤘) e o contador. O verbo "curtir" sobrevive em código/analytics, mas não chega ao usuário.
+
+### Filtros do "Shows em alta"
+
+Rótulos curtos e neutros: **País**, **Cidade**, **Gênero**. Placeholder do input de cidade é **Todas** (não "Filtrar cidade" — assumir vazio = sem filtro). Botão de reset é **Limpar** (não "Resetar" / "Restaurar padrão" — tom mais leve).
 
 ---
 

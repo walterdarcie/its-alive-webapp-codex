@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useLocale } from "@/lib/i18n-context";
 import { trackEvent } from "@/lib/analytics";
 
 function GoogleIcon() {
@@ -46,20 +47,10 @@ type LoginClientProps = {
   nextUrl?: string;
 };
 
-function getErrorMessageByKey(errorKey?: string) {
-  if (!errorKey) return null;
-  if (errorKey === "supabase_not_configured") {
-    return "Ambiente de autenticação não configurado no deploy. Verifique as variáveis do Supabase no Vercel.";
-  }
-  if (errorKey === "oauth_callback_failed") {
-    return "Algo deu errado no login com Google. Aguarda um segundo e tenta de novo.";
-  }
-  return null;
-}
-
 export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
+  const { t } = useLocale();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey));
+  const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey, t));
   const router = useRouter();
 
   async function onGoogleLogin() {
@@ -81,7 +72,7 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
       }
     } catch (signInError) {
       trackEvent("login_google_error", { source: "landing_page" });
-      setError(signInError instanceof Error ? signInError.message : "Não conseguimos conectar com o Google. Tenta de novo?");
+      setError(signInError instanceof Error ? signInError.message : t.login.errorGoogle);
       setLoading(false);
     }
   }
@@ -99,30 +90,30 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
 
         <section className="landingBlock landingBlockSearch">
           <div className="loginCopy">
-            <h1 className="loginTitle">Você estava lá. Nunca esqueça.</h1>
-            <p className="loginSubtitle">Busque por artista, cidade ou ano e reviva cada momento dos shows que marcaram você.</p>
+            <h1 className="loginTitle">{t.login.title}</h1>
+            <p className="loginSubtitle">{t.login.subtitle}</p>
           </div>
 
           <button type="button" className="landingSearchCta" onClick={handleSearchClick}>
             <SearchIcon />
-            <span className="landingSearchCtaLabel">Encontrar shows</span>
+            <span className="landingSearchCtaLabel">{t.login.searchCta}</span>
           </button>
         </section>
 
         <div className="landingDivider">
           <span className="landingDividerLine" aria-hidden />
-          <span className="landingDividerText">ou</span>
+          <span className="landingDividerText">{t.common.or}</span>
           <span className="landingDividerLine" aria-hidden />
         </div>
 
         <section className="landingBlock landingBlockLogin">
-          <p className="landingLoginHint">Entre para guardar suas memórias e acessá-las de qualquer lugar.</p>
+          <p className="landingLoginHint">{t.login.loginHint}</p>
 
           <button type="button" className={`ctaMain loginGoogleButton loginGoogleButtonSecondary ${loading ? "isLoading" : ""}`} onClick={onGoogleLogin} disabled={loading}>
             <span className="loginGoogleIcon">
               <GoogleIcon />
             </span>
-            <span className="ctaMainLabel">{loading ? "Conectando..." : "Entrar com Google"}</span>
+            <span className="ctaMainLabel">{loading ? t.login.connecting : t.login.loginGoogle}</span>
           </button>
 
           {error ? <p className="errorBox loginError">{error}</p> : null}
@@ -135,7 +126,7 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
               trackEvent("login_terms_click", { source: "landing_page" });
             }}
           >
-            Termos
+            {t.login.terms}
           </Link>
           <span aria-hidden>•</span>
           <Link
@@ -144,10 +135,17 @@ export function LoginClient({ initialErrorKey, nextUrl }: LoginClientProps) {
               trackEvent("login_privacy_click", { source: "landing_page" });
             }}
           >
-            Privacidade
+            {t.login.privacy}
           </Link>
         </div>
       </div>
     </main>
   );
+}
+
+function getErrorMessageByKey(errorKey: string | undefined, t: ReturnType<typeof useLocale>["t"]) {
+  if (!errorKey) return null;
+  if (errorKey === "supabase_not_configured") return t.login.errorSupa;
+  if (errorKey === "oauth_callback_failed") return t.login.errorOAuth;
+  return null;
 }

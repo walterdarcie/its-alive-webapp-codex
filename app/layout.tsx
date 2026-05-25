@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Work_Sans } from "next/font/google";
 import Script from "next/script";
 import { AnalyticsPageTracker } from "@/app/ui/analytics-page-tracker";
+import { LocaleProvider } from "@/lib/i18n-context";
 import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 import "./globals.css";
 
@@ -66,22 +67,24 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={workSans.className}>
-        {children}
-        <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
-        <Script
-          id="google-analytics"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              window.gtag = gtag;
-              gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
-            `
-          }}
-        />
-        <AnalyticsPageTracker />
+        <LocaleProvider>
+          {children}
+          <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
+          <Script
+            id="google-analytics"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                window.gtag = gtag;
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
+              `
+            }}
+          />
+          <AnalyticsPageTracker />
+        </LocaleProvider>
       </body>
     </html>
   );

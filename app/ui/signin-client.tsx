@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useLocale } from "@/lib/i18n-context";
 import { trackEvent } from "@/lib/analytics";
 
 function GoogleIcon() {
@@ -34,20 +35,10 @@ type SigninClientProps = {
   nextUrl?: string;
 };
 
-function getErrorMessageByKey(errorKey?: string) {
-  if (!errorKey) return null;
-  if (errorKey === "supabase_not_configured") {
-    return "Ambiente de autenticação não configurado no deploy. Verifique as variáveis do Supabase no Vercel.";
-  }
-  if (errorKey === "oauth_callback_failed") {
-    return "Falha no retorno do login com Google. Tente novamente em alguns segundos.";
-  }
-  return null;
-}
-
 export function SigninClient({ initialErrorKey, nextUrl }: SigninClientProps) {
+  const { t } = useLocale();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey));
+  const [error, setError] = useState<string | null>(getErrorMessageByKey(initialErrorKey, t));
 
   async function onGoogleLogin() {
     setLoading(true);
@@ -68,7 +59,7 @@ export function SigninClient({ initialErrorKey, nextUrl }: SigninClientProps) {
       }
     } catch (signInError) {
       trackEvent("login_google_error", { source: "signin_page" });
-      setError(signInError instanceof Error ? signInError.message : "Não foi possível iniciar o login com Google.");
+      setError(signInError instanceof Error ? signInError.message : t.login.errorGoogle);
       setLoading(false);
     }
   }
@@ -83,15 +74,15 @@ export function SigninClient({ initialErrorKey, nextUrl }: SigninClientProps) {
         <Image src="/brand/logo-default.svg" alt="it's alive" width={160} height={46} className="loginLogo" priority />
 
         <div className="loginCopy">
-          <h1 className="signinTitle">Entre na sua conta</h1>
-          <p className="loginSubtitle">Faça login para salvar shows na sua carteira e sincronizar entre dispositivos.</p>
+          <h1 className="signinTitle">{t.login.signinTitle}</h1>
+          <p className="loginSubtitle">{t.login.signinSubtitle}</p>
         </div>
 
         <button type="button" className={`ctaMain loginGoogleButton ${loading ? "isLoading" : ""}`} onClick={onGoogleLogin} disabled={loading}>
           <span className="loginGoogleIcon">
             <GoogleIcon />
           </span>
-          <span className="ctaMainLabel">{loading ? "Conectando..." : "Entrar com Google"}</span>
+          <span className="ctaMainLabel">{loading ? t.login.connecting : t.login.loginGoogle}</span>
         </button>
 
         {error ? <p className="errorBox loginError">{error}</p> : null}
@@ -103,7 +94,7 @@ export function SigninClient({ initialErrorKey, nextUrl }: SigninClientProps) {
               trackEvent("login_terms_click", { source: "signin_page" });
             }}
           >
-            Termos
+            {t.login.terms}
           </Link>
           <span aria-hidden>•</span>
           <Link
@@ -112,10 +103,17 @@ export function SigninClient({ initialErrorKey, nextUrl }: SigninClientProps) {
               trackEvent("login_privacy_click", { source: "signin_page" });
             }}
           >
-            Privacidade
+            {t.login.privacy}
           </Link>
         </div>
       </section>
     </main>
   );
+}
+
+function getErrorMessageByKey(errorKey: string | undefined, t: ReturnType<typeof useLocale>["t"]) {
+  if (!errorKey) return null;
+  if (errorKey === "supabase_not_configured") return t.login.errorSupa;
+  if (errorKey === "oauth_callback_failed") return t.login.errorOAuth;
+  return null;
 }
