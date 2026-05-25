@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
-import { deriveWalletStatus, formatDatePtBrLong, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
+import { deriveWalletStatus, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
 import { getWalletShow, isSavedInWallet, removeFromWalletServer, saveToWalletServer } from "@/lib/wallet-storage";
+import { useLocale } from "@/lib/i18n-context";
 import { trackEvent } from "@/lib/analytics";
 import { ShowFeedClient } from "@/app/ui/show-feed-client";
 
@@ -21,6 +22,7 @@ type ShowDetailClientProps = {
 
 
 export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAuthenticated = true, viewer = null }: ShowDetailClientProps) {
+  const { t, formatDate } = useLocale();
   const [show, setShow] = useState<ShowDetailRecord | null>(initialData ?? null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +58,6 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
       }));
     }
 
-    // Skip client fetch if we already have server-side data
     if (initialData) {
       setLoading(false);
       return;
@@ -73,14 +74,14 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
         });
         const payload = (await response.json()) as ShowDetailRecord | { message?: string; error?: string };
         if (!response.ok) {
-          throw new Error("message" in payload ? payload.message ?? payload.error ?? "Falha ao carregar show" : "Falha ao carregar show");
+          throw new Error("message" in payload ? payload.message ?? payload.error ?? t.showDetail.errorLoading : t.showDetail.errorLoading);
         }
         const detailPayload = payload as ShowDetailRecord;
         setShow(detailPayload);
         setArtistImageUrl(detailPayload.artistImageUrl ?? walletShow?.artistImageUrl ?? null);
       } catch (err) {
         if (controller.signal.aborted) return;
-        if (!walletShow) setError(err instanceof Error ? err.message : "Falha ao carregar show");
+        if (!walletShow) setError(err instanceof Error ? err.message : t.showDetail.errorLoading);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -88,7 +89,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
 
     void load();
     return () => controller.abort();
-  }, [id, initialData]);
+  }, [id, initialData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const currentShow = show;
@@ -139,9 +140,9 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
   }, [isOverlay]);
 
   const ctaLabel = useMemo(() => {
-    if (!show) return "EU VOU";
-    return deriveWalletStatus(show.eventDateIso) === "going" ? "EU VOU" : "EU FUI";
-  }, [show]);
+    if (!show) return t.showDetail.ctaGoing;
+    return deriveWalletStatus(show.eventDateIso) === "going" ? t.showDetail.ctaGoing : t.showDetail.ctaWent;
+  }, [show, t]);
 
   const visibleSongs = show?.songNames.slice(0, 5) ?? [];
   const hiddenSongs = show?.songNames.slice(5) ?? [];
@@ -197,7 +198,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
   async function handleShare() {
     if (!show) return;
     const url = `${window.location.origin}/show/${encodeURIComponent(show.id)}`;
-    const title = `${show.artist} — ${formatDatePtBrLong(show.eventDateIso)}`;
+    const title = `${show.artist} — ${formatDate(show.eventDateIso)}`;
     const text = `${show.artist} no ${show.venue || show.city || "show"} — guarda essa memória com a gente no it's alive.`;
     trackEvent("show_share_click", { show_id: show.id });
     try {
@@ -287,7 +288,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
   const content = show ? (
     <section
       className={`detailSheet ${isOverlay ? "detailSheetOverlay" : ""} ${isDragging ? "isDragging" : ""} ${isClosing ? "isClosing" : ""}`}
-      aria-label="Detalhes do show"
+      aria-label={t.showDetail.overlayLabel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={(e) => endDrag(e.pointerId, e.currentTarget)}
@@ -299,17 +300,17 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
           <div className="detailTopNotch" aria-hidden />
           <Image src="/brand/logo-icon.svg" alt="" width={28} height={28} className="detailMiniBrand" aria-hidden />
           {isOverlay ? (
-            <button type="button" className="iconBtn iconBtnCentered" onClick={requestClose} aria-label="Fechar detalhes">
+            <button type="button" className="iconBtn iconBtnCentered" onClick={requestClose} aria-label={t.showDetail.closeLabel}>
               <CloseIcon />
             </button>
           ) : (
-            <Link href="/" className="iconBtn iconBtnCentered" aria-label="Fechar detalhes">
+            <Link href="/" className="iconBtn iconBtnCentered" aria-label={t.showDetail.closeLabel}>
               <CloseIcon />
             </Link>
           )}
         </div>
 
-        <p className="ticketDate detailDateTop">{formatDatePtBrLong(show.eventDateIso)}</p>
+        <p className="ticketDate detailDateTop">{formatDate(show.eventDateIso)}</p>
         <h1 className="detailTitle">{show.artist}</h1>
         <p className="ticketVenue detailVenue venueWithPin">
           <span className="venueText">{formatVenueLine(show)}</span>
@@ -347,7 +348,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
             aria-pressed={saved}
             disabled={savingWallet}
           >
-            <span className="ctaMainLabel">{savingWallet ? "Guardando..." : `${ctaLabel}!`}</span>
+            <span className="ctaMainLabel">{savingWallet ? t.showDetail.saving : `${ctaLabel}!`}</span>
             <span className="ctaMainPulse" aria-hidden />
           </button>
           {show.ticketUrl && isFutureOrTodayShow(show.eventDateIso) ? (
@@ -360,7 +361,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
                 trackEvent("ticket_buy_click", { show_id: show.id, source: "show_detail" });
               }}
             >
-              INGRESSOS
+              {t.showDetail.tickets}
             </a>
           ) : null}
           <button
@@ -369,10 +370,10 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
             onClick={() => {
               void handleShare();
             }}
-            aria-label="Compartilhar show"
+            aria-label={t.showDetail.shareLabel}
           >
             <ShareIcon />
-            {shareConfirm === "copied" ? "LINK COPIADO" : "COMPARTILHAR"}
+            {shareConfirm === "copied" ? t.showDetail.linkCopied : t.showDetail.share}
           </button>
           {show.setlistUrl && !show.id.startsWith("tm-") ? (
             <a
@@ -387,13 +388,13 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
               SETLIST.FM
             </a>
           ) : null}
-          {lastSyncFailed ? <p className="muted walletSyncHint">Guardado aqui. Sincroniza quando a conexão voltar.</p> : null}
+          {lastSyncFailed ? <p className="muted walletSyncHint">{t.showDetail.syncHint}</p> : null}
         </div>
 
         <div className="setlistPanel">
-          <h2 className="setlistTitle">Setlist</h2>
+          <h2 className="setlistTitle">{t.showDetail.setlistTitle}</h2>
           {loading && !show.songNames.length ? (
-            <p className="muted">Buscando as músicas...</p>
+            <p className="muted">{t.showDetail.loadingSongs}</p>
           ) : show.songNames.length ? (
             <>
               <ol className="songList">
@@ -417,7 +418,7 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
                       }
                       aria-expanded={setlistExpanded}
                     >
-                      VER TUDO
+                      {t.showDetail.seeAll}
                     </button>
                   ) : null}
                   <div className="setlistAccordionBody" aria-hidden={!setlistExpanded}>
@@ -440,14 +441,14 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
                       }
                       aria-expanded={setlistExpanded}
                     >
-                      RECOLHER
+                      {t.showDetail.collapse}
                     </button>
                   ) : null}
                 </div>
               ) : null}
             </>
           ) : (
-            <p className="muted">Setlist não registrada para este show.</p>
+            <p className="muted">{t.showDetail.noSetlist}</p>
           )}
         </div>
       </div>
@@ -455,15 +456,15 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
       <ShowFeedClient showId={id} viewer={viewer ?? null} />
     </section>
   ) : loading ? (
-    <p className="emptyBox">Carregando...</p>
+    <p className="emptyBox">{t.showDetail.loading}</p>
   ) : (
-    <p className="emptyBox errorBox">{error ?? "Não encontramos este show."}</p>
+    <p className="emptyBox errorBox">{error ?? t.showDetail.notFound}</p>
   );
 
   if (isOverlay) {
     return (
-      <div className="detailOverlayRoot" role="dialog" aria-modal="true" aria-label="Detalhes do show">
-        <button type="button" className="detailBackdrop" aria-label="Fechar detalhes" onClick={requestClose} />
+      <div className="detailOverlayRoot" role="dialog" aria-modal="true" aria-label={t.showDetail.overlayLabel}>
+        <button type="button" className="detailBackdrop" aria-label={t.showDetail.closeLabel} onClick={requestClose} />
         <div className="detailOverlayContainer">{content}</div>
       </div>
     );

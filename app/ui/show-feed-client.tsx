@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Viewer } from "@/lib/show-types";
-import { formatPostDate } from "@/lib/show-utils";
+import { useLocale } from "@/lib/i18n-context";
 
 type Post = {
   id: string;
@@ -24,6 +24,7 @@ type ShowFeedClientProps = {
 };
 
 export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
+  const { t, formatPostDate } = useLocale();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [body, setBody] = useState("");
@@ -83,7 +84,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("post-photos")
           .upload(path, photoFile, { contentType: photoFile.type });
-        if (uploadError) throw new Error("Não conseguimos enviar a foto. Tente novamente.");
+        if (uploadError) throw new Error(t.feed.photoError);
         const {
           data: { publicUrl }
         } = supabase.storage.from("post-photos").getPublicUrl(uploadData.path);
@@ -96,13 +97,13 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
         body: JSON.stringify({ body: body.trim(), photoUrl })
       });
       const data = (await res.json()) as { post?: Post; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Não conseguimos guardar sua memória. Tente novamente.");
+      if (!res.ok) throw new Error(data.error ?? t.feed.saveError);
 
       if (data.post) setPosts((prev) => [data.post!, ...prev]);
       setBody("");
       removePhoto();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Não conseguimos guardar sua memória. Tente novamente.");
+      setSubmitError(err instanceof Error ? err.message : t.feed.saveError);
     } finally {
       setSubmitting(false);
     }
@@ -155,7 +156,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
   return (
     <section className="showFeed">
       <div className="feedSectionHeader">
-        <h2 className="feedSectionTitle">Quem foi</h2>
+        <h2 className="feedSectionTitle">{t.feed.title}</h2>
         {posts.length > 0 ? <span className="feedPostCount">{posts.length}</span> : null}
       </div>
 
@@ -173,31 +174,31 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
               <textarea
                 ref={textareaRef}
                 className="newPostTextarea"
-                placeholder="Como foi estar lá? Conte como você se sentiu..."
+                placeholder={t.feed.textareaPlaceholder}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 maxLength={1000}
                 rows={3}
-                aria-label="Compartilhar memória do show"
+                aria-label={t.feed.textareaAriaLabel}
               />
               {photoPreview ? (
                 <div className="newPostPhotoPreview">
                   {/* blob preview — can't use Next.js Image */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photoPreview} alt="Preview da foto" className="newPostPhotoPreviewImg" />
-                  <button type="button" className="newPostPhotoRemove" onClick={removePhoto} aria-label="Remover foto">
+                  <img src={photoPreview} alt={t.feed.photoPreviewAlt} className="newPostPhotoPreviewImg" />
+                  <button type="button" className="newPostPhotoRemove" onClick={removePhoto} aria-label={t.feed.removePhotoLabel}>
                     <CloseSmIcon />
                   </button>
                 </div>
               ) : null}
               {submitError ? <p className="feedSubmitError">{submitError}</p> : null}
               <div className="newPostActions">
-                <button type="button" className="newPostPhotoBtn" onClick={() => fileInputRef.current?.click()} aria-label="Adicionar foto">
+                <button type="button" className="newPostPhotoBtn" onClick={() => fileInputRef.current?.click()} aria-label={t.feed.addPhotoLabel}>
                   <CameraIcon />
-                  Foto
+                  {t.feed.photoBtn}
                 </button>
                 <button type="submit" className="newPostSubmitBtn" disabled={!body.trim() || submitting}>
-                  {submitting ? "Guardando memória..." : "Guardar memória"}
+                  {submitting ? t.feed.savingBtn : t.feed.saveBtn}
                 </button>
               </div>
               <input
@@ -212,14 +213,15 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
         </form>
       ) : (
         <p className="feedLoginPrompt">
-          <a href={`/signin?next=${encodeURIComponent(`/show/${showId}`)}`}>Entre</a> para guardar sua memória deste show.
+          <a href={`/signin?next=${encodeURIComponent(`/show/${showId}`)}`}>{t.feed.loginPromptLink}</a>{" "}
+          {t.feed.loginPromptText}
         </p>
       )}
 
       {loading ? (
-        <p className="feedEmpty">Carregando memórias...</p>
+        <p className="feedEmpty">{t.feed.loadingPosts}</p>
       ) : posts.length === 0 ? (
-        <p className="feedEmpty">Ninguém escreveu ainda. Você foi lá — conta como foi!</p>
+        <p className="feedEmpty">{t.feed.emptyPosts}</p>
       ) : (
         <ul className="feedList">
           {posts.map((post) => (
@@ -239,22 +241,22 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
                 {viewer?.id === post.userId ? (
                   confirmDeleteId === post.id ? (
                     <div className="feedPostDeleteConfirm">
-                      <span className="feedPostDeleteLabel">Excluir?</span>
+                      <span className="feedPostDeleteLabel">{t.feed.deleteConfirmLabel}</span>
                       <button
                         type="button"
                         className="feedPostDeleteYes"
                         onClick={() => void deletePost(post.id)}
-                        aria-label="Confirmar exclusão"
+                        aria-label={t.feed.deleteConfirmAriaLabel}
                       >
-                        Sim
+                        {t.feed.deleteYes}
                       </button>
                       <button
                         type="button"
                         className="feedPostDeleteNo"
                         onClick={() => setConfirmDeleteId(null)}
-                        aria-label="Cancelar exclusão"
+                        aria-label={t.feed.deleteCancelAriaLabel}
                       >
-                        Não
+                        {t.feed.deleteNo}
                       </button>
                     </div>
                   ) : (
@@ -262,7 +264,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
                       type="button"
                       className="feedPostDeleteBtn"
                       onClick={() => setConfirmDeleteId(post.id)}
-                      aria-label="Excluir relato"
+                      aria-label={t.feed.deleteAriaLabel}
                     >
                       <TrashIcon />
                     </button>
@@ -272,7 +274,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
 
               {post.photoUrl ? (
                 <div className="feedPostPhoto">
-                  <Image src={post.photoUrl} alt={`Foto do show por ${post.userDisplayName}`} fill sizes="(max-width: 720px) 100vw, 430px" style={{ objectFit: "cover" }} loading="lazy" />
+                  <Image src={post.photoUrl} alt={t.feed.photoAlt(post.userDisplayName)} fill sizes="(max-width: 720px) 100vw, 430px" style={{ objectFit: "cover" }} loading="lazy" />
                 </div>
               ) : null}
 
@@ -284,7 +286,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
                   className={`feedPostAction feedPostLikeBtn${post.viewerLiked ? " isLiked" : ""}${burstingId === post.id ? " isBursting" : ""}`}
                   onClick={() => void toggleLike(post.id)}
                   aria-pressed={post.viewerLiked}
-                  aria-label={post.viewerLiked ? "Tirar o rock'n'roll" : "Mandar um rock'n'roll"}
+                  aria-label={post.viewerLiked ? t.feed.rockOffAriaLabel : t.feed.rockOnAriaLabel}
                 >
                   <span className="rockBurstWrap">
                     <RockOnIcon filled={post.viewerLiked} />

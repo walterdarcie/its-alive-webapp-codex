@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { useLocale } from "@/lib/i18n-context";
 import { trackEvent } from "@/lib/analytics";
 
 type SocialDrawerProps = {
@@ -25,6 +26,8 @@ function CloseIcon() {
 }
 
 export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
+  const { t } = useLocale();
+
   useEffect(() => {
     if (!open) return;
     function handleKey(event: KeyboardEvent) {
@@ -54,11 +57,11 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
   if (!open) return null;
 
   return (
-    <div className="drawerRoot" role="dialog" aria-modal="true" aria-label="Menu">
+    <div className="drawerRoot" role="dialog" aria-modal="true" aria-label={t.drawer.menuLabel}>
       <button
         type="button"
         className="drawerBackdrop"
-        aria-label="Fechar menu"
+        aria-label={t.drawer.closeLabel}
         onClick={() => {
           trackEvent("social_drawer_close", { source, reason: "backdrop" });
           onClose();
@@ -68,7 +71,7 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
         <button
           type="button"
           className="drawerCloseBtn"
-          aria-label="Fechar menu"
+          aria-label={t.drawer.closeLabel}
           onClick={() => {
             trackEvent("social_drawer_close", { source, reason: "close_button" });
             onClose();
@@ -77,7 +80,7 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
           <CloseIcon />
         </button>
 
-        <nav className="drawerSection drawerSectionPrimary" aria-label="Navegação principal">
+        <nav className="drawerSection drawerSectionPrimary" aria-label={t.drawer.navLabel}>
           <Link
             href="/?tab=meus-shows"
             className="drawerItem"
@@ -87,7 +90,7 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
               onClose();
             }}
           >
-            Meus shows
+            {t.drawer.myShows}
           </Link>
           <Link
             href="/search?tab=shows"
@@ -98,7 +101,7 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
               onClose();
             }}
           >
-            Buscar shows
+            {t.drawer.searchShows}
           </Link>
           <Link
             href="/search?tab=amigos"
@@ -109,11 +112,11 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
               onClose();
             }}
           >
-            Buscar amigos
+            {t.drawer.searchFriends}
           </Link>
         </nav>
 
-        <nav className="drawerSection drawerSectionSecondary" aria-label="Conta e termos">
+        <nav className="drawerSection drawerSectionSecondary" aria-label={t.drawer.accountLabel}>
           <Link
             href="/terms"
             className="drawerItem drawerItemSm"
@@ -123,7 +126,7 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
               onClose();
             }}
           >
-            Termos de uso
+            {t.drawer.terms}
           </Link>
           <Link
             href="/privacy"
@@ -134,7 +137,7 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
               onClose();
             }}
           >
-            Privacidade
+            {t.drawer.privacy}
           </Link>
           <button
             type="button"
@@ -144,7 +147,7 @@ export function SocialDrawer({ open, onClose, source }: SocialDrawerProps) {
               void signOut();
             }}
           >
-            Sair
+            {t.drawer.signOut}
           </button>
         </nav>
       </aside>

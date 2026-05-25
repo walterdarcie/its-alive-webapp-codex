@@ -97,7 +97,30 @@ const REQUEST_HEADERS = {
 };
 
 function normalizeText(input?: string) {
-  return (input ?? "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+  // Apóstrofes são removidas — Deezer cataloga "Marky Ramone's Blitzkrieg" como
+  // "Marky Ramones Blitzkrieg" e sem isso o match exato (e o titleMatchesArtist)
+  // falha em nomes com possessivo.
+  return (input ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[‘’‛'`]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+// Separadores comuns de shows com múltiplos artistas. Quando o nome inteiro
+// não casa em nenhuma fonte (ex.: "João Gomes & Mestrinho & Jota.Pê" não
+// existe como entrada única no Deezer), tentamos o primeiro artista isolado
+// — costuma ser o headliner.
+const ARTIST_NAME_SPLIT_REGEX = /\s+(?:&|\+|feat\.?|ft\.?)\s+|\s*,\s*/i;
+
+function splitArtistNames(input?: string): string[] {
+  const raw = (input ?? "").trim();
+  if (!raw) return [];
+  return raw
+    .split(ARTIST_NAME_SPLIT_REGEX)
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 function buildCacheKey({ artistName, artistMbid }: ResolveArtistImageInput) {
@@ -429,6 +452,7 @@ export async function resolveArtistImage(input: ResolveArtistImageInput): Promis
 
   let resolved: ArtistImagePayload | null = null;
   const mbid = (input.artistMbid ?? "").trim();
+  const artistName = input.artistName ?? "";
 
   // 1. MusicBrainz — só roda quando o show tem MBID. Devolve a página oficial
   //    do artista na Wikipedia/Wikidata, que é a fonte mais autoritativa.
@@ -440,13 +464,25 @@ export async function resolveArtistImage(input: ResolveArtistImageInput): Promis
   //    (especialmente Brasil/LatAm), imagem quadrada 1000×1000 sempre consistente
   //    com a moldura dos tickets. Em geral resolve no primeiro hit.
   if (!resolved) {
-    resolved = await resolveViaDeezer(input.artistName ?? "");
+    resolved = await resolveViaDeezer(artistName);
   }
 
   // 3. Wikipedia/Wikidata — fallback para o que falta na Deezer (clássicos,
   //    instrumentistas, projetos muito de nicho). Filtra por contexto musical.
   if (!resolved) {
-    resolved = await resolveViaWikipediaSearch(input.artistName ?? "");
+    resolved = await resolveViaWikipediaSearch(artistName);
+  }
+
+  // 4. Shows com múltiplos artistas ("João Gomes & Mestrinho & Jota.Pê") raramente
+  //    têm entrada única em qualquer fonte. Cai pro primeiro artista isolado, que
+  //    costuma ser o headliner e dá um visual coerente pro card.
+  if (!resolved) {
+    const parts = splitArtistNames(artistName);
+    if (parts.length > 1) {
+      const headliner = parts[0];
+      resolved = await resolveViaDeezer(headliner);
+      if (!resolved) resolved = await resolveViaWikipediaSearch(headliner);
+    }
   }
 
   const payload = resolved ?? EMPTY_IMAGE;

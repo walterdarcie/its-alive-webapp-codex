@@ -10,6 +10,7 @@ import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
 import { formatVenueLine } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
+import { useLocale } from "@/lib/i18n-context";
 
 export type SearchTab = "shows" | "amigos";
 
@@ -66,16 +67,17 @@ function HamburgerIcon() {
 }
 
 function TopBarSocial({ onOpenDrawer, isAuthenticated }: { onOpenDrawer: () => void; isAuthenticated: boolean }) {
+  const { t } = useLocale();
   return (
     <header className="topBarSocial">
-      <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
+      <Link href="/" aria-label={t.common.goHome} className="brandLogoLink">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
       </Link>
       {isAuthenticated ? (
         <button
           type="button"
           className="hamburgerBtn iconBtn"
-          aria-label="Abrir menu"
+          aria-label={t.common.openMenu}
           onClick={() => {
             trackEvent("social_drawer_open", { source: "search_topbar" });
             onOpenDrawer();
@@ -87,7 +89,7 @@ function TopBarSocial({ onOpenDrawer, isAuthenticated }: { onOpenDrawer: () => v
         <Link
           href="/signin"
           className="iconBtn"
-          aria-label="Fazer login"
+          aria-label={t.common.enter}
           onClick={() => trackEvent("login_click", { source: "search_topbar" })}
         >
           <span className="avatarFallbackIcon" aria-hidden />
@@ -98,9 +100,9 @@ function TopBarSocial({ onOpenDrawer, isAuthenticated }: { onOpenDrawer: () => v
 }
 
 function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetail: (show: ShowRecord) => void }) {
+  const { t } = useLocale();
   const eventDate = new Date(`${show.eventDateIso}T00:00:00`);
-  const ptBrMonthAbbr = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-  const month = ptBrMonthAbbr[eventDate.getMonth()] ?? "";
+  const month = t.months[eventDate.getMonth()] ?? "";
   const day = new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(eventDate);
   const year = new Intl.DateTimeFormat("en-US", { year: "numeric" }).format(eventDate);
 
@@ -130,12 +132,13 @@ function buildAvatarStyle(url: string): CSSProperties {
 }
 
 function FriendResultRow({ result, isAuthenticated }: { result: FriendResult; isAuthenticated: boolean }) {
+  const { t } = useLocale();
   return (
     <div className="friendResultRow">
       <Link
         href={`/u/${encodeURIComponent(result.userId)}`}
         className="friendResultAvatarLink"
-        aria-label={`Abrir perfil de ${result.displayName}`}
+        aria-label={t.common.openProfileLabel(result.displayName)}
         onClick={() => trackEvent("friend_result_avatar_click", { target_user_id: result.userId })}
       >
         {result.avatarUrl ? (
@@ -153,7 +156,7 @@ function FriendResultRow({ result, isAuthenticated }: { result: FriendResult; is
             {result.displayName}
           </Link>
         </h3>
-        <p className="friendResultHint">Toque para abrir o perfil</p>
+        <p className="friendResultHint">{t.search.profileTap}</p>
       </div>
       {isAuthenticated ? (
         <FollowButton
@@ -177,6 +180,7 @@ export function SearchPageClient({
   initialQuery?: string;
   initialTab?: SearchTab;
 }) {
+  const { t } = useLocale();
   const [query, setQuery] = useState(initialQuery ?? "");
   const deferredQuery = useDeferredValue(query);
   const [activeTab, setActiveTab] = useState<SearchTab>(initialTab);
@@ -295,7 +299,7 @@ export function SearchPageClient({
         if (isCancelled) return;
         setSearchResults([]);
         setSearchMeta({ pageLoaded: -1, hasMore: false, total: 0 });
-        setSearchError(error instanceof Error ? error.message : "Não conseguimos buscar os shows agora.");
+        setSearchError(error instanceof Error ? error.message : t.search.showError);
       } finally {
         if (!isCancelled) setSearchLoading(false);
       }
@@ -305,7 +309,7 @@ export function SearchPageClient({
       isCancelled = true;
       window.clearTimeout(timer);
     };
-  }, [normalizedQuery, activeTab]);
+  }, [normalizedQuery, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Friends search effect — only when tab is "amigos"
   useEffect(() => {
@@ -329,7 +333,7 @@ export function SearchPageClient({
         const response = await fetch(`/api/profiles/search?q=${encodeURIComponent(q)}`);
         const payload = (await response.json()) as { profiles?: FriendResult[]; error?: string };
         if (!response.ok) {
-          throw new Error(payload.error ?? "Não conseguimos buscar amigos agora.");
+          throw new Error(payload.error ?? t.search.friendError);
         }
         if (isCancelled) return;
         setFriendResults(payload.profiles ?? []);
@@ -339,7 +343,7 @@ export function SearchPageClient({
         });
       } catch (error) {
         if (isCancelled) return;
-        setFriendError(error instanceof Error ? error.message : "Não conseguimos buscar amigos agora.");
+        setFriendError(error instanceof Error ? error.message : t.search.friendError);
         setFriendResults([]);
       } finally {
         if (!isCancelled) setFriendLoading(false);
@@ -350,7 +354,7 @@ export function SearchPageClient({
       isCancelled = true;
       window.clearTimeout(timer);
     };
-  }, [normalizedQuery, activeTab]);
+  }, [normalizedQuery, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeTab !== "shows") return;
@@ -397,7 +401,7 @@ export function SearchPageClient({
       });
     } catch (error) {
       if (activeQueryRef.current !== queryValue) return;
-      setSearchError(error instanceof Error ? error.message : "Não conseguimos carregar mais shows agora.");
+      setSearchError(error instanceof Error ? error.message : t.search.loadMoreError);
     } finally {
       setSearchLoadingMore(false);
     }
@@ -412,17 +416,14 @@ export function SearchPageClient({
     window.history.replaceState({}, "", url.toString());
   }
 
-  const placeholder = activeTab === "shows" ? "Encontre shows incríveis" : "Encontre amigos pelo nome";
-  const hint =
-    activeTab === "shows"
-      ? "Artista, cidade, ano — escreva como lembrar."
-      : "Digita o nome de quem você quer encontrar.";
+  const placeholder = activeTab === "shows" ? t.search.showsPlaceholder : t.search.friendsPlaceholder;
+  const hint = activeTab === "shows" ? t.search.showsHint : t.search.friendsHint;
 
   return (
     <main className="page searchPage">
       <TopBarSocial onOpenDrawer={() => setDrawerOpen(true)} isAuthenticated={isAuthenticated} />
 
-      <section className="searchPageContent" aria-label="Tela de busca">
+      <section className="searchPageContent" aria-label={t.search.pageLabel}>
         <div className="searchScreenHeader">
           <div className="searchFieldWrap">
             <SearchIcon />
@@ -432,14 +433,14 @@ export function SearchPageClient({
               placeholder={placeholder}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              aria-label={activeTab === "shows" ? "Buscar shows" : "Buscar amigos"}
+              aria-label={activeTab === "shows" ? t.search.showsAriaLabel : t.search.friendsAriaLabel}
               autoFocus
             />
           </div>
           <Link
             href="/"
             className="iconBtn"
-            aria-label="Fechar busca"
+            aria-label={t.search.closeSearch}
             onClick={() => {
               trackEvent("search_close_click", { source: "search_page" });
             }}
@@ -448,7 +449,7 @@ export function SearchPageClient({
           </Link>
         </div>
 
-        <div className="tabsBar searchTabsBar" role="tablist" aria-label="Tipo de busca">
+        <div className="tabsBar searchTabsBar" role="tablist" aria-label={t.search.tabTypeLabel}>
           <button
             type="button"
             role="tab"
@@ -456,7 +457,7 @@ export function SearchPageClient({
             className={`tab ${activeTab === "shows" ? "isActive" : ""}`}
             onClick={() => changeTab("shows")}
           >
-            Shows
+            {t.search.tabShows}
           </button>
           <button
             type="button"
@@ -465,7 +466,7 @@ export function SearchPageClient({
             className={`tab ${activeTab === "amigos" ? "isActive" : ""}`}
             onClick={() => changeTab("amigos")}
           >
-            Amigos
+            {t.search.tabFriends}
           </button>
         </div>
 
@@ -477,14 +478,14 @@ export function SearchPageClient({
           <div key="tab-shows" className="tabPanel">
             {normalizedQuery.length < 2 ? (
               <p className="emptyBox">
-                Por onde você começa? <br />
+                {t.search.startPrompt} <br />
                 <strong>guns n&apos; roses</strong> <br />
                 <strong>iron maiden curitiba 2019</strong> <br />
                 <strong>foo fighters lollapalooza</strong> <br />
                 <strong>guns n&apos; roses são paulo 2022</strong>
               </p>
             ) : searchLoading ? (
-              <p className="emptyBox">Procurando shows...</p>
+              <p className="emptyBox">{t.search.searchingShows}</p>
             ) : searchError ? (
               <p className="emptyBox errorBox">{searchError}</p>
             ) : searchResults.length ? (
@@ -499,19 +500,17 @@ export function SearchPageClient({
                     }}
                   />
                 ))}
-                {searchLoadingMore ? <p className="emptyBox">Carregando mais...</p> : null}
+                {searchLoadingMore ? <p className="emptyBox">{t.search.loadingMore}</p> : null}
                 {!searchLoadingMore && searchMeta.hasMore ? <div ref={searchSentinelRef} className="searchSentinel" aria-hidden /> : null}
                 {!searchMeta.hasMore && searchResults.length > 0 ? (
-                  <p className="muted">
-                    Isso é tudo — {searchMeta.total} {searchMeta.total === 1 ? "show encontrado" : "shows encontrados"}.
-                  </p>
+                  <p className="muted">{t.search.allFound(searchMeta.total)}</p>
                 ) : null}
               </div>
             ) : (
               <p className="emptyBox">
-                Nenhum show encontrado.
+                {t.search.noShows}
                 <br />
-                Tente só o artista (ex.: <strong>iron maiden</strong>) ou acrescente cidade e ano (ex.: <strong>iron maiden curitiba 2019</strong>).
+                {t.search.noShowsHint}
               </p>
             )}
           </div>
@@ -520,18 +519,18 @@ export function SearchPageClient({
             {!isAuthenticated ? (
               <p className="emptyBox">
                 <Link href="/signin" className="footerLink">
-                  Entre para encontrar amigos
+                  {t.search.loginForFriends}
                 </Link>{" "}
-                que também guardam memórias de shows.
+                {t.search.friendsEmptyHint.split("\n")[0]}
               </p>
             ) : normalizedQuery.length < 2 ? (
               <p className="emptyBox">
-                Procure por quem também esteve nos shows que você amou.
+                {t.search.friendsEmptyHint.split("\n")[0]}
                 <br />
-                Digita um nome — pode ser parte dele.
+                {t.search.friendsEmptyHint.split("\n")[1]}
               </p>
             ) : friendLoading ? (
-              <p className="emptyBox">Buscando pessoas...</p>
+              <p className="emptyBox">{t.search.searchingFriends}</p>
             ) : friendError ? (
               <p className="emptyBox errorBox">{friendError}</p>
             ) : friendResults.length ? (
@@ -542,9 +541,9 @@ export function SearchPageClient({
               </div>
             ) : (
               <p className="emptyBox">
-                Ninguém encontrado com esse nome ainda.
+                {t.search.noFriends.split("\n")[0]}
                 <br />
-                Tenta um apelido ou parte do nome.
+                {t.search.noFriends.split("\n")[1]}
               </p>
             )}
           </div>
@@ -571,7 +570,8 @@ async function fetchSearchPage(queryValue: string, page: number) {
   const response = await fetch(`/api/setlists/search?searchTerm=${encodeURIComponent(queryValue)}&p=${page}`);
   const payload = (await response.json()) as SearchResponse | { error?: string; message?: string };
   if (!response.ok) {
-    throw new Error(payload && "message" in payload ? payload.message ?? payload.error ?? "Não conseguimos buscar os shows agora." : "Não conseguimos buscar os shows agora.");
+    const fallback = "We couldn't search for shows right now.";
+    throw new Error(payload && "message" in payload ? payload.message ?? payload.error ?? fallback : fallback);
   }
   return payload as SearchResponse;
 }

@@ -9,6 +9,10 @@ import {
 } from "@/lib/supabase/social-helpers";
 
 const FEED_LIMIT = 30;
+// Puxamos mais entries do que mostramos pra reordenar por data do show sem
+// cortar candidatos relevantes — o "limit do SQL" usa updated_at, mas a UI
+// ordena por eventDateIso.
+const FEED_FETCH_LIMIT = 200;
 
 export async function GET() {
   const { supabase, userId, configError } = await loadAuthContext();
@@ -35,7 +39,7 @@ export async function GET() {
     .select("user_id, setlist_id, status, show_data, updated_at")
     .in("user_id", followedIds)
     .order("updated_at", { ascending: false })
-    .limit(FEED_LIMIT);
+    .limit(FEED_FETCH_LIMIT);
 
   if (entriesError) {
     console.error("[feed/following] entries error:", entriesError.message);
@@ -66,7 +70,7 @@ export async function GET() {
     }
   }
 
-  const items: FollowFeedItem[] = (entries ?? []).map((row) => {
+  const mapped: FollowFeedItem[] = (entries ?? []).map((row) => {
     const actor = actorMap.get(row.user_id as string) ?? { displayName: "Alguém", avatarUrl: null };
     const show = row.show_data as ShowRecord;
     // O status armazenado é "congelado" no momento do save; aqui derivamos
@@ -85,6 +89,18 @@ export async function GET() {
       show
     };
   });
+
+  // Ordem cronológica: shows futuros primeiro (mais próximo de hoje no topo),
+  // depois passados em ordem decrescente. A data do show é a referência
+  // temporal visível no card — ordenar por ela mantém o feed previsível.
+  const items = mapped
+    .sort((a, b) => {
+      if (a.action === "going" && b.action === "went") return -1;
+      if (a.action === "went" && b.action === "going") return 1;
+      if (a.action === "going") return a.show.eventDateIso.localeCompare(b.show.eventDateIso);
+      return b.show.eventDateIso.localeCompare(a.show.eventDateIso);
+    })
+    .slice(0, FEED_LIMIT);
 
   return NextResponse.json({ items });
 }

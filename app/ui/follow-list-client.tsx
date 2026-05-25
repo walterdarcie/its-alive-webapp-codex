@@ -6,6 +6,7 @@ import { useState, type CSSProperties } from "react";
 import { FollowButton } from "@/app/ui/profile-header";
 import { SocialDrawer } from "@/app/ui/social-drawer";
 import { trackEvent } from "@/lib/analytics";
+import { useLocale } from "@/lib/i18n-context";
 
 function HamburgerIcon() {
   return (
@@ -53,22 +54,23 @@ export function FollowListClient({
   items: initialItems,
   isAuthenticated
 }: FollowListClientProps) {
+  const { t } = useLocale();
   const [items, setItems] = useState(initialItems);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const followingHref = `/u/${encodeURIComponent(ownerUserId)}/seguindo`;
   const followersHref = `/u/${encodeURIComponent(ownerUserId)}/seguidores`;
   const backHref = ownerIsViewer ? "/" : `/u/${encodeURIComponent(ownerUserId)}`;
-  const backLabel = ownerIsViewer ? "Voltar para a home" : `Voltar para o perfil de ${ownerDisplayName}`;
-  const title = type === "following" ? "Seguindo" : "Seguidores";
+  const backLabel = ownerIsViewer ? t.followList.backToHome : t.followList.backToProfile(ownerDisplayName);
+  const title = type === "following" ? t.followList.followingTitle : t.followList.followersTitle;
   const subtitle =
     type === "following"
       ? ownerIsViewer
-        ? "Pessoas que você está acompanhando."
-        : `Pessoas que ${ownerDisplayName} acompanha.`
+        ? t.followList.followingSubSelf
+        : t.followList.followingSubOther(ownerDisplayName)
       : ownerIsViewer
-        ? "Pessoas que acompanham você."
-        : `Pessoas que acompanham ${ownerDisplayName}.`;
+        ? t.followList.followersSubSelf
+        : t.followList.followersSubOther(ownerDisplayName);
 
   function updateFollow(targetUserId: string, following: boolean) {
     setItems((current) =>
@@ -79,14 +81,14 @@ export function FollowListClient({
   return (
     <main className="page pageSocial followListPage">
       <header className="topBarSocial">
-        <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
+        <Link href="/" aria-label={t.common.goHome} className="brandLogoLink">
           <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
         </Link>
         {isAuthenticated ? (
           <button
             type="button"
             className="hamburgerBtn iconBtn"
-            aria-label="Abrir menu"
+            aria-label={t.common.openMenu}
             onClick={() => {
               trackEvent("social_drawer_open", { source: "follow_list" });
               setDrawerOpen(true);
@@ -111,20 +113,20 @@ export function FollowListClient({
         <p className="followListHeaderSubtitle">{subtitle}</p>
       </div>
 
-      <nav className="followListSwitch" aria-label="Alternar entre seguindo e seguidores">
+      <nav className="followListSwitch" aria-label={t.followList.switchLabel}>
         <Link
           href={followingHref}
           className={`followListSwitchItem ${type === "following" ? "isActive" : ""}`}
           aria-current={type === "following" ? "page" : undefined}
         >
-          Seguindo
+          {t.followList.followingTitle}
         </Link>
         <Link
           href={followersHref}
           className={`followListSwitchItem ${type === "followers" ? "isActive" : ""}`}
           aria-current={type === "followers" ? "page" : undefined}
         >
-          Seguidores
+          {t.followList.followersTitle}
         </Link>
       </nav>
 
@@ -135,7 +137,7 @@ export function FollowListClient({
               <Link
                 href={`/u/${encodeURIComponent(item.userId)}`}
                 className="friendResultAvatarLink"
-                aria-label={`Abrir perfil de ${item.displayName}`}
+                aria-label={t.common.openProfileLabel(item.displayName)}
                 onClick={() => trackEvent("follow_list_avatar_click", { type, target_user_id: item.userId })}
               >
                 {item.avatarUrl ? (
@@ -171,7 +173,7 @@ export function FollowListClient({
                   className="ctaMain followBtn"
                   onClick={() => trackEvent("login_click", { source: "follow_list_cta" })}
                 >
-                  <span className="ctaMainLabel">Entrar</span>
+                  <span className="ctaMainLabel">{t.followList.enterBtn}</span>
                 </Link>
               )}
             </div>
@@ -180,11 +182,11 @@ export function FollowListClient({
           <p className="followListEmpty">
             {type === "following"
               ? ownerIsViewer
-                ? "Você ainda não segue ninguém. Procure por amigos para começar."
-                : `${ownerDisplayName} ainda não segue ninguém por aqui.`
+                ? t.followList.emptyFollowingSelf
+                : t.followList.emptyFollowingOther(ownerDisplayName)
               : ownerIsViewer
-                ? "Ainda ninguém te segue. Compartilhe seu perfil para reencontrar amigos."
-                : `Ninguém segue ${ownerDisplayName} ainda.`}
+                ? t.followList.emptyFollowersSelf
+                : t.followList.emptyFollowersOther(ownerDisplayName)}
           </p>
         )}
       </div>

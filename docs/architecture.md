@@ -155,6 +155,12 @@ lib/
   setlist-cache.ts      ← Cache in-memory (server-only)
   artist-image.ts       ← Resolução de imagem (server-only)
   artist-image-client.ts← Idem, para client components
+  i18n.ts               ← Tipos Locale, LocaleDict e constantes i18n
+  i18n-context.tsx      ← LocaleProvider + useLocale() hook ("use client")
+  locales/
+    pt.ts               ← Dicionário português (padrão)
+    en.ts               ← Dicionário inglês
+    es.ts               ← Dicionário espanhol
   supabase/
     shared.ts           ← Env helpers
     server.ts           ← SSR client factory

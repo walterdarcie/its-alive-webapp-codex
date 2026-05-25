@@ -1,17 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { useLocale } from "@/lib/i18n-context";
 
 export default function TermsPage() {
+  const { t } = useLocale();
   return (
     <main className="page legalPage">
-      <h1 className="sectionTitle">Termos de Uso</h1>
-      <p className="muted">
-        Esta versão está em evolução contínua. Ao usar o It&apos;s Alive, você concorda em utilizar a plataforma de forma respeitosa e responsável.
-      </p>
-      <p className="muted">
-        Em breve publicaremos os termos completos com regras de comunidade, conteúdo e moderação para a fase social do produto.
-      </p>
+      <h1 className="sectionTitle">{t.terms.title}</h1>
+      <p className="muted">{t.terms.body1}</p>
+      <p className="muted">{t.terms.body2}</p>
       <Link href="/login" className="chip chipGhost">
-        Voltar
+        {t.terms.back}
       </Link>
     </main>
   );

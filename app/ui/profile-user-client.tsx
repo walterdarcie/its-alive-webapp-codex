@@ -12,11 +12,11 @@ import { SocialDrawer } from "@/app/ui/social-drawer";
 import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import {
   daysUntilShow,
-  formatDatePtBrLong,
   formatVenueLine,
   groupShowsByYearDesc,
   isFutureOrTodayShow
 } from "@/lib/show-utils";
+import { useLocale } from "@/lib/i18n-context";
 import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-client";
 import { countAttendedShows } from "@/lib/social-utils";
 import { trackEvent } from "@/lib/analytics";
@@ -49,8 +49,9 @@ function buildPhotoStyle(imageUrl: string, overlay: "hero" | "thumb"): CSSProper
 }
 
 function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) {
+  const { t, formatDate } = useLocale();
   const daysAway = daysUntilShow(show.eventDateIso);
-  const dateLabel = formatDatePtBrLong(show.eventDateIso);
+  const dateLabel = formatDate(show.eventDateIso);
   return (
     <article className="card">
       <div className={`cardImage ${imageUrl ? "hasPhoto" : ""}`} style={imageUrl ? buildPhotoStyle(imageUrl, "hero") : undefined}>
@@ -58,7 +59,7 @@ function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) 
       </div>
       <div className="cardBody">
         <div className="cardMeta">
-          {daysAway > 0 ? `Faltam ${daysAway} dias!` : daysAway === 0 ? "É hoje!" : dateLabel}
+          {daysAway > 0 ? t.home.daysLeft(daysAway) : daysAway === 0 ? t.home.today : dateLabel}
         </div>
         <h3 className="cardTitle">{show.artist}</h3>
         <div className="cardVenue venueWithPin">
@@ -78,6 +79,7 @@ function TicketRow({
   imageUrl?: string;
   onOpenDetail: (showId: string) => void;
 }) {
+  const { formatDate } = useLocale();
   return (
     <div className="ticketWrap">
       <button type="button" className="ticket ticketClickable ticketButtonReset" onClick={() => onOpenDetail(show.id)}>
@@ -85,7 +87,7 @@ function TicketRow({
           {imageUrl ? null : show.artist}
         </div>
         <div className="ticketBody">
-          <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
+          <p className="ticketDate">{formatDate(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
           <p className="ticketVenue venueWithPin">
             <span className="venueText">{formatVenueLine(show)}</span>
@@ -105,6 +107,7 @@ type ProfileUserClientProps = {
 
 export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isAuthenticated }: ProfileUserClientProps) {
   const router = useRouter();
+  const { t } = useLocale();
   const [profile, setProfile] = useState<UserProfileWithCounts>(initialProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
@@ -213,7 +216,7 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
       className="ctaMain followBtn"
       onClick={() => trackEvent("login_click", { source: "profile_page_follow_cta" })}
     >
-      <span className="ctaMainLabel">Entrar para seguir</span>
+      <span className="ctaMainLabel">{t.profile.loginToFollow}</span>
     </Link>
   ) : profile.isSelf ? null : (
     <FollowButton
@@ -233,14 +236,14 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
   return (
     <main className="page pageSocial profilePage">
       <header className="topBarSocial">
-        <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
+        <Link href="/" aria-label={t.common.goHome} className="brandLogoLink">
           <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
         </Link>
         {isAuthenticated ? (
           <button
             type="button"
             className="hamburgerBtn iconBtn"
-            aria-label="Abrir menu"
+            aria-label={t.common.openMenu}
             onClick={() => {
               trackEvent("social_drawer_open", { source: "profile_page" });
               setDrawerOpen(true);
@@ -251,9 +254,9 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
         ) : null}
       </header>
 
-      <button type="button" className="profilePageBack profilePageBackBtn" onClick={handleBack} aria-label="Voltar para a página anterior">
+      <button type="button" className="profilePageBack profilePageBackBtn" onClick={handleBack} aria-label={t.common.back}>
         <BackIcon />
-        Voltar
+        {t.common.back}
       </button>
 
       <ProfileHeader
@@ -267,16 +270,14 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
 
       {!wallet.length ? (
         <section className="section">
-          <p className="emptyBox">
-            {profile.displayName} ainda não guardou shows por aqui. Quando salvar um, aparece nesta página.
-          </p>
+          <p className="emptyBox">{t.profile.emptyWallet(profile.displayName)}</p>
         </section>
       ) : (
         <>
           {futureShows.length ? (
             <section className="section" aria-labelledby="user-future-shows">
               <h2 id="user-future-shows" className="sectionTitle">
-                Vai!
+                {t.profile.goingTitle}
               </h2>
               <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
                 {futureShows.map((show) => (

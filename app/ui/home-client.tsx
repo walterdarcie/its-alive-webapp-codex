@@ -11,7 +11,6 @@ import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-
 import { getWalletEntries, hydrateWalletFromServer, type WalletEntry } from "@/lib/wallet-storage";
 import {
   daysUntilShow,
-  formatDatePtBrLong,
   formatVenueLine,
   groupShowsByYearDesc,
   isFutureOrTodayShow
@@ -23,6 +22,7 @@ import type {
   UserProfileWithCounts
 } from "@/lib/social-types";
 import { countAttendedShows } from "@/lib/social-utils";
+import { useLocale } from "@/lib/i18n-context";
 import { trackEvent } from "@/lib/analytics";
 
 type HomeTab = "novidades" | "meus-shows";
@@ -37,15 +37,7 @@ const DEFAULT_TRENDING_FILTERS: TrendingFiltersState = {
   city: ""
 };
 
-const TRENDING_COUNTRY_OPTIONS: Array<{ code: string; label: string }> = [
-  { code: "BR", label: "Brasil" },
-  { code: "AR", label: "Argentina" },
-  { code: "CL", label: "Chile" },
-  { code: "MX", label: "México" },
-  { code: "US", label: "Estados Unidos" },
-  { code: "GB", label: "Reino Unido" },
-  { code: "PT", label: "Portugal" }
-];
+const TRENDING_COUNTRY_CODES = ["BR", "AR", "CL", "MX", "US", "GB", "PT"] as const;
 
 function HamburgerIcon() {
   return (
@@ -73,15 +65,16 @@ function SearchIcon() {
 }
 
 function TopBarSocial({ onOpenDrawer }: { onOpenDrawer: () => void }) {
+  const { t } = useLocale();
   return (
     <header className="topBarSocial">
-      <Link href="/" aria-label="Ir para a home" className="brandLogoLink">
+      <Link href="/" aria-label={t.common.goHome} className="brandLogoLink">
         <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
       </Link>
       <button
         type="button"
         className="hamburgerBtn iconBtn"
-        aria-label="Abrir menu"
+        aria-label={t.common.openMenu}
         onClick={() => {
           trackEvent("social_drawer_open", { source: "home_topbar" });
           onOpenDrawer();
@@ -105,8 +98,9 @@ function buildPhotoStyle(imageUrl: string, overlay: "hero" | "thumb"): CSSProper
 }
 
 function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) {
+  const { t, formatDate } = useLocale();
   const daysAway = daysUntilShow(show.eventDateIso);
-  const dateLabel = formatDatePtBrLong(show.eventDateIso);
+  const dateLabel = formatDate(show.eventDateIso);
   return (
     <article className="card">
       <div className={`cardImage ${imageUrl ? "hasPhoto" : ""}`} style={imageUrl ? buildPhotoStyle(imageUrl, "hero") : undefined}>
@@ -114,7 +108,7 @@ function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) 
       </div>
       <div className="cardBody">
         <div className="cardMeta">
-          {daysAway > 0 ? `Faltam ${daysAway} dias!` : daysAway === 0 ? "É hoje!" : dateLabel}
+          {daysAway > 0 ? t.home.daysLeft(daysAway) : daysAway === 0 ? t.home.today : dateLabel}
         </div>
         <h3 className="cardTitle">{show.artist}</h3>
         <div className="cardVenue venueWithPin">
@@ -134,6 +128,7 @@ function TicketRow({
   imageUrl?: string;
   onOpenDetail: (showId: string) => void;
 }) {
+  const { formatDate } = useLocale();
   return (
     <div className="ticketWrap">
       <button type="button" className="ticket ticketClickable ticketButtonReset" onClick={() => onOpenDetail(show.id)}>
@@ -141,7 +136,7 @@ function TicketRow({
           {imageUrl ? null : show.artist}
         </div>
         <div className="ticketBody">
-          <p className="ticketDate">{formatDatePtBrLong(show.eventDateIso)}</p>
+          <p className="ticketDate">{formatDate(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
           <p className="ticketVenue venueWithPin">
             <span className="venueText">{formatVenueLine(show)}</span>
@@ -164,7 +159,8 @@ type FeedTicketProps = {
 };
 
 function FeedActivityItem({ item, imageUrl, onOpenDetail }: FeedTicketProps) {
-  const verbLabel = item.action === "went" ? "Foi" : "Vai";
+  const { t } = useLocale();
+  const verbLabel = item.action === "went" ? t.home.verbWent : t.home.verbGoing;
   const verbClass = item.action === "went" ? "verbWent" : "verbGoing";
 
   return (
@@ -173,7 +169,7 @@ function FeedActivityItem({ item, imageUrl, onOpenDetail }: FeedTicketProps) {
         <Link
           href={`/u/${encodeURIComponent(item.actor.userId)}`}
           className="activityAvatarLink"
-          aria-label={`Abrir perfil de ${item.actor.displayName}`}
+          aria-label={t.common.openProfileLabel(item.actor.displayName)}
           onClick={() => trackEvent("activity_avatar_click", { target_user_id: item.actor.userId })}
         >
           {item.actor.avatarUrl ? (
@@ -218,14 +214,20 @@ function TrendingFiltersBar({
   filters: TrendingFiltersState;
   onFiltersChange: (next: TrendingFiltersState) => void;
 }) {
+  const { t } = useLocale();
   const hasActive =
     filters.country !== DEFAULT_TRENDING_FILTERS.country ||
     filters.city.trim() !== "";
 
+  const countryOptions = TRENDING_COUNTRY_CODES.map((code) => ({
+    code,
+    label: t.home.countries[code] ?? code
+  }));
+
   return (
-    <div className="trendingFiltersBar" role="group" aria-label="Filtros de shows em alta">
+    <div className="trendingFiltersBar" role="group" aria-label={t.home.filterGroupLabel}>
       <label className="trendingFilter">
-        <span className="trendingFilterLabel">País</span>
+        <span className="trendingFilterLabel">{t.home.filterCountry}</span>
         <select
           className="trendingFilterSelect"
           value={filters.country}
@@ -235,7 +237,7 @@ function TrendingFiltersBar({
             onFiltersChange(next);
           }}
         >
-          {TRENDING_COUNTRY_OPTIONS.map((option) => (
+          {countryOptions.map((option) => (
             <option key={option.code} value={option.code}>
               {option.label}
             </option>
@@ -243,12 +245,12 @@ function TrendingFiltersBar({
         </select>
       </label>
       <label className="trendingFilter">
-        <span className="trendingFilterLabel">Cidade</span>
+        <span className="trendingFilterLabel">{t.home.filterCity}</span>
         <input
           className="trendingFilterInput"
           type="text"
           value={filters.city}
-          placeholder="Todas"
+          placeholder={t.home.filterAllCities}
           onChange={(event) => {
             onFiltersChange({ ...filters, city: event.target.value });
           }}
@@ -266,9 +268,9 @@ function TrendingFiltersBar({
             trackEvent("trending_filter_clear", {});
             onFiltersChange({ ...DEFAULT_TRENDING_FILTERS });
           }}
-          aria-label="Limpar filtros"
+          aria-label={t.home.filterClearLabel}
         >
-          Limpar
+          {t.home.filterClear}
         </button>
       ) : null}
     </div>
@@ -276,13 +278,14 @@ function TrendingFiltersBar({
 }
 
 function TrendingShowsPanel({ trending, loading, filters, onFiltersChange, resolveShowImageUrl, onOpenShow }: TrendingPanelProps) {
+  const { t } = useLocale();
   const sliderItems = trending.slice(0, TRENDING_SLIDER_LIMIT);
   const listItems = trending.slice(TRENDING_SLIDER_LIMIT);
 
   return (
     <section className="section" aria-labelledby="shows-em-alta">
       <h2 id="shows-em-alta" className="sectionTitle">
-        Shows em alta
+        {t.home.trendingTitle}
       </h2>
       <TrendingFiltersBar filters={filters} onFiltersChange={onFiltersChange} />
       {loading ? (
@@ -309,7 +312,7 @@ function TrendingShowsPanel({ trending, loading, filters, onFiltersChange, resol
           </div>
           {listItems.length ? (
             <div className="trendingListWrap">
-              <h3 className="trendingListTitle">Mais em alta</h3>
+              <h3 className="trendingListTitle">{t.home.trendingMore}</h3>
               <div className="ticketList">
                 {listItems.map(({ show }) => (
                   <TicketRow
@@ -327,7 +330,7 @@ function TrendingShowsPanel({ trending, loading, filters, onFiltersChange, resol
           ) : null}
         </>
       ) : (
-        <p className="emptyBox trendingEmpty">Nenhum show por aqui com esses filtros. Tente outro recorte.</p>
+        <p className="emptyBox trendingEmpty">{t.home.trendingEmpty}</p>
       )}
     </section>
   );
@@ -350,10 +353,12 @@ function FollowingFeedPanel({
   onOpenShow,
   onOpenFriendsDrawer
 }: FollowingPanelProps) {
+  const { t } = useLocale();
+
   if (loading) {
     return (
-      <section className="section" aria-label="Carregando novidades dos amigos">
-        <h2 className="sectionTitle">Seguindo</h2>
+      <section className="section" aria-label={t.home.followingLoadingLabel}>
+        <h2 className="sectionTitle">{t.home.followingTitle}</h2>
         <div className="activityFeed skeletonFeed" aria-hidden>
           <div className="skeletonTicket" />
           <div className="skeletonTicket" />
@@ -366,11 +371,11 @@ function FollowingFeedPanel({
     return (
       <section className="section" aria-labelledby="seguindo-empty">
         <h2 id="seguindo-empty" className="sectionTitle">
-          Seguindo
+          {t.home.followingTitle}
         </h2>
         <div className="emptyBox emptyFollowState">
           <p className="emptyFollowText">
-            Comece a seguir gente que também guarda memórias de shows. Vocês podem se reencontrar nos próximos.
+            {t.home.followingEmptyText}
           </p>
           <Link
             href="/search?tab=amigos"
@@ -380,7 +385,7 @@ function FollowingFeedPanel({
               onOpenFriendsDrawer();
             }}
           >
-            Buscar amigos
+            {t.home.followingEmptyCta}
           </Link>
         </div>
       </section>
@@ -391,9 +396,9 @@ function FollowingFeedPanel({
     return (
       <section className="section" aria-labelledby="seguindo-quiet">
         <h2 id="seguindo-quiet" className="sectionTitle">
-          Seguindo
+          {t.home.followingTitle}
         </h2>
-        <p className="emptyBox">Ninguém que você segue marcou show por aqui ainda. Logo aparece algo.</p>
+        <p className="emptyBox">{t.home.followingQuietText}</p>
       </section>
     );
   }
@@ -401,7 +406,7 @@ function FollowingFeedPanel({
   return (
     <section className="section" aria-labelledby="seguindo">
       <h2 id="seguindo" className="sectionTitle">
-        Seguindo
+        {t.home.followingTitle}
       </h2>
       <div className="activityFeed">
         {items.map((item) => (
@@ -436,21 +441,22 @@ type MyShowsPanelProps = {
 };
 
 function MyShowsPanel({ futureShows, pastShows, resolveShowImageUrl, onOpenShow }: MyShowsPanelProps) {
+  const { t } = useLocale();
   const groupedPast = useMemo(() => groupShowsByYearDesc(pastShows), [pastShows]);
 
   if (!futureShows.length && !pastShows.length) {
     return (
       <section className="myShowsEmpty section">
         <p className="emptyBox">
-          Sua carteira começa na busca. <br />
-          Encontre um show e marque como <strong>Eu fui</strong> ou <strong>Eu vou</strong>.
+          {t.home.myShowsEmptyIntro} <br />
+          Encontre um show e marque como <strong>{t.home.myShowsEmptyIWent}</strong> ou <strong>{t.home.myShowsEmptyIGo}</strong>.
         </p>
         <Link
           href="/search?tab=shows"
           className="ctaMain"
           onClick={() => trackEvent("my_shows_empty_cta", { source: "home_my_shows_empty" })}
         >
-          <span className="ctaMainLabel">Buscar meus shows</span>
+          <span className="ctaMainLabel">{t.home.myShowsEmptyCta}</span>
         </Link>
       </section>
     );
@@ -461,7 +467,7 @@ function MyShowsPanel({ futureShows, pastShows, resolveShowImageUrl, onOpenShow 
       {futureShows.length ? (
         <section className="section" aria-labelledby="shows-futuros">
           <h2 id="shows-futuros" className="sectionTitle">
-            Eu vou!
+            {t.home.myShowsFutureTitle}
           </h2>
           <div className={`slider ${futureShows.length > 1 ? "sliderPeek" : ""}`}>
             {futureShows.map((show) => (
@@ -482,7 +488,7 @@ function MyShowsPanel({ futureShows, pastShows, resolveShowImageUrl, onOpenShow 
       ) : null}
 
       {groupedPast.length ? (
-        <section className="section" aria-label="Shows passados agrupados por ano">
+        <section className="section" aria-label="shows passados">
           {groupedPast.map((group, index) => (
             <div key={group.year} className="yearGroup" style={{ animationDelay: `${80 + index * 60}ms` }}>
               <h3 className="yearLabel">
@@ -510,8 +516,9 @@ function MyShowsPanel({ futureShows, pastShows, resolveShowImageUrl, onOpenShow 
 }
 
 function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTab) => void }) {
+  const { t } = useLocale();
   return (
-    <div className="tabsBar" role="tablist" aria-label="Seções da home">
+    <div className="tabsBar" role="tablist" aria-label={t.home.homeTabsLabel}>
       <button
         type="button"
         role="tab"
@@ -523,7 +530,7 @@ function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTa
           onChange("novidades");
         }}
       >
-        Novidades
+        {t.home.tabWhatsNew}
       </button>
       <button
         type="button"
@@ -536,13 +543,14 @@ function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTa
           onChange("meus-shows");
         }}
       >
-        Meus shows
+        {t.home.tabMyShows}
       </button>
     </div>
   );
 }
 
 export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: ViewerProfile; initialTab?: HomeTab }) {
+  const { t } = useLocale();
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
   const [selectedShow, setSelectedShow] = useState<{ id: string; initialData?: ShowRecord } | null>(null);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
@@ -687,7 +695,7 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
   const allShowsForImages = useMemo(() => {
     const shows: ShowRecord[] = [];
     for (const entry of walletEntries) shows.push(entry.show);
-    for (const t of trending) shows.push(t.show);
+    for (const item of trending) shows.push(item.show);
     for (const f of feedItems) shows.push(f.show);
     return shows;
   }, [walletEntries, trending, feedItems]);
@@ -766,7 +774,7 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
         }}
       >
         <SearchIcon />
-        <span>Encontre shows incríveis</span>
+        <span>{t.home.searchPlaceholder}</span>
       </Link>
 
       <ProfileHeader
@@ -810,7 +818,7 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
             {!trendingLoading && !trending.length && !feedLoading && !followsAnyone ? (
               <section className="section">
                 <p className="emptyBox">
-                  Por enquanto está calmo por aqui. Salva uns shows na carteira e segue amigos pra ver novidades.
+                  {t.home.homeCalmText}
                 </p>
               </section>
             ) : null}

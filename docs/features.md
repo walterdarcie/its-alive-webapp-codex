@@ -59,7 +59,8 @@
 **Botão SETLIST.FM:** suprimido para shows com `id.startsWith("tm-")` pois não há setlist externo.
 
 **Resolução de imagem do artista:**
-- Cascata: MusicBrainz (quando tem `artistMbid`) → **Deezer** (primeira tentativa por nome — 1000×1000 quadrada) → Wikipedia/Wikidata (fallback com filtros de contexto musical e checagem de título)
+- Cascata: MusicBrainz (quando tem `artistMbid`) → **Deezer** (primeira tentativa por nome — 1000×1000 quadrada) → Wikipedia/Wikidata (fallback com filtros de contexto musical e checagem de título) → **Headliner do show composto** (último fallback: primeiro nome quando o show tem múltiplos artistas separados por `&`, `+`, `,`, `feat`, `ft`)
+- Normalização ignora apóstrofes na comparação ("Marky Ramone's Blitzkrieg" ↔ "Marky Ramones Blitzkrieg" do Deezer)
 - Sem fallback permissivo: se nada bate com confiança, devolve `source: "none"` em vez de adivinhar (evita Lenin pelo Lenine, Chico Xavier pelo Chico Chico)
 - Cache HTTP 7 dias na CDN Vercel
 
@@ -170,6 +171,8 @@ Acionado pelo botão hambúrguer (substituiu o avatar com menu antigo). Itens to
 
 Lê `/api/feed/following`. Cada item: avatar + nome em bold + verbo `Foi` (memória, `pink-light`) ou `Vai` (antecipação, `blue-glow`), seguido do ticket do show. Estado vazio convida a buscar amigos.
 
+> Ordem **cronológica pela data do show**: futuros primeiro (próximo de hoje no topo), depois passados em ordem decrescente. Combina com o tom de antecipação do "Vai" + memória do "Foi" — a referência temporal visível é a data do show.
+
 > O verbo é **derivado da data do show** (`isFutureOrTodayShow → "Vai"`, senão `"Foi"`), não da coluna `status` armazenada. Garante que shows passados marcados originalmente como "Vai" virem `"Foi"` automaticamente com o tempo.
 
 > A data do post (`occurredAtIso`) não é exibida no cabeçalho do item — a referência temporal é a data do show, mostrada no ticket logo abaixo. Isso evita duplicidade visual ("hoje" vs. "20 jun 2026") quando o usuário acabou de marcar um show futuro.
@@ -236,7 +239,28 @@ Contadores derivam direto de `user_follows` (via `COUNT(*)` headless). Não há 
 
 ---
 
-## 7. Analytics (Google Analytics 4)
+## 7. Internacionalização (i18n)
+
+**Idiomas suportados:** português (`pt`, padrão), inglês (`en`), espanhol (`es`).
+
+**Detecção:** automática via `navigator.languages[0] ?? navigator.language` no `LocaleProvider`. Sem seletor de idioma na UI — o browser define o idioma conforme a localização/preferência do usuário.
+
+**Arquitetura:**
+- `lib/i18n.ts` — tipos `Locale`, `LocaleDict` e constantes
+- `lib/i18n-context.tsx` — `LocaleProvider` (detecta locale, atualiza `document.documentElement.lang`) e `useLocale()` hook
+- `lib/locales/pt.ts`, `en.ts`, `es.ts` — dicionários tipados com `LocaleDict`
+- `app/layout.tsx` — envolve toda a árvore com `<LocaleProvider>`
+
+**Hook `useLocale()`:** retorna `{ locale, t, formatDate, formatPostDate }`.
+- `t` — dicionário tipado com todas as strings da UI
+- `formatDate(isoDate)` — `"15 MAR 2025"` (uppercase, mês conforme locale)
+- `formatPostDate(isoTimestamp)` — `"15 mar 2025"` (lowercase, mês conforme locale)
+
+**Regra:** toda string visível ao usuário passa por `t.*`. Valores de URL (ex.: `"novidades"`, `"amigos"`) permanecem em português (são segmentos de rota, não texto UI).
+
+---
+
+## 8. Analytics (Google Analytics 4)
 
 **ID:** `G-LDQLEFB0DR`
 
