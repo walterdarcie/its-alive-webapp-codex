@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
 import { deriveWalletStatus, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
@@ -10,18 +11,47 @@ import { getWalletShow, isSavedInWallet, removeFromWalletServer, saveToWalletSer
 import { useLocale } from "@/lib/i18n-context";
 import { trackEvent } from "@/lib/analytics";
 import { ShowFeedClient } from "@/app/ui/show-feed-client";
+import { SocialDrawer } from "@/app/ui/social-drawer";
+import type { AttendeesPayload } from "@/app/api/shows/[id]/attendees/route";
 
 type ShowDetailClientProps = {
   id: string;
-  mode?: "page" | "overlay";
-  onClose?: () => void;
   initialData?: ShowDetailRecord | null;
   isAuthenticated?: boolean;
   viewer?: Viewer | null;
 };
 
+function HamburgerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" className="iconSvg">
+      <path d="M4 7h16 M4 12h16 M4 17h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
 
-export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAuthenticated = true, viewer = null }: ShowDetailClientProps) {
+function ArrowLeftIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="iconSvg">
+      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" className="iconSvg">
+      <path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function buildAvatarStyle(avatarUrl: string): CSSProperties {
+  const sanitized = avatarUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return { backgroundImage: `url("${sanitized}")` };
+}
+
+export function ShowDetailClient({ id, initialData, isAuthenticated = true, viewer = null }: ShowDetailClientProps) {
+  const router = useRouter();
   const { t, formatDate } = useLocale();
   const [show, setShow] = useState<ShowDetailRecord | null>(initialData ?? null);
   const [loading, setLoading] = useState(!initialData);
@@ -32,19 +62,13 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
   const [artistImageUrl, setArtistImageUrl] = useState<string | null>(initialData?.artistImageUrl ?? null);
   const [savingWallet, setSavingWallet] = useState(false);
   const [lastSyncFailed, setLastSyncFailed] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [shareConfirm, setShareConfirm] = useState<"idle" | "copied">("idle");
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartY = useRef<number | null>(null);
-  const dragOriginScrollTop = useRef(0);
-
-  const isOverlay = mode === "overlay";
+  const [attendees, setAttendees] = useState<AttendeesPayload | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     setSaved(isSavedInWallet(id));
     setSetlistExpanded(false);
-    setIsClosing(false);
     setLastSyncFailed(false);
 
     const walletShow = getWalletShow(id);
@@ -131,13 +155,22 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
   }, [show?.id, show?.artist, show?.artistMbid, show?.artistImageUrl]);
 
   useEffect(() => {
-    if (!isOverlay) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    let cancelled = false;
+    async function loadAttendees() {
+      try {
+        const res = await fetch(`/api/shows/${encodeURIComponent(id)}/attendees`);
+        if (!res.ok) return;
+        const payload = (await res.json()) as AttendeesPayload;
+        if (!cancelled) setAttendees(payload);
+      } catch {
+        /* swallow — attendees row is non-critical */
+      }
+    }
+    void loadAttendees();
     return () => {
-      document.body.style.overflow = previousOverflow;
+      cancelled = true;
     };
-  }, [isOverlay]);
+  }, [id, saved]);
 
   const ctaLabel = useMemo(() => {
     if (!show) return t.showDetail.ctaGoing;
@@ -216,132 +249,96 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
     }
   }
 
-  function requestClose() {
-    if (isOverlay && onClose) {
-      setIsClosing(true);
-      window.setTimeout(() => {
-        onClose();
-      }, 220);
+  function handleBack() {
+    trackEvent("show_detail_back_click", { show_id: id });
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
       return;
     }
-    if (onClose) onClose();
+    router.push("/");
   }
 
-  function isMobileViewport() {
-    return typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches;
+  if (!show) {
+    return (
+      <main className="page pageSocial showDetailPage">
+        <TopBar onOpenDrawer={() => setDrawerOpen(true)} onBack={handleBack} isAuthenticated={isAuthenticated} />
+        {loading ? (
+          <p className="emptyBox">{t.showDetail.loading}</p>
+        ) : (
+          <p className="emptyBox errorBox">{error ?? t.showDetail.notFound}</p>
+        )}
+        <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="show_detail" />
+      </main>
+    );
   }
 
-  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (!isOverlay) return;
-    const target = event.target as HTMLElement | null;
-    const isInteractive = Boolean(target?.closest("button, a, input, textarea, select"));
-    if (isInteractive) return;
-    const inDragHandle = Boolean(target?.closest(".detailHeaderBar")) || Boolean(target?.closest(".detailTopNotch"));
-    if (!inDragHandle) return;
-
-    const isMobile = isMobileViewport();
-    if (isMobile && event.currentTarget.scrollTop > 0) return;
-
-    dragStartY.current = event.clientY;
-    dragOriginScrollTop.current = event.currentTarget.scrollTop;
-    setIsDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    if (!isOverlay) return;
-    if (dragStartY.current == null) return;
-    if (dragOriginScrollTop.current > 0) return;
-    const delta = Math.max(0, event.clientY - dragStartY.current);
-    if (delta > 0) event.preventDefault();
-    if (isMobileViewport() && delta > 84) {
-      endDrag(event.pointerId, event.currentTarget, true);
-      return;
+  const isFuture = isFutureOrTodayShow(show.eventDateIso);
+  const attendeesCount = attendees?.total ?? 0;
+  const attendeesLabel = (() => {
+    if (attendeesCount <= 0) {
+      return isFuture ? t.showDetail.attendeesEmptyGoing : t.showDetail.attendeesEmptyWent;
     }
-    setDragOffset(delta);
-  }
+    return isFuture ? t.showDetail.attendeesGoing(attendeesCount) : t.showDetail.attendeesWent(attendeesCount);
+  })();
+  const visibleAvatars = attendees?.recent ?? [];
 
-  function endDrag(pointerId?: number, currentTarget?: HTMLElement | null, forceClose = false) {
-    if (pointerId != null && currentTarget?.hasPointerCapture(pointerId)) {
-      currentTarget.releasePointerCapture(pointerId);
-    }
-    setIsDragging(false);
-    const closeThreshold = isMobileViewport() ? 96 : 140;
-    if (forceClose || dragOffset > closeThreshold) {
-      dragStartY.current = null;
-      setDragOffset(0);
-      requestClose();
-      return;
-    }
-    setDragOffset(0);
-    dragStartY.current = null;
-  }
+  return (
+    <main className="page pageSocial showDetailPage">
+      <TopBar onOpenDrawer={() => setDrawerOpen(true)} onBack={handleBack} isAuthenticated={isAuthenticated} />
 
-  const mobileDrag = isMobileViewport();
-  const sheetStyle =
-    isOverlay && (dragOffset > 0 || isDragging)
-      ? {
-          transform: mobileDrag ? `translateY(${dragOffset}px)` : `translateY(${dragOffset}px) scale(${1 - Math.min(dragOffset / 2000, 0.03)})`
-        }
-      : undefined;
+      <article className="ticketCard" aria-label={t.showDetail.overlayLabel}>
+        <header className="ticketCardHeader">
+          <p className="ticketCardDate">{formatDate(show.eventDateIso)}</p>
+          <h1 className="ticketCardTitle">{show.artist}</h1>
+          <p className="ticketCardVenue">{formatVenueLine(show)}</p>
+        </header>
 
-  const content = show ? (
-    <section
-      className={`detailSheet ${isOverlay ? "detailSheetOverlay" : ""} ${isDragging ? "isDragging" : ""} ${isClosing ? "isClosing" : ""}`}
-      aria-label={t.showDetail.overlayLabel}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={(e) => endDrag(e.pointerId, e.currentTarget)}
-      onPointerCancel={(e) => endDrag(e.pointerId, e.currentTarget)}
-      style={sheetStyle}
-    >
-      <div className="detailSheetTop">
-        <div className="detailHeaderBar">
-          <div className="detailTopNotch" aria-hidden />
-          <Image src="/brand/logo-icon.svg" alt="" width={28} height={28} className="detailMiniBrand" aria-hidden />
-          {isOverlay ? (
-            <button type="button" className="iconBtn iconBtnCentered" onClick={requestClose} aria-label={t.showDetail.closeLabel}>
-              <CloseIcon />
-            </button>
-          ) : (
-            <Link href="/" className="iconBtn iconBtnCentered" aria-label={t.showDetail.closeLabel}>
-              <CloseIcon />
-            </Link>
-          )}
+        <div className="ticketCardPerf" aria-hidden>
+          <span className="ticketCardPerfCutLeft" />
+          <span className="ticketCardPerfCutRight" />
+          <span className="ticketCardPerfDashed" />
         </div>
 
-        <p className="ticketDate detailDateTop">{formatDate(show.eventDateIso)}</p>
-        <h1 className="detailTitle">{show.artist}</h1>
-        <p className="ticketVenue detailVenue venueWithPin">
-          <span className="venueText">{formatVenueLine(show)}</span>
-        </p>
-      </div>
-
-      <div className={`detailHero cardImage ${artistImageUrl ? "hasPhoto" : ""}`}>
-        {artistImageUrl ? (
-          <>
+        <div className={`ticketCardHero ${artistImageUrl ? "hasPhoto" : ""}`}>
+          {artistImageUrl ? (
             <Image
               src={artistImageUrl}
               alt={show.artist}
               fill
               sizes="(min-width: 900px) 520px, 100vw"
-              className="detailHeroImage"
+              className="ticketCardHeroImage"
               priority
             />
-            <div className="detailHeroOverlay" aria-hidden />
-          </>
-        ) : (
-          show.artist
-        )}
-      </div>
+          ) : (
+            <span className="ticketCardHeroFallback">{show.artist}</span>
+          )}
+        </div>
 
-      <div className="detailBody detailBodyTicket">
-        {show.tourName ? <p className="resultMeta detailTour">{show.tourName}</p> : null}
+        <div className="ticketCardActions">
+          <div className="ticketAttendees" aria-label={attendeesLabel}>
+            {visibleAvatars.length ? (
+              <ul className="ticketAttendeeAvatars">
+                {visibleAvatars.map((person, index) => (
+                  <li key={person.userId} className="ticketAttendeeAvatarWrap" style={{ zIndex: visibleAvatars.length - index }}>
+                    {person.avatarUrl ? (
+                      <span
+                        className="ticketAttendeeAvatar ticketAttendeeAvatarPhoto"
+                        style={buildAvatarStyle(person.avatarUrl)}
+                        aria-label={person.displayName}
+                      />
+                    ) : (
+                      <span className="ticketAttendeeAvatar ticketAttendeeAvatarFallback" aria-label={person.displayName} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <span className="ticketAttendeeCount">{attendeesLabel}</span>
+          </div>
 
-        <div className="detailActions">
           <button
             type="button"
-            className={`ctaMain ${saved ? "isActive" : ""} ${ctaBurst ? "ctaBurst" : ""}`}
+            className={`ctaMain ctaWithBurst ${saved ? "isActive" : ""} ${ctaBurst ? "ctaBurst" : ""}`}
             onClick={() => {
               void toggleWallet();
             }}
@@ -350,8 +347,19 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
           >
             <span className="ctaMainLabel">{savingWallet ? t.showDetail.saving : `${ctaLabel}!`}</span>
             <span className="ctaMainPulse" aria-hidden />
+            <span className="ctaSparkField" aria-hidden>
+              <span className="ctaSpark ctaSpark1" />
+              <span className="ctaSpark ctaSpark2" />
+              <span className="ctaSpark ctaSpark3" />
+              <span className="ctaSpark ctaSpark4" />
+              <span className="ctaSpark ctaSpark5" />
+              <span className="ctaSpark ctaSpark6" />
+            </span>
           </button>
-          {show.ticketUrl && isFutureOrTodayShow(show.eventDateIso) ? (
+        </div>
+
+        <div className="ticketCardSecondaryActions">
+          {show.ticketUrl && isFuture ? (
             <a
               className="chip chipSecondary"
               href={show.ticketUrl}
@@ -388,10 +396,13 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
               SETLIST.FM
             </a>
           ) : null}
-          {lastSyncFailed ? <p className="muted walletSyncHint">{t.showDetail.syncHint}</p> : null}
         </div>
 
-        <div className="setlistPanel">
+        {lastSyncFailed ? <p className="muted walletSyncHint">{t.showDetail.syncHint}</p> : null}
+
+        {show.tourName ? <p className="resultMeta ticketCardTour">{show.tourName}</p> : null}
+
+        <div className="ticketCardSetlist">
           <h2 className="setlistTitle">{t.showDetail.setlistTitle}</h2>
           {loading && !show.songNames.length ? (
             <p className="muted">{t.showDetail.loadingSongs}</p>
@@ -451,46 +462,49 @@ export function ShowDetailClient({ id, mode = "page", onClose, initialData, isAu
             <p className="muted">{t.showDetail.noSetlist}</p>
           )}
         </div>
-      </div>
+      </article>
 
       <ShowFeedClient showId={id} viewer={viewer ?? null} />
-    </section>
-  ) : loading ? (
-    <p className="emptyBox">{t.showDetail.loading}</p>
-  ) : (
-    <p className="emptyBox errorBox">{error ?? t.showDetail.notFound}</p>
-  );
 
-  if (isOverlay) {
-    return (
-      <div className="detailOverlayRoot" role="dialog" aria-modal="true" aria-label={t.showDetail.overlayLabel}>
-        <button type="button" className="detailBackdrop" aria-label={t.showDetail.closeLabel} onClick={requestClose} />
-        <div className="detailOverlayContainer">{content}</div>
-      </div>
-    );
-  }
-
-  return <main className="page detailPage">{content}</main>;
-}
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" className="iconSvg">
-      <path
-        d="m18.3 5.71-1.41-1.42L12 9.17 7.11 4.29 5.7 5.71 10.59 10.6 5.7 15.49l1.41 1.41L12 12l4.89 4.9 1.41-1.41-4.89-4.89 4.89-4.89Z"
-        fill="currentColor"
-      />
-    </svg>
+      <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="show_detail" />
+    </main>
   );
 }
 
-function ShareIcon() {
+function TopBar({
+  onOpenDrawer,
+  onBack,
+  isAuthenticated
+}: {
+  onOpenDrawer: () => void;
+  onBack: () => void;
+  isAuthenticated: boolean;
+}) {
+  const { t } = useLocale();
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" className="iconSvg">
-      <path
-        d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"
-        fill="currentColor"
-      />
-    </svg>
+    <header className="topBarSocial showDetailTopBar">
+      <button type="button" className="showDetailBackBtn" onClick={onBack} aria-label={t.common.back}>
+        <ArrowLeftIcon />
+        <span className="showDetailBackLabel">{t.common.back}</span>
+      </button>
+      <Link href="/" aria-label={t.common.goHome} className="brandLogoLink">
+        <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
+      </Link>
+      {isAuthenticated ? (
+        <button
+          type="button"
+          className="hamburgerBtn iconBtn"
+          aria-label={t.common.openMenu}
+          onClick={() => {
+            trackEvent("social_drawer_open", { source: "show_detail" });
+            onOpenDrawer();
+          }}
+        >
+          <HamburgerIcon />
+        </button>
+      ) : (
+        <span aria-hidden />
+      )}
+    </header>
   );
 }

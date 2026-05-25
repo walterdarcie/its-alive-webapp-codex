@@ -2,11 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { startTransition, useDeferredValue, useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
-import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import { SocialDrawer } from "@/app/ui/social-drawer";
 import { FollowButton } from "@/app/ui/profile-header";
-import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
+import type { ShowRecord } from "@/lib/show-types";
 import { formatVenueLine } from "@/lib/show-utils";
 import type { ViewerProfile } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
@@ -116,9 +116,7 @@ function SearchResultRow({ show, onOpenDetail }: { show: ShowRecord; onOpenDetai
         </div>
         <div className="ticketBody searchTicketBody">
           <h3 className="ticketName">{show.artist}</h3>
-          <p className="ticketVenue venueWithPin">
-            <span className="venueText">{formatVenueLine(show)}</span>
-          </p>
+          <p className="ticketVenue">{formatVenueLine(show)}</p>
           {show.tourName ? <p className="resultMeta">{show.tourName}</p> : null}
         </div>
       </button>
@@ -170,7 +168,7 @@ function FriendResultRow({ result, isAuthenticated }: { result: FriendResult; is
 }
 
 export function SearchPageClient({
-  viewer,
+  viewer: _viewer,
   isAuthenticated = true,
   initialQuery,
   initialTab = "shows"
@@ -181,6 +179,7 @@ export function SearchPageClient({
   initialTab?: SearchTab;
 }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [query, setQuery] = useState(initialQuery ?? "");
   const deferredQuery = useDeferredValue(query);
   const [activeTab, setActiveTab] = useState<SearchTab>(initialTab);
@@ -196,7 +195,6 @@ export function SearchPageClient({
     hasMore: false,
     total: 0
   });
-  const [selectedShow, setSelectedShow] = useState<{ id: string; initialData?: ShowRecord } | null>(null);
 
   // Friends search state
   const [friendResults, setFriendResults] = useState<FriendResult[]>([]);
@@ -204,27 +202,8 @@ export function SearchPageClient({
   const [friendError, setFriendError] = useState<string | null>(null);
 
   function openShowOverlay(show: ShowRecord) {
-    setSelectedShow({ id: show.id, initialData: show });
-    window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
+    router.push(`/show/${encodeURIComponent(show.id)}`);
   }
-
-  function closeShowOverlay() {
-    setSelectedShow(null);
-    window.history.pushState({}, "", `/search?tab=${activeTab}`);
-  }
-
-  useEffect(() => {
-    function handlePopState(event: PopStateEvent) {
-      const state = event.state as { showOverlay?: string } | null;
-      if (state?.showOverlay) {
-        setSelectedShow({ id: state.showOverlay });
-      } else {
-        setSelectedShow(null);
-      }
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
 
   const searchSentinelRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -551,17 +530,6 @@ export function SearchPageClient({
       </section>
 
       <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="search" />
-
-      {selectedShow ? (
-        <ShowDetailClient
-          id={selectedShow.id}
-          mode="overlay"
-          onClose={closeShowOverlay}
-          isAuthenticated={isAuthenticated}
-          viewer={viewer ? ({ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer) : null}
-          initialData={selectedShow.initialData ? ({ ...selectedShow.initialData, songNames: [], setlistSections: [] } satisfies ShowDetailRecord) : undefined}
-        />
-      ) : null}
     </main>
   );
 }

@@ -22,9 +22,11 @@
   --bg-primary: #140016;
   --bg-secondary: #1f0322;
   --bg-tertiary: #2a0730;
-  --surface-card: #162a52;
-  --surface-card-hover: #1c3566;
+  --surface-card: #1d3362;
+  --surface-card-hover: #2a447e;
   --surface-soft: #101c3a;
+  --font-display: var(--font-display, "Anton"), "Work Sans", sans-serif;
+  --font-body: var(--font-body, "Work Sans"), system-ui, sans-serif;
   --blue-accent: #2f6bff;
   --blue-soft: #1f4ed8;
   --blue-glow: #6ea8ff;
@@ -986,15 +988,7 @@ input {
   text-align: center;
 }
 
-.detailVenue.venueWithPin {
-  justify-content: center;
-}
-
-.detailVenue.venueWithPin .venueText {
-  flex: 0 1 auto;
-  max-width: min(100%, 360px);
-  text-align: left;
-}
+/* detailVenue alignment kept inline; pin removed. */
 
 .detailHero {
   aspect-ratio: 1 / 1;
@@ -1113,35 +1107,7 @@ input {
   cursor: pointer;
 }
 
-.venueWithPin {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.venueWithPin .venueText {
-  display: block;
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.venueWithPin::before {
-  content: "";
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  background: center/contain no-repeat
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239eaad0'%3E%3Cpath d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z'/%3E%3C/svg%3E");
-}
-
-.cardVenue.venueWithPin::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='rgba(255,255,255,0.9)'%3E%3Cpath d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z'/%3E%3C/svg%3E");
-}
+/* venueWithPin pin icon removed — venue text renders without a leading marker. */
 
 .cardButtonReset,
 .ticketButtonReset {
@@ -2458,8 +2424,23 @@ input {
 .profileShowStat {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
+}
+
+.profileShowStatLabelGroup {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1;
+}
+
+.profileShowStatLabelTop {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: lowercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
 }
 
 .profileShowStatNumber {
@@ -3506,3 +3487,493 @@ input {
     transform: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Anton display font — title overrides                                */
+/* ------------------------------------------------------------------ */
+
+.sectionTitle,
+.cardTitle,
+.ticketName,
+.detailTitle,
+.resultTitle,
+.onboardingTitle,
+.onboardingTitleInline,
+.loginTitle,
+.signinTitle,
+.profileName,
+.followListHeaderTitle,
+.friendResultName,
+.friendResultName a,
+.ticketCardTitle,
+.ticketCardDate,
+.ticketDateStubMonth,
+.ticketDateStubDay,
+.ticketDateStubYear {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.005em;
+}
+
+/* Anton already runs tall and condensed — neutralise per-title weights */
+.cardTitle,
+.ticketName,
+.detailTitle,
+.resultTitle,
+.profileName,
+.followListHeaderTitle,
+.friendResultName,
+.sectionTitle,
+.loginTitle,
+.signinTitle,
+.onboardingTitle,
+.onboardingTitleInline,
+.ticketCardTitle {
+  font-weight: 400;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Show detail topbar — back button next to logo                       */
+/* ------------------------------------------------------------------ */
+
+.showDetailTopBar {
+  grid-template-columns: auto 1fr 40px;
+  gap: 12px;
+}
+
+.showDetailTopBar .brandLogoLink {
+  grid-column: 2;
+  justify-self: center;
+}
+
+.showDetailTopBar .hamburgerBtn {
+  grid-column: 3;
+}
+
+.showDetailBackBtn {
+  grid-column: 1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 6px 8px 6px 0;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 999px;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.showDetailBackBtn:hover,
+.showDetailBackBtn:focus-visible {
+  color: var(--text-primary);
+  transform: translateX(-2px);
+  outline: none;
+}
+
+.showDetailBackLabel {
+  display: inline-block;
+}
+
+@media (max-width: 480px) {
+  .showDetailBackLabel {
+    font-size: 12px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ticket card — show detail page                                      */
+/* ------------------------------------------------------------------ */
+
+.showDetailPage {
+  max-width: 520px;
+  padding-bottom: 60px;
+}
+
+.ticketCard {
+  position: relative;
+  margin: 14px 8px 24px;
+  background: var(--surface-card);
+  border-radius: 24px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ticketCardHeader {
+  padding: 28px 22px 22px;
+  text-align: center;
+}
+
+.ticketCardDate {
+  margin: 0 0 12px;
+  font-size: 13px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.ticketCardTitle {
+  margin: 0 0 14px;
+  font-size: clamp(40px, 9vw, 60px);
+  line-height: 0.92;
+  text-transform: capitalize;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.ticketCardVenue {
+  margin: 0 auto;
+  max-width: 360px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Perforation row — 4px dashed line with 28px gap + 40px semicircles */
+.ticketCardPerf {
+  position: relative;
+  height: 28px;
+  margin: 0 0 0;
+}
+
+.ticketCardPerfDashed {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: 50%;
+  height: 4px;
+  background-image: linear-gradient(
+    to right,
+    rgba(245, 247, 255, 0.92) 0,
+    rgba(245, 247, 255, 0.92) 14px,
+    transparent 14px,
+    transparent 42px
+  );
+  background-size: 42px 4px;
+  background-repeat: repeat-x;
+  background-position: 0 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.ticketCardPerfCutLeft,
+.ticketCardPerfCutRight {
+  position: absolute;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-primary);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+}
+
+.ticketCardPerfCutLeft {
+  left: -20px;
+}
+
+.ticketCardPerfCutRight {
+  right: -20px;
+}
+
+.ticketCardHero {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background:
+    radial-gradient(circle at 25% 18%, rgba(255, 255, 255, 0.12), transparent 40%),
+    linear-gradient(180deg, #263b6a 0%, #132247 100%);
+  overflow: hidden;
+}
+
+.ticketCardHero.hasPhoto {
+  background: #0c1633;
+}
+
+.ticketCardHeroImage {
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.ticketCardHeroFallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: transparent;
+  font-size: 0;
+  background-image: url("/brand/logo-vertical.svg");
+  background-position: center 50%;
+  background-repeat: no-repeat;
+  background-size: min(48%, 200px) auto;
+  opacity: 0.32;
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.35));
+}
+
+/* Primary actions row — attendees + CTA */
+.ticketCardActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px 8px;
+  min-height: 64px;
+}
+
+.ticketAttendees {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--pink);
+}
+
+.ticketAttendeeAvatars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.ticketAttendeeAvatarWrap {
+  display: inline-block;
+  margin-left: -10px;
+}
+
+.ticketAttendeeAvatarWrap:first-child {
+  margin-left: 0;
+}
+
+.ticketAttendeeAvatar {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-card);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.ticketAttendeeAvatarPhoto {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.ticketAttendeeAvatarFallback {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%238D94B7' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.93 0 3.5 1.57 3.5 3.5S13.93 12 12 12 8.5 10.43 8.5 8.5 10.07 5 12 5zm0 14.2c-2.92 0-5.5-1.49-7-3.75.03-2.32 4.67-3.6 7-3.6 2.32 0 6.97 1.28 7 3.6-1.5 2.26-4.08 3.75-7 3.75z'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 70% auto;
+}
+
+.ticketAttendeeCount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pink-light);
+  letter-spacing: 0.005em;
+}
+
+.ticketCardActions .ctaMain {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 10px 22px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ticketCardActions .ctaMain.isActive,
+.ticketCardActions .ctaMain {
+  background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
+  color: #fff;
+  box-shadow:
+    0 8px 22px rgba(255, 47, 146, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.ticketCardActions .ctaMain[disabled] {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Secondary actions — ingressos, compartilhar, setlist.fm */
+.ticketCardSecondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 22px 18px;
+}
+
+.ticketCardSecondaryActions .chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 12px 18px;
+  border-radius: 14px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticketCardSecondaryActions .chip:hover,
+.ticketCardSecondaryActions .chip:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+.ticketCardTour {
+  margin: 0 22px 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.ticketCardSetlist {
+  padding: 14px 22px 26px;
+  border-top: 2px dashed var(--bg-primary);
+}
+
+.ticketCardSetlist .setlistTitle {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 480px) {
+  .ticketCardActions {
+    padding: 14px 16px 6px;
+  }
+  .ticketCardSecondaryActions {
+    padding: 4px 16px 16px;
+  }
+  .ticketCardSetlist {
+    padding: 14px 16px 22px;
+  }
+  .ticketCardHeader {
+    padding: 24px 18px 18px;
+  }
+  .ticketCardTour {
+    margin-inline: 16px;
+  }
+  .ticketAttendeeAvatar {
+    width: 30px;
+    height: 30px;
+  }
+  .ticketCardActions .ctaMain {
+    padding: 10px 18px;
+    font-size: 12px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  CTA spark burst — extends rock burst to "eu fui/vou" CTA            */
+/* ------------------------------------------------------------------ */
+
+.ctaSparkField {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ctaSpark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff5fa, var(--pink-light));
+  box-shadow: 0 0 8px rgba(255, 230, 245, 0.85);
+  opacity: 0;
+}
+
+.ctaSpark1 { --burst-angle: 12deg; }
+.ctaSpark2 { --burst-angle: 70deg; }
+.ctaSpark3 { --burst-angle: 132deg; }
+.ctaSpark4 { --burst-angle: 198deg; }
+.ctaSpark5 { --burst-angle: 252deg; }
+.ctaSpark6 { --burst-angle: 318deg; }
+
+.ctaMain.ctaBurst.ctaWithBurst .ctaSpark {
+  animation: ctaSparkFly 600ms cubic-bezier(0.22, 0.9, 0.36, 1) both;
+}
+
+@keyframes ctaSparkFly {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--burst-angle)) translateX(0) scale(0.4);
+  }
+  20% {
+    opacity: 1;
+    transform: rotate(var(--burst-angle)) translateX(18px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--burst-angle)) translateX(46px) scale(0.4);
+  }
+}
+
+.ctaMain.ctaBurst.ctaWithBurst {
+  animation: ctaPressBurst 480ms cubic-bezier(0.28, 1.5, 0.4, 1);
+}
+
+@keyframes ctaPressBurst {
+  0% { transform: scale(1); }
+  20% { transform: scale(0.94); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctaMain.ctaBurst.ctaWithBurst,
+  .ctaMain.ctaBurst.ctaWithBurst .ctaSpark {
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Rock-hand SVG color states (used by like button)                    */
+/* ------------------------------------------------------------------ */
+
+.feedPostLikeBtn .rockOnIcon {
+  color: var(--text-muted);
+  width: auto;
+  height: 24px;
+}
+
+.feedPostLikeBtn:hover .rockOnIcon {
+  color: var(--text-secondary);
+}
+
+.feedPostLikeBtn.isLiked .rockOnIcon {
+  color: var(--gradient-a);
+  filter: drop-shadow(0 0 6px rgba(255, 47, 146, 0.55));
+}
+
+.feedPostLikeBtn.isLiked:hover .rockOnIcon {
+  color: var(--pink-light);
+}
+
+.feedPostLikeBtn {
+  color: var(--text-muted);
+}
+
+.feedPostLikeBtn:hover {
+  background: transparent;
+}
+
+/* Surface card hover (slider/grid) — keep saturated blue */
+.surface-tint-saturated {
+  background: var(--surface-card);
+}
+
+/* Trending list visuals & ticketThumb keep surface palette via tokens. */
+

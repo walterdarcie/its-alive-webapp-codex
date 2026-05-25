@@ -104,6 +104,10 @@ export const en: LocaleDict = {
     notFound: "We couldn't find this show.",
     overlayLabel: "Show details",
     errorLoading: "Failed to load show",
+    attendeesGoing: (n) => (n === 1 ? "+ 1 going" : `+ ${n} going`),
+    attendeesWent: (n) => (n === 1 ? "+ 1 went" : `+ ${n} went`),
+    attendeesEmptyGoing: "If you're going, save the memory.",
+    attendeesEmptyWent: "If you were there, save the memory.",
   },
   feed: {
     title: "Who was there",
@@ -145,6 +149,7 @@ export const en: LocaleDict = {
     languageLabel: "Language",
   },
   profile: {
+    showsLabel: "shows",
     thisYear: (year) => `in ${year}`,
     total: "total",
     following: "Following",

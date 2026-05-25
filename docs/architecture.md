@@ -129,7 +129,7 @@ Excluir:
 ```
 app/
   globals.css                       ← TODOS os estilos aqui, sem exceção
-  layout.tsx                        ← Root layout, fonte Work Sans, GA
+  layout.tsx                        ← Root layout, fontes Work Sans (corpo) + Anton (títulos), GA
   page.tsx                          ← Server Component → chama HomeClient
   u/[userId]/page.tsx               ← Página de perfil de outro usuário
   u/[userId]/seguindo/page.tsx      ← Listagem de quem o user segue

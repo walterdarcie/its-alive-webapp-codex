@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Work_Sans } from "next/font/google";
+import { Anton, Work_Sans } from "next/font/google";
 import Script from "next/script";
 import { AnalyticsPageTracker } from "@/app/ui/analytics-page-tracker";
 import { LocaleProvider } from "@/lib/i18n-context";
@@ -8,7 +8,14 @@ import "./globals.css";
 
 const workSans = Work_Sans({
   subsets: ["latin"],
-  weight: ["400", "700"]
+  weight: ["400", "700"],
+  variable: "--font-body"
+});
+
+const anton = Anton({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-display"
 });
 
 export const metadata: Metadata = {
@@ -65,7 +72,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${workSans.variable} ${anton.variable}`}>
       <body className={workSans.className}>
         <LocaleProvider>
           {children}

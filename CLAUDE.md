@@ -50,8 +50,8 @@ All tokens live in `app/globals.css` inside `:root`. Use them by name — never 
 --bg-tertiary: #2a0730
 
 /* Surfaces */
---surface-card: #162a52
---surface-card-hover: #1c3566
+--surface-card: #1d3362
+--surface-card-hover: #2a447e
 --surface-soft: #101c3a
 
 /* Pink / primary brand */
@@ -175,12 +175,14 @@ background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
 ```
 
 ### Typography
-Font: `Work Sans` (400 regular, 700 bold — no other weights).
-Font sizes are set per-component; there is no global type scale. Tight negative tracking on headings:
-```css
-letter-spacing: -0.02em;  /* section titles */
-letter-spacing: -0.03em;  /* card titles */
-```
+Two fonts loaded via `next/font/google` in `app/layout.tsx`:
+- **`Anton`** — display font for all visible page/section/card titles (`var(--font-display)`). Weight 400 only.
+- **`Work Sans`** — body font for everything else (`var(--font-body)`). Weights 400 + 700.
+
+Title selectors that pick up Anton (override block at the end of `app/globals.css`):
+`.sectionTitle, .cardTitle, .ticketName, .detailTitle, .resultTitle, .onboardingTitle, .loginTitle, .signinTitle, .profileName, .followListHeaderTitle, .friendResultName, .ticketCardTitle, .ticketCardDate, .ticketDateStubMonth, .ticketDateStubDay, .ticketDateStubYear`.
+
+Font sizes are set per-component; there is no global type scale. Anton is already condensed/tall, so don't add negative tracking on titles — let Anton breathe with `letter-spacing: 0.005em` (default in the override block).
 
 ### Spacing
 Map Figma spacing to the 8px grid. Prefer token variables for standard increments; use explicit px only for one-off values.

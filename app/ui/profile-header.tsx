@@ -60,12 +60,18 @@ export function ProfileHeader({
         <div className="profileShowStats" aria-label={t.profile.showsAriaLabel}>
           <div className="profileShowStat">
             <span className="profileShowStatNumber">{formatShowCount(showsThisYear)}</span>
-            <span className="profileShowStatLabel">{t.profile.thisYear(currentYear)}</span>
+            <span className="profileShowStatLabelGroup">
+              <span className="profileShowStatLabelTop">{t.profile.showsLabel}</span>
+              <span className="profileShowStatLabel">{t.profile.thisYear(currentYear)}</span>
+            </span>
           </div>
           <span className="profileShowStatDivider" aria-hidden />
           <div className="profileShowStat">
             <span className="profileShowStatNumber">{formatShowCount(showsTotal)}</span>
-            <span className="profileShowStatLabel">{t.profile.total}</span>
+            <span className="profileShowStatLabelGroup">
+              <span className="profileShowStatLabelTop">{t.profile.showsLabel}</span>
+              <span className="profileShowStatLabel">{t.profile.total}</span>
+            </span>
           </div>
         </div>
 

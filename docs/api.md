@@ -418,6 +418,31 @@ Cache do Ticketmaster é chaveado por `(country, size, city, genre)` — variaç
 
 ---
 
+### `GET /api/shows/[id]/attendees`
+
+Retorna o total e os 4 mais recentes atendentes de um show (qualquer status: `going` ou `went`). Usado pelo `ShowDetailClient` para a linha de avatares + contador na "perfuração" do ticket.
+
+**Auth:** Não. `wallet_entries` e `profiles` têm SELECT público.
+
+**Response 200:**
+```json
+{
+  "total": 999,
+  "status": "going" | "went" | "mixed",
+  "recent": [
+    { "userId": "uuid", "displayName": "Walter", "avatarUrl": "https://..." }
+  ]
+}
+```
+
+- `total` — contagem total de wallet entries para esse `setlist_id` (todos os status)
+- `status` — `going` ou `went` quando todos compartilham status; `mixed` caso contrário
+- `recent` — até 4 perfis distintos, ordenados pelo `updated_at` mais recente. Quando o perfil não estiver disponível (raro), é omitido silenciosamente.
+
+**Implementação:** consulta `wallet_entries` com `select` exact-count limitando a 200 linhas escaneadas para coletar os IDs únicos; em seguida resolve `profiles` desses IDs.
+
+---
+
 ## `/api/auth/signout`
 
 ### `POST /api/auth/signout`
