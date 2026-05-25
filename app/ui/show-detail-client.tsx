@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
 import { deriveWalletStatus, formatVenueLine, isFutureOrTodayShow } from "@/lib/show-utils";
 import { fetchArtistImageClient } from "@/lib/artist-image-client";
-import { getWalletShow, isSavedInWallet, removeFromWalletServer, saveToWalletServer } from "@/lib/wallet-storage";
+import { getWalletShow, hydrateWalletFromServer, isSavedInWallet, removeFromWalletServer, saveToWalletServer } from "@/lib/wallet-storage";
 import { useLocale } from "@/lib/i18n-context";
 import { trackEvent } from "@/lib/analytics";
 import { ShowFeedClient } from "@/app/ui/show-feed-client";
@@ -92,6 +92,27 @@ export function ShowDetailClient({ id, initialData, isAuthenticated = true, view
     async function load() {
       setLoading(true);
       setError(null);
+
+      let resolvedWalletShow = walletShow;
+
+      // If not in local wallet, try server wallet (e.g. fresh device / direct link)
+      if (!resolvedWalletShow) {
+        try {
+          const { entries } = await hydrateWalletFromServer();
+          const entry = entries.find((e) => e.show.id === id);
+          if (entry) {
+            resolvedWalletShow = entry.show;
+            setShow((prev) => ({
+              ...(prev ?? { ...entry.show, songNames: [], setlistSections: [] }),
+              ...entry.show
+            }));
+            setSaved(true);
+          }
+        } catch {
+          /* best-effort */
+        }
+      }
+
       try {
         const response = await fetch(`/api/setlists/${encodeURIComponent(id)}`, {
           signal: controller.signal
@@ -102,10 +123,10 @@ export function ShowDetailClient({ id, initialData, isAuthenticated = true, view
         }
         const detailPayload = payload as ShowDetailRecord;
         setShow(detailPayload);
-        setArtistImageUrl(detailPayload.artistImageUrl ?? walletShow?.artistImageUrl ?? null);
+        setArtistImageUrl(detailPayload.artistImageUrl ?? resolvedWalletShow?.artistImageUrl ?? null);
       } catch (err) {
         if (controller.signal.aborted) return;
-        if (!walletShow) setError(err instanceof Error ? err.message : t.showDetail.errorLoading);
+        if (!resolvedWalletShow) setError(err instanceof Error ? err.message : t.showDetail.errorLoading);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }

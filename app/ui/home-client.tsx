@@ -763,6 +763,13 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
         fallbackAvatarUrl={viewer.avatarUrl}
         showsThisYear={attendedThisYear}
         showsTotal={totalAttended}
+        onShowStatsClick={() => {
+          setActiveTab("meus-shows");
+          const url = new URL(window.location.href);
+          url.searchParams.set("tab", "meus-shows");
+          window.history.replaceState({}, "", url.toString());
+          trackEvent("home_tab_change", { tab: "meus_shows", source: "profile_stats_click" });
+        }}
       />
 
       <TabsBar

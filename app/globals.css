@@ -2362,7 +2362,7 @@ input {
   display: grid;
   grid-template-columns: 88px 1fr;
   gap: var(--space-2);
-  align-items: center;
+  align-items: start;
   margin: 6px 0 16px;
 }
 
@@ -2416,14 +2416,24 @@ input {
 
 .profileShowStats {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
 
+.profileShowStatsClickable {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: opacity 160ms ease;
+}
+
+.profileShowStatsClickable:hover {
+  opacity: 0.75;
+}
+
 .profileShowStat {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   min-width: 0;
 }
@@ -3053,7 +3063,7 @@ input {
 }
 
 .profilePage .profileBlock {
-  margin: 4px 0 12px;
+  margin: 20px 0 12px;
 }
 
 .profilePage .section {
@@ -3193,6 +3203,7 @@ input {
   .profileBlock {
     grid-template-columns: 72px 1fr;
     gap: 12px;
+    align-items: start;
     margin: 4px 0 12px;
   }
   .profileAvatarWrap {
@@ -3635,23 +3646,24 @@ input {
   color: var(--text-secondary);
 }
 
-/* Perforation row — 4px dashed line with 28px gap + 40px semicircles */
+/* Perforation row — 4px dashed line flush to hero image + 40px semicircles */
 .ticketCardPerf {
   position: relative;
-  height: 28px;
-  margin: 0 0 0;
+  height: 0;
+  margin: 0;
+  z-index: 3;
 }
 
 .ticketCardPerfDashed {
   position: absolute;
   left: 28px;
   right: 28px;
-  top: 50%;
+  top: 0;
   height: 4px;
   background-image: linear-gradient(
     to right,
-    rgba(245, 247, 255, 0.92) 0,
-    rgba(245, 247, 255, 0.92) 14px,
+    var(--bg-primary) 0,
+    var(--bg-primary) 14px,
     transparent 14px,
     transparent 42px
   );
@@ -3665,7 +3677,7 @@ input {
 .ticketCardPerfCutLeft,
 .ticketCardPerfCutRight {
   position: absolute;
-  top: 50%;
+  top: 0;
   width: 40px;
   height: 40px;
   background: var(--bg-primary);
@@ -3788,9 +3800,16 @@ input {
   text-transform: uppercase;
 }
 
-.ticketCardActions .ctaMain.isActive,
 .ticketCardActions .ctaMain {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.ticketCardActions .ctaMain.isActive {
   background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
+  border-color: transparent;
   color: #fff;
   box-shadow:
     0 8px 22px rgba(255, 47, 146, 0.32),
@@ -3839,7 +3858,6 @@ input {
 
 .ticketCardSetlist {
   padding: 14px 22px 26px;
-  border-top: 2px dashed var(--bg-primary);
 }
 
 .ticketCardSetlist .setlistTitle {
