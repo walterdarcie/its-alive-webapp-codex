@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Viewer } from "@/lib/show-types";
 import { useLocale } from "@/lib/i18n-context";
+import { RockHandSvg } from "@/lib/brand-svg";
 
 type Post = {
   id: string;
@@ -289,7 +290,7 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
                   aria-label={post.viewerLiked ? t.feed.rockOffAriaLabel : t.feed.rockOnAriaLabel}
                 >
                   <span className="rockBurstWrap">
-                    <RockOnIcon filled={post.viewerLiked} />
+                    <RockHandSvg size={22} className="iconSvg rockOnIcon" />
                     <span className="rockBurstSpark rockBurstSpark1" aria-hidden />
                     <span className="rockBurstSpark rockBurstSpark2" aria-hidden />
                     <span className="rockBurstSpark rockBurstSpark3" aria-hidden />
@@ -305,27 +306,6 @@ export function ShowFeedClient({ showId, viewer }: ShowFeedClientProps) {
         </ul>
       )}
     </section>
-  );
-}
-
-function RockOnIcon({ filled }: { filled?: boolean }) {
-  if (filled) {
-    return (
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" className="iconSvg rockOnIcon">
-        <path
-          d="M8 2.6a2 2 0 0 0-4 0v9.3a2 2 0 0 0-2.5 1.8c0 .54.21 1.04.56 1.4l3.5 3.6A6.6 6.6 0 0 0 10.3 21H14a6 6 0 0 0 6-6V5.5a2 2 0 0 0-4 0v6.1h-.8V5.6c0-.05 0-.1-.01-.16V5.4a1.7 1.7 0 0 0-3.39 0v6.2h-.8V8.2a1.7 1.7 0 0 0-3.4 0v3.4H8V2.6Z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" className="iconSvg rockOnIcon">
-      <path
-        d="M6 2.6a2 2 0 0 1 4 0V11h.6V8.2a1.7 1.7 0 0 1 3.4 0V11h.6V5.4a1.7 1.7 0 0 1 3.4 0V11h.6V5.5a2 2 0 0 1 4 0V15a6 6 0 0 1-6 6h-3.7a6.6 6.6 0 0 1-4.74-2.3l-3.5-3.6A2 2 0 0 1 1.5 13.7 2 2 0 0 1 4 11.9V2.6Zm1.4 9.6V2.6a.6.6 0 0 1 1.2 0v9.6H7.4Zm4 0V8.2a.3.3 0 0 1 .6 0v4H11.4Zm4 0v-6.8a.3.3 0 0 1 .6 0v6.8h-.6Zm4 0V5.5a.6.6 0 0 1 1.2 0V15a4.6 4.6 0 0 1-4.6 4.6h-3.7a5.2 5.2 0 0 1-3.74-1.85l-3.5-3.6a.6.6 0 0 1 .9-.8l3.05 3.13a.7.7 0 0 0 1.1-.16.7.7 0 0 0-.1-.84l-.06-.06H19.4Z"
-        fill="currentColor"
-      />
-    </svg>
   );
 }
 

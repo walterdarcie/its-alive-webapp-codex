@@ -22,14 +22,16 @@ test("home renders profile, tabs and meus shows agrupado por ano", async ({ page
   await expect(page.locator(".yearLabel span").first()).toHaveText("2025");
 
   await page.getByRole("button", { name: /metallica/i }).first().click();
-  const detailSheet = page.locator(".detailSheetOverlay");
-  await expect(detailSheet).toBeVisible();
+  await page.waitForURL(/\/show\//);
+  const ticketCard = page.locator(".ticketCard");
+  await expect(ticketCard).toBeVisible();
 
   await page.getByRole("button", { name: /ver tudo/i }).click();
   await expect(page.getByRole("button", { name: /^recolher$/i })).toBeVisible();
 
-  await page.locator(".detailOverlayContainer").getByLabel("Fechar detalhes").click();
-  await expect(detailSheet).toBeHidden();
+  await page.getByRole("button", { name: "Voltar" }).click();
+  await page.waitForURL("**/");
+  await expect(ticketCard).toBeHidden();
 });
 
 test("home drawer abre via hamburger e fecha com ESC", async ({ page }) => {

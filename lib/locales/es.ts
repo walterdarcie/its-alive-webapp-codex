@@ -105,6 +105,10 @@ export const es: LocaleDict = {
     notFound: "No encontramos este show.",
     overlayLabel: "Detalles del show",
     errorLoading: "Error al cargar el show",
+    attendeesGoing: (n) => (n === 1 ? "1 va" : `${n} van`),
+    attendeesWent: (n) => (n === 1 ? "1 fue" : `${n} fueron`),
+    attendeesEmptyGoing: "Si vas, guarda este recuerdo.",
+    attendeesEmptyWent: "Si fuiste, guarda este recuerdo.",
   },
   feed: {
     title: "Quién estuvo",
@@ -146,6 +150,7 @@ export const es: LocaleDict = {
     languageLabel: "Idioma",
   },
   profile: {
+    showsLabel: "shows",
     thisYear: (year) => `en ${year}`,
     total: "en total",
     following: "Siguiendo",

@@ -104,6 +104,10 @@ export type LocaleDict = {
     notFound: string;
     overlayLabel: string;
     errorLoading: string;
+    attendeesGoing: (n: number) => string;
+    attendeesWent: (n: number) => string;
+    attendeesEmptyGoing: string;
+    attendeesEmptyWent: string;
   };
   feed: {
     title: string;
@@ -145,6 +149,7 @@ export type LocaleDict = {
     languageLabel: string;
   };
   profile: {
+    showsLabel: string;
     thisYear: (year: number) => string;
     total: string;
     following: string;

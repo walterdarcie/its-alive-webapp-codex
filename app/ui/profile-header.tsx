@@ -13,6 +13,7 @@ type ProfileHeaderProps = {
   showsThisYear: number;
   showsTotal: number;
   primaryAction?: ReactNode;
+  onShowStatsClick?: () => void;
 };
 
 function buildAvatarStyle(avatarUrl: string): CSSProperties {
@@ -33,7 +34,8 @@ export function ProfileHeader({
   fallbackAvatarUrl,
   showsThisYear,
   showsTotal,
-  primaryAction
+  primaryAction,
+  onShowStatsClick
 }: ProfileHeaderProps) {
   const { t } = useLocale();
   const displayName = profile?.displayName ?? fallbackName;
@@ -57,15 +59,28 @@ export function ProfileHeader({
       <div className="profileIdentity">
         <h1 className="profileName">{displayName}</h1>
 
-        <div className="profileShowStats" aria-label={t.profile.showsAriaLabel}>
+        <div
+          className={`profileShowStats${onShowStatsClick ? " profileShowStatsClickable" : ""}`}
+          aria-label={t.profile.showsAriaLabel}
+          onClick={onShowStatsClick}
+          role={onShowStatsClick ? "button" : undefined}
+          tabIndex={onShowStatsClick ? 0 : undefined}
+          onKeyDown={onShowStatsClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onShowStatsClick(); } } : undefined}
+        >
           <div className="profileShowStat">
             <span className="profileShowStatNumber">{formatShowCount(showsThisYear)}</span>
-            <span className="profileShowStatLabel">{t.profile.thisYear(currentYear)}</span>
+            <span className="profileShowStatLabelGroup">
+              <span className="profileShowStatLabelTop">{t.profile.showsLabel}</span>
+              <span className="profileShowStatLabel">{t.profile.thisYear(currentYear)}</span>
+            </span>
           </div>
           <span className="profileShowStatDivider" aria-hidden />
           <div className="profileShowStat">
             <span className="profileShowStatNumber">{formatShowCount(showsTotal)}</span>
-            <span className="profileShowStatLabel">{t.profile.total}</span>
+            <span className="profileShowStatLabelGroup">
+              <span className="profileShowStatLabelTop">{t.profile.showsLabel}</span>
+              <span className="profileShowStatLabel">{t.profile.total}</span>
+            </span>
           </div>
         </div>
 

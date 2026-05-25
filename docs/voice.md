@@ -154,6 +154,14 @@ Zero é renderizado como `—`, não `0`. O traço dispensa o usuário de encara
 
 Verbos curtos. Mantêm a primeira pessoa do passado/futuro do produto (`Eu fui!`/`Eu vou!`) e cabem ao lado do nome do amigo na mesma linha. Cromáticamente diferenciados: `Foi` em pink-light (memória cálida), `Vai` em blue-glow (antecipação fria). Sem rótulo "compareceu" ou "vai comparecer" — é jargão de evento corporativo.
 
+### Contador de atendentes no detalhe do show
+
+Quando há gente, número + verbo curto: `+ 999 foram` (passado) / `+ 999 vão` (futuro). Quando o contador é zero, em vez de mostrar `0` ou "Seja o primeiro" (que soa Instagram), convidamos pessoalmente: "Se você foi, registre essa memória." / "Se for, registre essa memória." — frase em pt-BR sem pressa, na primeira pessoa, alinhada ao vocabulário "guardar memória".
+
+### "shows" como cabeçalho da contagem do perfil
+
+No perfil, sobre os números grandes (em gradiente pink → coral), aparece a palavra "shows" em lowercase + tracking largo, separando a unidade do qualificador ("em 2026" / "no total"). A palavra "shows" sozinha responde a pergunta "X o quê?" antes de o usuário ler o restante — empilhamento vertical melhora a leitura mobile.
+
 ### "Buscar amigos" (não "Encontrar pessoas")
 
 "Amigos" reforça o tom de comunidade próxima — o produto não é uma rede de descoberta de estranhos. Reservar "pessoas" para contextos neutros (ex.: contagem de "X seguidores" não vira "amigos" porque pode incluir estranhos).

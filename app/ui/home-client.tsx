@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { ShowDetailRecord, ShowRecord, Viewer } from "@/lib/show-types";
-import { ShowDetailClient } from "@/app/ui/show-detail-client";
+import type { ShowRecord } from "@/lib/show-types";
 import { SocialDrawer } from "@/app/ui/social-drawer";
 import { ProfileHeader } from "@/app/ui/profile-header";
 import { buildArtistImageKey, fetchArtistImageClient } from "@/lib/artist-image-client";
@@ -111,9 +111,7 @@ function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) 
           {daysAway > 0 ? t.home.daysLeft(daysAway) : daysAway === 0 ? t.home.today : dateLabel}
         </div>
         <h3 className="cardTitle">{show.artist}</h3>
-        <div className="cardVenue venueWithPin">
-          <span className="venueText">{formatVenueLine(show)}</span>
-        </div>
+        <div className="cardVenue">{formatVenueLine(show)}</div>
       </div>
     </article>
   );
@@ -138,9 +136,7 @@ function TicketRow({
         <div className="ticketBody">
           <p className="ticketDate">{formatDate(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
-          <p className="ticketVenue venueWithPin">
-            <span className="venueText">{formatVenueLine(show)}</span>
-          </p>
+          <p className="ticketVenue">{formatVenueLine(show)}</p>
         </div>
       </button>
     </div>
@@ -551,8 +547,8 @@ function TabsBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTa
 
 export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: ViewerProfile; initialTab?: HomeTab }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [walletEntries, setWalletEntries] = useState<WalletEntry[]>([]);
-  const [selectedShow, setSelectedShow] = useState<{ id: string; initialData?: ShowRecord } | null>(null);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<HomeTab>(initialTab);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -564,28 +560,12 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
   const [feedItems, setFeedItems] = useState<FollowFeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
-  const openShowOverlay = useCallback((show: ShowRecord) => {
-    setSelectedShow({ id: show.id, initialData: show });
-    window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
-  }, []);
-
-  const closeShowOverlay = useCallback(() => {
-    setSelectedShow(null);
-    window.history.pushState({}, "", "/");
-  }, []);
-
-  useEffect(() => {
-    function handlePopState(event: PopStateEvent) {
-      const state = event.state as { showOverlay?: string } | null;
-      if (state?.showOverlay) {
-        setSelectedShow({ id: state.showOverlay });
-      } else {
-        setSelectedShow(null);
-      }
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  const openShowOverlay = useCallback(
+    (show: ShowRecord) => {
+      router.push(`/show/${encodeURIComponent(show.id)}`);
+    },
+    [router]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -783,6 +763,13 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
         fallbackAvatarUrl={viewer.avatarUrl}
         showsThisYear={attendedThisYear}
         showsTotal={totalAttended}
+        onShowStatsClick={() => {
+          setActiveTab("meus-shows");
+          const url = new URL(window.location.href);
+          url.searchParams.set("tab", "meus-shows");
+          window.history.replaceState({}, "", url.toString());
+          trackEvent("home_tab_change", { tab: "meus_shows", source: "profile_stats_click" });
+        }}
       />
 
       <TabsBar
@@ -834,21 +821,6 @@ export function HomeClient({ viewer, initialTab = "novidades" }: { viewer: Viewe
       </div>
 
       <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="home" />
-
-      {selectedShow ? (
-        <ShowDetailClient
-          id={selectedShow.id}
-          mode="overlay"
-          onClose={closeShowOverlay}
-          isAuthenticated
-          viewer={{ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer}
-          initialData={
-            selectedShow.initialData
-              ? ({ ...selectedShow.initialData, songNames: [], setlistSections: [] } satisfies ShowDetailRecord)
-              : undefined
-          }
-        />
-      ) : null}
     </main>
   );
 }

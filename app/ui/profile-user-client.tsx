@@ -4,12 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { ShowRecord, Viewer } from "@/lib/show-types";
+import type { ShowRecord } from "@/lib/show-types";
 import type { ViewerProfile } from "@/lib/auth";
 import type { PublicWalletEntry, UserProfileWithCounts } from "@/lib/social-types";
 import { FollowButton, ProfileHeader } from "@/app/ui/profile-header";
 import { SocialDrawer } from "@/app/ui/social-drawer";
-import { ShowDetailClient } from "@/app/ui/show-detail-client";
 import {
   daysUntilShow,
   formatVenueLine,
@@ -62,9 +61,7 @@ function EventCard({ show, imageUrl }: { show: ShowRecord; imageUrl?: string }) 
           {daysAway > 0 ? t.home.daysLeft(daysAway) : daysAway === 0 ? t.home.today : dateLabel}
         </div>
         <h3 className="cardTitle">{show.artist}</h3>
-        <div className="cardVenue venueWithPin">
-          <span className="venueText">{formatVenueLine(show)}</span>
-        </div>
+        <div className="cardVenue">{formatVenueLine(show)}</div>
       </div>
     </article>
   );
@@ -89,9 +86,7 @@ function TicketRow({
         <div className="ticketBody">
           <p className="ticketDate">{formatDate(show.eventDateIso)}</p>
           <h3 className="ticketName">{show.artist}</h3>
-          <p className="ticketVenue venueWithPin">
-            <span className="venueText">{formatVenueLine(show)}</span>
-          </p>
+          <p className="ticketVenue">{formatVenueLine(show)}</p>
         </div>
       </button>
     </div>
@@ -105,13 +100,12 @@ type ProfileUserClientProps = {
   isAuthenticated: boolean;
 };
 
-export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isAuthenticated }: ProfileUserClientProps) {
+export function ProfileUserClient({ profile: initialProfile, wallet, viewer: _viewer, isAuthenticated }: ProfileUserClientProps) {
   const router = useRouter();
   const { t } = useLocale();
   const [profile, setProfile] = useState<UserProfileWithCounts>(initialProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [artistImageMap, setArtistImageMap] = useState<Record<string, string>>({});
-  const [selectedShow, setSelectedShow] = useState<ShowRecord | null>(null);
 
   function handleBack() {
     trackEvent("profile_page_back_click", {});
@@ -192,23 +186,8 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
   }
 
   function openShowOverlay(show: ShowRecord) {
-    setSelectedShow(show);
-    window.history.pushState({ showOverlay: show.id }, "", `/show/${encodeURIComponent(show.id)}`);
+    router.push(`/show/${encodeURIComponent(show.id)}`);
   }
-
-  function closeShowOverlay() {
-    setSelectedShow(null);
-    window.history.pushState({}, "", `/u/${encodeURIComponent(profile.userId)}`);
-  }
-
-  useEffect(() => {
-    function handlePopState(event: PopStateEvent) {
-      const state = event.state as { showOverlay?: string } | null;
-      if (!state?.showOverlay) setSelectedShow(null);
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
 
   const cta = !isAuthenticated ? (
     <Link
@@ -235,7 +214,11 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
 
   return (
     <main className="page pageSocial profilePage">
-      <header className="topBarSocial">
+      <header className="topBarSocial showDetailTopBar">
+        <button type="button" className="showDetailBackBtn" onClick={handleBack} aria-label={t.common.back}>
+          <BackIcon />
+          <span className="showDetailBackLabel">{t.common.back}</span>
+        </button>
         <Link href="/" aria-label={t.common.goHome} className="brandLogoLink">
           <Image src="/brand/logo-default.svg" alt="it's alive" width={148} height={44} className="brandLogo" />
         </Link>
@@ -251,13 +234,10 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
           >
             <HamburgerIcon />
           </button>
-        ) : null}
+        ) : (
+          <span aria-hidden />
+        )}
       </header>
-
-      <button type="button" className="profilePageBack profilePageBackBtn" onClick={handleBack} aria-label={t.common.back}>
-        <BackIcon />
-        {t.common.back}
-      </button>
 
       <ProfileHeader
         profile={profile}
@@ -325,17 +305,6 @@ export function ProfileUserClient({ profile: initialProfile, wallet, viewer, isA
       )}
 
       <SocialDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} source="profile_page" />
-
-      {selectedShow ? (
-        <ShowDetailClient
-          id={selectedShow.id}
-          mode="overlay"
-          onClose={closeShowOverlay}
-          isAuthenticated={isAuthenticated}
-          viewer={viewer ? ({ id: viewer.id, name: viewer.name, avatarUrl: viewer.avatarUrl } satisfies Viewer) : null}
-          initialData={{ ...selectedShow, songNames: [], setlistSections: [] }}
-        />
-      ) : null}
     </main>
   );
 }
