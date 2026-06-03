@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { ShowRecord } from "@/lib/show-types";
 import type { TrendingShow } from "@/lib/social-types";
 import { searchTrendingUpcoming } from "@/lib/ticketmaster-api";
+import { searchTrendingJambase } from "@/lib/jambase-api";
 import { configErrorResponse, loadAuthContext } from "@/lib/supabase/social-helpers";
 
 const TRENDING_LIMIT = 24;
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const [walletResult, ticketmasterShows] = await Promise.all([
+  const [walletResult, ticketmasterShows, jambaseShows] = await Promise.all([
     supabase
       .from("wallet_entries")
       .select("setlist_id, event_date, show_data, status")
@@ -71,8 +72,21 @@ export async function GET(request: NextRequest) {
       .gte("event_date", todayIso)
       .order("event_date", { ascending: true })
       .limit(WALLET_SCAN_LIMIT),
-    searchTrendingUpcoming({ countryCode, size: TRENDING_LIMIT, city, genre })
+    searchTrendingUpcoming({ countryCode, size: TRENDING_LIMIT, city, genre }),
+    // Country-level cache (no city/genre) — all users share one cached result per country
+    searchTrendingJambase({ countryCode })
   ]);
+
+  // Dedup JamBase against Ticketmaster and apply city filter
+  const tmArtistDates = new Set(
+    ticketmasterShows.map((s) => `${normalizeArtistKey(s.artist)}|${s.eventDateIso}`)
+  );
+  const jbUnique = jambaseShows.filter((show) => {
+    if (city && !showMatchesCity(show, city)) return false;
+    return !tmArtistDates.has(`${normalizeArtistKey(show.artist)}|${show.eventDateIso}`);
+  });
+
+  const allUpcoming = [...ticketmasterShows, ...jbUnique];
 
   if (walletResult.error) {
     console.error("[shows/trending] wallet error:", walletResult.error.message);
@@ -108,18 +122,18 @@ export async function GET(request: NextRequest) {
     })
     .map(({ count, show }) => ({ show, attendingCount: count }));
 
-  // 2. Preenche com shows futuros do Ticketmaster — fonte para destaques
+  // 2. Preenche com shows futuros (Ticketmaster + JamBase) — fonte para destaques
   //    quando a plataforma ainda não tem volume suficiente. Dedup por id.
   const seenIds = new Set(fromWallet.map((entry) => entry.show.id));
-  const fromTicketmaster: TrendingShow[] = ticketmasterShows
+  const fromUpcoming: TrendingShow[] = allUpcoming
     .filter((show) => !seenIds.has(show.id))
     .map((show) => ({ show, attendingCount: 0 }));
 
   // 3. Deduplica por artista: garante que cada artista aparece no máximo uma vez,
-  //    preservando a ordem (plataforma > ticketmaster) e o show mais relevante.
+  //    preservando a ordem (plataforma > ticketmaster > jambase) e o show mais relevante.
   const seenArtists = new Set<string>();
   const trending: TrendingShow[] = [];
-  for (const entry of [...fromWallet, ...fromTicketmaster]) {
+  for (const entry of [...fromWallet, ...fromUpcoming]) {
     const key = normalizeArtistKey(entry.show.artist);
     if (!key || seenArtists.has(key)) continue;
     seenArtists.add(key);

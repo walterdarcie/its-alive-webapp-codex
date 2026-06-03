@@ -4,17 +4,65 @@
 
 ## Visão geral
 
-A busca aceita texto livre (`metallica chicago 2024`), separadores explícitos (`iron maiden, são paulo, brasil, 2022`) e preposições (`foo fighters em são paulo`). O parser converte a query em filtros estruturados, identifica o artista pelo MBID quando possível, e tenta uma sequência curta de planos contra a API do setlist.fm. Paralelamente, busca shows futuros no Ticketmaster e mescla os resultados.
+A busca aceita texto livre (`metallica chicago 2024`), separadores explícitos (`iron maiden, são paulo, brasil, 2022`) e preposições (`foo fighters em são paulo`). O parser converte a query em filtros estruturados, identifica o artista pelo MBID quando possível, e tenta uma sequência curta de planos contra a API do setlist.fm. Paralelamente, busca shows futuros no Ticketmaster e JamBase e mescla os resultados.
 
 Pontos de entrada:
 
 | Camada | Arquivo | Responsabilidade |
 |---|---|---|
 | UI | `app/ui/search-page-client.tsx` | Input, debounce de 420ms, ranking visual, paginação por scroll |
-| Route handler | `app/api/setlists/search/route.ts` | Validação, cache (6h), chamadas paralelas, merge de resultados |
+| Route handler | `app/api/setlists/search/route.ts` | Validação, cache (6h), chamadas paralelas, merge e dedup de resultados |
 | Cliente Setlist.fm | `lib/setlist-api.ts` | Parsing, resolução de MBID, plano de queries, fallbacks |
-| Cliente Ticketmaster | `lib/ticketmaster-api.ts` | Shows futuros, cache 1h |
-| Cache | `lib/setlist-cache.ts` | LRU in-memory (TTL 6h busca / 24h artistas / 30min negativo / 1h Ticketmaster) |
+| Cliente Ticketmaster | `lib/ticketmaster-api.ts` | Shows futuros via Ticketmaster, cache 1h |
+| Cliente JamBase | `lib/jambase-api.ts` | Shows futuros via JamBase (AXS/SeatGeek/Eventbrite), cache 4h |
+| Cache | `lib/setlist-cache.ts` | LRU in-memory (TTL 6h busca / 24h artistas / 30min negativo / 1h TM / 4h JamBase) |
+
+## JamBase Data API
+
+**Propósito:** terceira fonte de shows futuros, complementando o Ticketmaster com eventos vendidos em outras plataformas (AXS, SeatGeek, Eventbrite). Opera em paralelo com Ticketmaster na busca por artista e no trending.
+
+**Autenticação:** Bearer token no header `Authorization: Bearer {JAMBASE_API_KEY}`. Se a key não estiver configurada, todas as funções retornam `[]` silenciosamente.
+
+**Rate limit:** Free tier = 1.000 calls/mês (~33/dia). Plano pago a partir de $500/mês. Por isso o TTL de cache é 4h (vs 1h do Ticketmaster) e o trending usa cache por país (não por city/genre), reduzindo as chamadas ao mínimo.
+
+**Endpoint usado:** `GET https://api.data.jambase.com/v3/events`
+
+**Parâmetros enviados — busca por artista:**
+
+| Parâmetro | Valor |
+|---|---|
+| `keyword` | Nome do artista (mesmo `extractArtistForUpcoming` do Ticketmaster) |
+| `startDate` | Data atual ISO `YYYY-MM-DD` |
+| `pageSize` | `20` |
+
+**Parâmetros enviados — trending:**
+
+| Parâmetro | Valor |
+|---|---|
+| `countryCode` | ISO 3166-1 alpha-2 (ex: `BR`) |
+| `startDate` | Data atual ISO `YYYY-MM-DD` |
+| `pageSize` | `20` |
+
+**Mapeamento para `ShowRecord`:**
+
+| Campo JamBase | Campo ShowRecord | Observação |
+|---|---|---|
+| `identifier` | `id` | Prefixado com `jb-` |
+| `performer[0].name` | `artist` | Schema.org — pode ser objeto ou array |
+| `location.name` | `venue` | |
+| `location.address.addressLocality + addressRegion` | `city` | Concatenados com `, ` |
+| `location.address.addressCountry` | `country` | ISO code → nome completo via `ISO_COUNTRY_NAMES` |
+| `startDate` (primeiros 10 chars) | `eventDateIso` | Formato `YYYY-MM-DD` |
+| `offers[].url` (primeiro InStock) | `ticketUrl` | `availability === "InStock"` ou termina com `/InStock` |
+| `name` (se diferente do artista) | `tourName` | |
+
+**Deduplicação com Ticketmaster:** feita por `artista.toLowerCase() + eventDateIso`. Se o mesmo artista no mesmo dia já está nos resultados do Ticketmaster, o show JamBase é descartado (TM tem prioridade).
+
+**IDs:** `"jb-{identifier}"` — nunca colidem com `"tm-..."` ou com IDs do Setlist.fm.
+
+**Cobertura:** agrega Ticketmaster, AXS, SeatGeek, Eventbrite e bilheterias parceiras. Especialmente útil para shows em venues que não usam Ticketmaster/Live Nation.
+
+---
 
 ## Ticketmaster Discovery API v2
 
@@ -205,8 +253,11 @@ O script é idempotente (`ON CONFLICT DO NOTHING`) e pode ser re-executado.
 | Cache do route handler | `lib/setlist-cache.ts` | 6h | `search:{lower}:{page}` |
 | Cache de `/search/artists` | mesmo cache | 24h (hit) / 30min (404) | `artists:{lower}` |
 | Cache Ticketmaster upcoming | mesmo cache | 1h | `tm:upcoming:{lower}` |
+| Cache JamBase upcoming | mesmo cache | 4h | `jb:upcoming:{lower}` |
+| Cache JamBase trending | mesmo cache | 4h | `jb:trending:{countryCode}` |
 | `Next.js fetch revalidate` | `lib/setlist-api.ts` | 6h busca / 24h artistas | URL completa |
 | `Next.js fetch revalidate` | `lib/ticketmaster-api.ts` | 1h | URL completa |
+| `Next.js fetch revalidate` | `lib/jambase-api.ts` | 4h | URL completa |
 | Cache HTTP do navegador | header `Cache-Control` | 1min cliente / 6h CDN | URL completa |
 
 O cache é LRU com limite de 600 entradas (`MAX_CACHE_ENTRIES` em `setlist-cache.ts`). Reinicio do dev server limpa o cache em memória.

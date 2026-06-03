@@ -7,6 +7,7 @@ import {
   extractYearFromSearchTerm
 } from "@/lib/setlist-api";
 import { searchUpcomingByArtist } from "@/lib/ticketmaster-api";
+import { searchUpcomingByArtistJambase } from "@/lib/jambase-api";
 import type { ShowRecord } from "@/lib/show-types";
 
 const SEARCH_TTL_MS = 1000 * 60 * 60 * 6;
@@ -42,32 +43,47 @@ export async function GET(request: NextRequest) {
       const currentYear = new Date().getUTCFullYear();
       const yearAllowsUpcoming = !yearFilter || Number(yearFilter) >= currentYear;
 
-      const [setlistPayload, upcomingShowsRaw] = await Promise.all([
+      // Resolve artist name once — used by both Ticketmaster and JamBase calls.
+      const artistForUpcoming = yearAllowsUpcoming
+        ? await extractArtistForUpcoming(searchTerm)
+        : "";
+
+      const [setlistPayload, tmShowsRaw, jbShowsRaw] = await Promise.all([
         searchSetlists(searchTerm, 0),
-        yearAllowsUpcoming
-          ? (async () => {
-              const artistName = await extractArtistForUpcoming(searchTerm);
-              if (!artistName) return [] as ShowRecord[];
-              return searchUpcomingByArtist(artistName);
-            })()
-          : Promise.resolve([] as ShowRecord[])
+        artistForUpcoming ? searchUpcomingByArtist(artistForUpcoming) : Promise.resolve([] as ShowRecord[]),
+        artistForUpcoming ? searchUpcomingByArtistJambase(artistForUpcoming) : Promise.resolve([] as ShowRecord[])
       ]);
 
-      const upcomingShows = yearFilter
-        ? upcomingShowsRaw.filter((show) => show.eventDateIso.startsWith(yearFilter))
-        : upcomingShowsRaw;
+      const tmShows = yearFilter
+        ? tmShowsRaw.filter((show) => show.eventDateIso.startsWith(yearFilter))
+        : tmShowsRaw;
 
-      // Merge: setlist.fm past shows + Ticketmaster upcoming shows, dedup by ID
+      const jbShowsFiltered = yearFilter
+        ? jbShowsRaw.filter((show) => show.eventDateIso.startsWith(yearFilter))
+        : jbShowsRaw;
+
+      // Dedup JamBase against Ticketmaster by artist+date (same show, different source)
+      const tmArtistDates = new Set(
+        tmShows.map((s) => `${s.artist.toLowerCase()}|${s.eventDateIso}`)
+      );
+      const jbUnique = jbShowsFiltered.filter(
+        (s) => !tmArtistDates.has(`${s.artist.toLowerCase()}|${s.eventDateIso}`)
+      );
+
+      // Merge: Setlist.fm past shows + Ticketmaster upcoming + JamBase unique upcoming
       const merged = new Map<string, ShowRecord>();
       for (const show of setlistPayload.shows) merged.set(show.id, show);
-      for (const show of upcomingShows) {
+      for (const show of tmShows) {
+        if (!merged.has(show.id)) merged.set(show.id, show);
+      }
+      for (const show of jbUnique) {
         if (!merged.has(show.id)) merged.set(show.id, show);
       }
 
       const payload = {
         ...setlistPayload,
         shows: Array.from(merged.values()),
-        total: setlistPayload.total + upcomingShows.length
+        total: setlistPayload.total + tmShows.length + jbUnique.length
       };
 
       setCacheValue(cacheKey, payload, SEARCH_TTL_MS);
