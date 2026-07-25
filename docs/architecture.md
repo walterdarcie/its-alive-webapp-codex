@@ -18,6 +18,7 @@
 | Analytics | Google Analytics 4 (`G-LDQLEFB0DR`) | `trackEvent()` manual + page tracker |
 | Deploy | Vercel (auto-deploy via push no `main`) | Branch `main` = produção |
 | CI | GitHub Actions (Release Quality) | ESLint + Next.js build + Vitest a cada push/PR |
+| Agendamentos | GitHub Actions (Supabase Keep-Alive) | Ping no Supabase a cada 3 dias para o projeto não pausar |
 
 ## Diagrama de sistema
 
@@ -174,7 +175,7 @@ supabase/
 ## Pipeline de CI (GitHub Actions)
 
 Arquivo: `.github/workflows/release-quality.yml`  
-Disparo: todo push em `main` e todo pull request.
+Disparo: todo push em `main` e todo pull request (o job `search-live` só roda em push/`workflow_dispatch` — ver [docs/search.md](search.md)).
 
 ### Job 1 — Lint + Build + Unit
 
@@ -199,6 +200,37 @@ Artefatos do Playwright (relatório + screenshots) são retidos por 14 dias.
 - **Config:** `"extends": "next/core-web-vitals"`
 - **Versões:** `eslint@^8` + `eslint-config-next@^14.2.32` — devem ser mantidas em sincronia com a versão do Next.js
 - ESLint 9 usa flat config e é **incompatível** com o `.eslintrc.json` — não atualizar sem migrar o config
+
+## Workflow agendado — Supabase Keep-Alive
+
+Arquivo: `.github/workflows/supabase-keepalive.yml`  
+Disparo: `cron: "0 0 */3 * *"` (00:00 UTC a cada 3 dias) + `workflow_dispatch`.
+
+O plano gratuito do Supabase pausa o projeto após ~7 dias sem atividade. O job faz
+um `GET /rest/v1/wallet_entries?select=*&limit=1` com a anon key e falha (exit 1)
+se não vier HTTP 200/206, com até 3 tentativas espaçadas por 10s.
+
+| Detalhe | Valor |
+|---|---|
+| Secrets | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (os mesmos do job `search-live`) |
+| Fallback | Valores públicos do projeto embutidos no workflow, caso os secrets não existam |
+| `permissions` | `{}` — o job não precisa de nenhum escopo no repositório |
+
+Pontos de atenção:
+
+- **Use `select=*`, nunca uma coluna nomeada.** `wallet_entries` tem chave primária
+  composta `(user_id, setlist_id)` e **não tem coluna `id`**. Um `select=id` retorna
+  HTTP 400 (Postgres `42703`, `column wallet_entries.id does not exist`).
+- **O corpo da resposta é impresso em caso de erro.** A versão anterior desse ping
+  usava `curl -o /dev/null` e escondeu esse 400 por semanas.
+- A leitura anônima funciona por causa da policy `wallet select public`
+  (`using (true)`) — ver [docs/database.md](database.md).
+- O cron roda a cada 3 dias contra uma janela de pausa de ~7 dias, então há folga
+  para atrasos ou execuções puladas pelo GitHub.
+- O GitHub **desativa workflows agendados após 60 dias sem commits no repositório**;
+  avisa por e-mail e basta reativar pela aba Actions.
+- Falhas do workflow já geram e-mail automático para o dono do repositório — não é
+  preciso configurar notificação.
 
 ---
 
