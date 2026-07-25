@@ -107,6 +107,20 @@ O Supabase SSR configura cookies com `HttpOnly` e `SameSite=Lax` por padrão, o 
 
 A variável `SUPABASE_SERVICE_ROLE_KEY` aparece apenas no `.env.example` (para operações de CLI). Nenhuma rota de API a utiliza — todo acesso passa pelo anon key com RLS.
 
+### Anon Key Versionada no Workflow de Keep-Alive ⚠️ Aceito
+
+`.github/workflows/supabase-keepalive.yml` embute a URL do projeto e a anon key como
+fallback, caso os secrets `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+não estejam definidos. Decisão consciente: a anon key é `NEXT_PUBLIC_*`, já vai no
+bundle JS servido a qualquer visitante, e todo o acesso que ela concede é limitado por
+RLS. Não há escalada de privilégio — quem lê o repositório não ganha nada além do que
+já obteria abrindo o DevTools no site.
+
+Consequências a lembrar: se a anon key for **rotacionada**, este arquivo precisa ser
+atualizado junto com os secrets, senão o fallback silenciosamente aponta para uma
+credencial morta. O `SUPABASE_SERVICE_ROLE_KEY` **nunca** deve receber o mesmo
+tratamento — ele ignora RLS.
+
 ### XSS nas Páginas React ✅
 
 Conteúdo de usuário (nome de posts, nomes de usuários) é renderizado via JSX, que escapa HTML automaticamente. Nenhum `dangerouslySetInnerHTML` recebe dados controlados pelo usuário — o único uso é no JSON-LD (corrigido acima).

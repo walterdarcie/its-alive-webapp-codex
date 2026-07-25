@@ -1,0 +1,61 @@
+name: Supabase Keep-Alive
+
+# O plano gratuito do Supabase pausa o projeto após ~7 dias sem atividade.
+# Este workflow faz um SELECT trivial a cada 3 dias para manter o banco ativo.
+#
+# Usa os mesmos secrets já configurados para o job search-live. Se eles não
+# estiverem definidos, cai no valor público do projeto — a anon key é
+# NEXT_PUBLIC_* (vai no bundle do browser) e é protegida por RLS, então não
+# há segredo real sendo exposto aqui.
+
+on:
+  schedule:
+    # 00:00 UTC nos dias 1, 4, 7, ... 31 de cada mês (a cada 3 dias).
+    - cron: "0 0 */3 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    name: Ping REST API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping wallet_entries
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://wypsgfxjvboazoskjovk.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5cHNnZnhqdmJvYXpvc2tqb3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzMDA2ODUsImV4cCI6MjA4Nzg3NjY4NX0.Szru0o5b-Al84xIG-SsmD8TDfdyZr6Ng2uXaIvMrXEA' }}
+        run: |
+          set -uo pipefail
+
+          # select=* em vez de uma coluna nomeada: wallet_entries tem chave
+          # composta (user_id, setlist_id) e nenhuma coluna "id". Pedir uma
+          # coluna específica quebra o ping se o schema mudar.
+          url="${SUPABASE_URL%/}/rest/v1/wallet_entries?select=*&limit=1"
+
+          for attempt in 1 2 3; do
+            body=$(curl -sS \
+              --connect-timeout 15 \
+              --max-time 45 \
+              -w $'\n%{http_code}' \
+              "$url" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" 2>&1) || true
+
+            code="${body##*$'\n'}"
+            payload="${body%$'\n'*}"
+
+            if [ "$code" = "200" ] || [ "$code" = "206" ]; then
+              echo "Supabase keep-alive ping successful (HTTP $code)"
+              exit 0
+            fi
+
+            echo "Tentativa $attempt falhou (HTTP ${code:-sem resposta})"
+            # Imprime o corpo do erro: foi exatamente isso que faltava para
+            # descobrir que o 400 era 'column wallet_entries.id does not exist'.
+            echo "Resposta: $payload"
+            [ "$attempt" -lt 3 ] && sleep 10
+          done
+
+          echo "Supabase ping failed (HTTP ${code:-sem resposta})"
+          exit 1
