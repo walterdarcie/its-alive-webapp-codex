@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITBI — Edifício Green Space, R. Tutoia 349</title>
+<style>
+  :root {
+    --bg-primary: #140016;
+    --bg-secondary: #1f0322;
+    --surface-card: #1d3362;
+    --surface-soft: #101c3a;
+    --gradient-a: #ff2f92;
+    --gradient-b: #ff7a5c;
+    --pink-light: #ff6fb8;
+    --text-primary: #f5f7ff;
+    --text-secondary: #c9cde8;
+    --text-muted: #8f96b8;
+    --neutral: #47536b;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --shadow-card: 0 14px 30px rgba(0, 0, 0, 0.32);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: clamp(20px, 4vw, 48px) clamp(14px, 4vw, 40px) 64px;
+    background: radial-gradient(120% 80% at 50% 0%, var(--bg-secondary), var(--bg-primary));
+    color: var(--text-primary);
+    font-family: "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  header { max-width: 1180px; margin: 0 auto 28px; }
+  .eyebrow {
+    font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--pink-light); margin: 0 0 8px;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: clamp(28px, 5.2vw, 44px);
+    line-height: 1.08;
+    background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .subtitle { margin: 0; color: var(--text-secondary); font-size: clamp(14px, 2.4vw, 17px); }
+  main { max-width: 1180px; margin: 0 auto; }
+  .stats {
+    display: grid; gap: 14px; margin: 26px 0 20px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  .stat {
+    background: var(--surface-card); border-radius: var(--radius-md);
+    padding: 16px 18px; box-shadow: var(--shadow-card);
+  }
+  .statLabel {
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-muted); margin: 0 0 6px;
+  }
+  .statValue { font-size: clamp(20px, 3.2vw, 27px); font-weight: 700; margin: 0; }
+  .statHint { margin: 4px 0 0; font-size: 12px; color: var(--text-muted); }
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-bottom: 14px;
+  }
+  .toolbar input, .toolbar button {
+    font: inherit; color: var(--text-primary);
+    background: var(--surface-soft); border: 1px solid var(--neutral);
+    border-radius: 999px; padding: 9px 16px;
+  }
+  .toolbar input { min-width: min(100%, 280px); flex: 1 1 240px; }
+  .toolbar input::placeholder { color: var(--text-muted); }
+  .toolbar button { cursor: pointer; }
+  .toolbar button.isActive {
+    background: linear-gradient(90deg, var(--gradient-a), var(--gradient-b));
+    border-color: transparent; font-weight: 700;
+  }
+  .tableWrap {
+    overflow-x: auto; background: var(--surface-soft);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 11px 14px; text-align: left; white-space: nowrap; }
+  thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--surface-card); cursor: pointer; user-select: none;
+    font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--text-secondary); border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  thead th:hover { color: var(--text-primary); }
+  thead th .arrow { color: var(--pink-light); font-size: 10px; margin-left: 5px; }
+  tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
+  tbody tr:hover { background: rgba(255, 47, 146, 0.09); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.empty { color: var(--text-muted); }
+  .count { margin: 10px 2px 0; font-size: 13px; color: var(--text-muted); }
+  footer {
+    max-width: 1180px; margin: 34px auto 0; padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 13px; color: var(--text-muted);
+  }
+  footer p { margin: 0 0 9px; }
+  footer a { color: var(--pink-light); }
+  @media (max-width: 720px) {
+    th, td { padding: 9px 10px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <p class="eyebrow">ITBI · Prefeitura de São Paulo</p>
+  <h1>Edifício Green Space</h1>
+  <p class="subtitle">Rua Tutoia, 349 — Vila Mariana, São Paulo · Declarações de transações imobiliárias (DTI/ITBI-IV) pagas, 2024 em diante</p>
+</header>
+
+<main>
+  <section class="stats" id="stats"></section>
+
+  <div class="toolbar">
+    <input id="busca" type="search" placeholder="Filtrar (unidade, natureza, data…)" aria-label="Filtrar transações">
+    <button id="toggleColunas" type="button">Mostrar todas as colunas</button>
+  </div>
+
+  <div class="tableWrap">
+    <table>
+      <thead><tr id="cabecalho"></tr></thead>
+      <tbody id="corpo"></tbody>
+    </table>
+  </div>
+  <p class="count" id="contagem"></p>
+</main>
+
+<footer>
+  <p><strong>Fonte:</strong> Secretaria Municipal da Fazenda de São Paulo — base pública de Guias de ITBI pagas (DTI/ITBI-IV), disponível em <a href="https://prefeitura.sp.gov.br/web/fazenda/w/acesso_a_informacao/31501" target="_blank" rel="noopener">prefeitura.sp.gov.br — Acesso à Informação</a>. Dados extraídos das planilhas anuais oficiais, filtrando logradouro “TUTOIA” e número “349”.</p>
+  <p><strong>Atenção ao interpretar os valores:</strong> o “valor de transação” é o declarado pelo contribuinte e nem sempre corresponde ao preço efetivo de venda. Quando o valor declarado é inferior ao valor venal de referência arbitrado pela Prefeitura, a base de cálculo adotada passa a ser o valor venal de referência — por isso a coluna de base de cálculo pode divergir do preço real negociado. Vagas de garagem costumam ser lançadas como transações separadas do apartamento, na mesma data.</p>
+  <p>Página estática: os dados estão embutidos neste arquivo e nada é carregado da rede.</p>
+</footer>
+
+<script>
+const DATA = {"rows":[{"Arquivo de Origem":"itbi-2024.xlsx","Aba de Origem":"MAR-2024","N° do Cadastro (SQL)":"3614801500","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"AP 101","Bairro":"VILA MARIANA","CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":953370,"Data de Transação":"2024-03-04","Valor Venal de Referência":850598,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":850598,"Base de Cálculo adotada":953370,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93702","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.011,"Área Construída (m2)":143,"Uso (IPTU)":"20","Descrição do uso (IPTU)":"APARTAMENTO EM CONDOMÍNIO (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2024.xlsx","Aba de Origem":"MAR-2024","N° do Cadastro (SQL)":"3614802000","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 15 1 SS","Bairro":"VILA MARIANA","CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":66110,"Data de Transação":"2024-03-04","Valor Venal de Referência":58969,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":58969,"Base de Cálculo adotada":66110,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93712","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0006,"Área Construída (m2)":12,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2024.xlsx","Aba de Origem":"MAR-2024","N° do Cadastro (SQL)":"3614802213","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 16 1 SS","Bairro":"VILA MARIANA","CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":80520,"Data de Transação":"2024-03-04","Valor Venal de Referência":71791,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":71791,"Base de Cálculo adotada":80520,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93717","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2024.xlsx","Aba de Origem":"NOV-2024","N° do Cadastro (SQL)":"3614801713","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"AP 152","Bairro":null,"CEP":"4007901","Natureza de Transação":"17.Resolução da alienação fiduciária por inadimplemento","Valor de Transação (declarado pelo contribuinte)":267200,"Data de Transação":"2024-11-12","Valor Venal de Referência":843763,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":843763,"Base de Cálculo adotada":843763,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"75149","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0109,"Área Construída (m2)":142,"Uso (IPTU)":"20","Descrição do uso (IPTU)":"APARTAMENTO EM CONDOMÍNIO (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2024.xlsx","Aba de Origem":"NOV-2024","N° do Cadastro (SQL)":"3614802736","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 4 2 SS","Bairro":"PARAISO","CEP":"4007901","Natureza de Transação":"17.Resolução da alienação fiduciária por inadimplemento","Valor de Transação (declarado pelo contribuinte)":18800,"Data de Transação":"2024-11-12","Valor Venal de Referência":71791,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":71791,"Base de Cálculo adotada":71791,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"75151","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2024.xlsx","Aba de Origem":"NOV-2024","N° do Cadastro (SQL)":"3614802728","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 3 2 SS","Bairro":"PARAISO","CEP":"4007901","Natureza de Transação":"17.Resolução da alienação fiduciária por inadimplemento","Valor de Transação (declarado pelo contribuinte)":18800,"Data de Transação":"2024-11-12","Valor Venal de Referência":71791,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":71791,"Base de Cálculo adotada":71791,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"75150","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2025.xlsx","Aba de Origem":"JUN-2025","N° do Cadastro (SQL)":"3614801322","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"AP 53","Bairro":null,"CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":839000,"Data de Transação":"2025-05-30","Valor Venal de Referência":876219,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":876219,"Base de Cálculo adotada":876219,"Tipo de Financiamento":"1.Sistema Financeiro de Habitação","Valor Financiado":622000,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93705","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0109,"Área Construída (m2)":142,"Uso (IPTU)":"20","Descrição do uso (IPTU)":"APARTAMENTO EM CONDOMÍNIO (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2025.xlsx","Aba de Origem":"JUN-2025","N° do Cadastro (SQL)":"3614802620","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 36 2 SS","Bairro":null,"CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":84000,"Data de Transação":"2025-05-30","Valor Venal de Referência":61145,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":61145,"Base de Cálculo adotada":84000,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93711","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0006,"Área Construída (m2)":12,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2025.xlsx","Aba de Origem":"JUN-2025","N° do Cadastro (SQL)":"3614802876","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 37 2 SS","Bairro":null,"CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":98000,"Data de Transação":"2025-05-30","Valor Venal de Referência":74422,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":74422,"Base de Cálculo adotada":98000,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93716","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2025.xlsx","Aba de Origem":"AGO-2025","N° do Cadastro (SQL)":"3614801713","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"AP 152","Bairro":null,"CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":139088.25,"Data de Transação":"2025-08-09","Valor Venal de Referência":0,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":0,"Base de Cálculo adotada":139088.25,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"75149","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0109,"Área Construída (m2)":142,"Uso (IPTU)":"20","Descrição do uso (IPTU)":"APARTAMENTO EM CONDOMÍNIO (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2025.xlsx","Aba de Origem":"AGO-2025","N° do Cadastro (SQL)":"3614802728","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 3 2 SS","Bairro":"PARAISO","CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":40000,"Data de Transação":"2025-08-09","Valor Venal de Referência":0,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":0,"Base de Cálculo adotada":40000,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"75150","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2025.xlsx","Aba de Origem":"AGO-2025","N° do Cadastro (SQL)":"3614802736","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 4 2 SS","Bairro":"PARAISO","CEP":"4007901","Natureza de Transação":"1.Compra e venda","Valor de Transação (declarado pelo contribuinte)":40000,"Data de Transação":"2025-08-09","Valor Venal de Referência":0,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":0,"Base de Cálculo adotada":40000,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"75151","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2026.xlsx","Aba de Origem":"JUN-2026","N° do Cadastro (SQL)":"3614801871","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"AP 192","Bairro":null,"CEP":"4007901","Natureza de Transação":"5.Adjudicação compulsória","Valor de Transação (declarado pelo contribuinte)":155800,"Data de Transação":"2026-06-02","Valor Venal de Referência":916401,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":916401,"Base de Cálculo adotada":916401,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93706","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0109,"Área Construída (m2)":142,"Uso (IPTU)":"20","Descrição do uso (IPTU)":"APARTAMENTO EM CONDOMÍNIO (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2026.xlsx","Aba de Origem":"JUN-2026","N° do Cadastro (SQL)":"3614802361","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 35 1 SS","Bairro":null,"CEP":"4007901","Natureza de Transação":"5.Adjudicação compulsória","Valor de Transação (declarado pelo contribuinte)":10000,"Data de Transação":"2026-06-02","Valor Venal de Referência":77047,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":77047,"Base de Cálculo adotada":77047,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93719","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"},{"Arquivo de Origem":"itbi-2026.xlsx","Aba de Origem":"JUN-2026","N° do Cadastro (SQL)":"3614802371","Nome do Logradouro":"R TUTOIA","Número":"349","Complemento":"VG 36 1 SS","Bairro":null,"CEP":"4007901","Natureza de Transação":"5.Adjudicação compulsória","Valor de Transação (declarado pelo contribuinte)":10000,"Data de Transação":"2026-06-02","Valor Venal de Referência":77047,"Proporção Transmitida (%)":100,"Valor Venal de Referência (proporcional)":77047,"Base de Cálculo adotada":77047,"Tipo de Financiamento":null,"Valor Financiado":0,"Cartório de Registro":"1º Cartório de Registro de Imóvel","Matrícula do Imóvel":"93720","Situação do SQL":"Ativo Predial","Área do Terreno (m2)":1616,"Testada (m)":38,"Fração Ideal":0.0007,"Área Construída (m2)":15,"Uso (IPTU)":"24","Descrição do uso (IPTU)":"GARAGEM (UNIDADE AUTÔNOMA) EM EDIFÍCIO EM CONDOMÍNIO DE USO EXCLUSIVAMENTE RESIDENCIAL (EXIGE FRAÇÃO IDEAL)","Padrão (IPTU)":"22","Descrição do padrão (IPTU)":"RESIDENCIAL VERTICAL","ACC (IPTU)":"1995"}],"columns":["Arquivo de Origem","Aba de Origem","N° do Cadastro (SQL)","Nome do Logradouro","Número","Complemento","Bairro","CEP","Natureza de Transação","Valor de Transação (declarado pelo contribuinte)","Data de Transação","Valor Venal de Referência","Proporção Transmitida (%)","Valor Venal de Referência (proporcional)","Base de Cálculo adotada","Tipo de Financiamento","Valor Financiado","Cartório de Registro","Matrícula do Imóvel","Situação do SQL","Área do Terreno (m2)","Testada (m)","Fração Ideal","Área Construída (m2)","Uso (IPTU)","Descrição do uso (IPTU)","Padrão (IPTU)","Descrição do padrão (IPTU)","ACC (IPTU)"],"primary":["Data de Transação","Complemento","Natureza de Transação","Valor de Transação (declarado pelo contribuinte)","Valor Venal de Referência (proporcional)","Base de Cálculo adotada","Área Construída (m2)","Matrícula do Imóvel","Aba de Origem"],"secondary":["Arquivo de Origem","N° do Cadastro (SQL)","Nome do Logradouro","Número","Bairro","CEP","Valor Venal de Referência","Proporção Transmitida (%)","Tipo de Financiamento","Valor Financiado","Cartório de Registro","Situação do SQL","Área do Terreno (m2)","Testada (m)","Fração Ideal","Uso (IPTU)","Descrição do uso (IPTU)","Padrão (IPTU)","Descrição do padrão (IPTU)","ACC (IPTU)"],"currency":["Valor de Transação (declarado pelo contribuinte)","Valor Financiado","Valor Venal de Referência (proporcional)","Valor Venal de Referência","Base de Cálculo adotada"],"dates":["Data de Transação"],"text":["ACC (IPTU)","Uso (IPTU)","Padrão (IPTU)","N° do Cadastro (SQL)","CEP","Matrícula do Imóvel","Número"]};
+const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
+const currencyCols = new Set(DATA.currency);
+const dateCols = new Set(DATA.dates);
+const textCols = new Set(DATA.text);
+
+let mostrarTudo = false;
+let ordem = { coluna: "Data de Transação", asc: false };
+let filtro = "";
+
+function colunasVisiveis() {
+  return mostrarTudo ? DATA.columns : DATA.primary;
+}
+
+function formatar(coluna, valor) {
+  if (valor === null || valor === undefined || valor === "") return "—";
+  if (currencyCols.has(coluna) && typeof valor === "number") return moeda.format(valor);
+  if (dateCols.has(coluna)) {
+    const partes = String(valor).slice(0, 10).split("-");
+    if (partes.length === 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
+  }
+  if (typeof valor === "number" && !textCols.has(coluna)) {
+    return valor.toLocaleString("pt-BR");
+  }
+  return String(valor);
+}
+
+function ehNumerica(coluna) {
+  if (textCols.has(coluna) || dateCols.has(coluna)) return false;
+  return DATA.rows.some((r) => typeof r[coluna] === "number");
+}
+
+function linhasFiltradas() {
+  const termo = filtro.trim().toLowerCase();
+  let linhas = DATA.rows;
+  if (termo) {
+    linhas = linhas.filter((r) =>
+      DATA.columns.some((c) => r[c] !== null && String(r[c]).toLowerCase().includes(termo))
+    );
+  }
+  const col = ordem.coluna;
+  const dir = ordem.asc ? 1 : -1;
+  return linhas.slice().sort((a, b) => {
+    const va = a[col], vb = b[col];
+    if (va === null || va === undefined) return 1;
+    if (vb === null || vb === undefined) return -1;
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+    return String(va).localeCompare(String(vb), "pt-BR", { numeric: true }) * dir;
+  });
+}
+
+function renderStats() {
+  const valores = DATA.rows
+    .map((r) => r["Valor de Transação (declarado pelo contribuinte)"])
+    .filter((v) => typeof v === "number");
+  const soma = valores.reduce((acc, v) => acc + v, 0);
+  const datas = DATA.rows.map((r) => r["Data de Transação"]).filter(Boolean).sort();
+  const periodo = datas.length
+    ? formatar("Data de Transação", datas[0]) + " – " + formatar("Data de Transação", datas[datas.length - 1])
+    : "—";
+
+  const cards = [
+    { label: "Transações", value: String(DATA.rows.length), hint: "apartamentos e vagas, lançados separadamente" },
+    { label: "Menor valor", value: moeda.format(Math.min(...valores)), hint: "valor declarado" },
+    { label: "Valor médio", value: moeda.format(soma / valores.length), hint: "média dos valores declarados" },
+    { label: "Maior valor", value: moeda.format(Math.max(...valores)), hint: "valor declarado" },
+    { label: "Período", value: periodo, hint: "data da transação" },
+  ];
+
+  document.getElementById("stats").innerHTML = cards
+    .map((c) =>
+      '<div class="stat"><p class="statLabel">' + c.label + '</p><p class="statValue">' +
+      c.value + '</p><p class="statHint">' + c.hint + "</p></div>"
+    )
+    .join("");
+}
+
+function renderTabela() {
+  const colunas = colunasVisiveis();
+  const cabecalho = document.getElementById("cabecalho");
+  cabecalho.innerHTML = "";
+  colunas.forEach((coluna) => {
+    const th = document.createElement("th");
+    th.textContent = coluna;
+    th.setAttribute("scope", "col");
+    if (ordem.coluna === coluna) {
+      const seta = document.createElement("span");
+      seta.className = "arrow";
+      seta.textContent = ordem.asc ? "▲" : "▼";
+      th.appendChild(seta);
+      th.setAttribute("aria-sort", ordem.asc ? "ascending" : "descending");
+    }
+    th.addEventListener("click", () => {
+      if (ordem.coluna === coluna) ordem.asc = !ordem.asc;
+      else ordem = { coluna, asc: !ehNumerica(coluna) };
+      renderTabela();
+    });
+    cabecalho.appendChild(th);
+  });
+
+  const linhas = linhasFiltradas();
+  const corpo = document.getElementById("corpo");
+  corpo.innerHTML = "";
+  linhas.forEach((linha) => {
+    const tr = document.createElement("tr");
+    colunas.forEach((coluna) => {
+      const td = document.createElement("td");
+      const bruto = linha[coluna];
+      td.textContent = formatar(coluna, bruto);
+      if (typeof bruto === "number" && !textCols.has(coluna)) td.className = "num";
+      if (bruto === null || bruto === undefined || bruto === "") td.className = "empty";
+      tr.appendChild(td);
+    });
+    corpo.appendChild(tr);
+  });
+
+  document.getElementById("contagem").textContent =
+    linhas.length + " de " + DATA.rows.length + " transações exibidas · clique no cabeçalho para ordenar";
+}
+
+document.getElementById("busca").addEventListener("input", (e) => {
+  filtro = e.target.value;
+  renderTabela();
+});
+
+const botaoColunas = document.getElementById("toggleColunas");
+botaoColunas.addEventListener("click", () => {
+  mostrarTudo = !mostrarTudo;
+  botaoColunas.textContent = mostrarTudo ? "Mostrar colunas principais" : "Mostrar todas as colunas";
+  botaoColunas.classList.toggle("isActive", mostrarTudo);
+  renderTabela();
+});
+
+renderStats();
+renderTabela();
+</script>
+</body>
+</html>

@@ -170,7 +170,37 @@ lib/
 
 supabase/
   migrations/           ← SQL numerado por timestamp YYYYMMDDHHMMSS
+
+scripts/
+  itbi_green_space.py   ← Extração ITBI (standalone, ver abaixo)
+  itbi_build_site.py    ← Gerador do site estático de ITBI (standalone)
+
+itbi/
+  green_space_tutoia.csv← Saída da extração (todas as colunas originais)
+  index.html            ← Site estático autocontido, gerado pelo script
 ```
+
+### Artefato standalone: consulta de ITBI (`itbi/`)
+
+`itbi/` e os scripts `scripts/itbi_*.py` **não fazem parte do app Next.js** — não são
+importados pelo build, não usam os tokens de `app/globals.css` e não sobem em nenhuma
+rota da aplicação. É um artefato separado: uma página estática de consulta às transações
+de ITBI do Edifício Green Space (R. Tutoia, 349), gerada offline a partir das planilhas
+públicas da Prefeitura de São Paulo.
+
+Pipeline (requer `pandas` + `openpyxl`; as planilhas anuais não são versionadas):
+
+```bash
+# 1. baixar os .xlsx anuais para um diretório qualquer (fonte:
+#    https://prefeitura.sp.gov.br/web/fazenda/w/acesso_a_informacao/31501)
+# 2. extrair as transações do imóvel
+python3 scripts/itbi_green_space.py --input-dir <dir> --out itbi/green_space_tutoia.csv
+# 3. gerar o HTML com os dados embutidos
+python3 scripts/itbi_build_site.py --csv itbi/green_space_tutoia.csv --out itbi/index.html
+```
+
+O HTML é autocontido (CSS e dados inline, zero requisição de rede em runtime) e abre
+direto pelo `file://`.
 
 ## Pipeline de CI (GitHub Actions)
 
